@@ -1,0 +1,23 @@
+root = true
+
+[*.cs]
+
+# Namespace does not match folder structure - one namespace per project, by design.
+dotnet_diagnostic.IDE0130.severity = none
+
+# Naming styles - e-prefixed enums (eTeam) and _PascalCase private fields are the house convention.
+dotnet_diagnostic.IDE1006.severity = none
+
+# Collection initialization can be simplified - explicit `new List<T>()` and friends are fine as written.
+dotnet_diagnostic.IDE0028.severity = none
+dotnet_diagnostic.IDE0300.severity = none
+dotnet_diagnostic.IDE0301.severity = none
+dotnet_diagnostic.IDE0302.severity = none
+dotnet_diagnostic.IDE0303.severity = none
+dotnet_diagnostic.IDE0304.severity = none
+dotnet_diagnostic.IDE0305.severity = none
+dotnet_diagnostic.IDE0306.severity = none
+
+# Use compound assignment - `x = x + y` and `x = x ?? y` are fine as written.
+dotnet_diagnostic.IDE0054.severity = none
+dotnet_diagnostic.IDE0074.severity = none

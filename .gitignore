@@ -1,0 +1,53 @@
+## .NET / Visual Studio ignore file
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+
+# NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+
+# Publish / deploy
+[Pp]ublish/
+*.pubxml
+*.pubxml.user
+
+# Misc
+*.log
+*.tmp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# MonoGame content pipeline build output
+[Cc]ontent/bin/
+[Cc]ontent/obj/
+*.xnb
+
+# MonoGame Content Builder Editor
+*.mgcb.user
+
+
+/Assets

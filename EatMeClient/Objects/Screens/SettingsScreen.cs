@@ -1,0 +1,291 @@
+using EatMeLibrary;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using System;
+
+namespace EatMeClient
+{
+    public class SettingsScreen
+    {
+        private const float VOLUME_ADJUST_RATE = 60f;
+        private const float SLIDER_SPACING = 30f;
+
+        private enum SettingsItem { MusicVolume, SoundVolume, Brightness, Bloom, Controls, Back }
+
+        private static readonly SettingsItem[] SETTINGS_ITEMS = [SettingsItem.MusicVolume, SettingsItem.SoundVolume, SettingsItem.Brightness, SettingsItem.Bloom, SettingsItem.Controls, SettingsItem.Back];
+        private static readonly string[] CONTROL_SCHEME_OPTIONS = [Const.STRING_CONTROLS_MOUSE_KEYBOARD, Const.STRING_CONTROLS_GAME_PAD];
+
+        private SpriteFont _Font;
+        private SpriteFont _TitleFont;
+        private SliderControl _MusicVolumeSlider;
+        private SliderControl _SoundVolumeSlider;
+        private ToggleControl _ControlsToggle;
+        private SliderControl _BrightnessSlider;
+        private SliderControl _BloomSlider;
+        private readonly Action _OnBack;
+
+        private SettingsItem _SelectedItem = SettingsItem.MusicVolume;
+
+        public SettingsScreen(Action onBack)
+        {
+            _OnBack = onBack;
+        }
+
+        public void LoadContent()
+        {
+            _Font = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC60);
+            _TitleFont = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC96);
+            _MusicVolumeSlider = new SliderControl(_Font, Const.STRING_MUSIC_VOLUME);
+            _SoundVolumeSlider = new SliderControl(_Font, Const.STRING_SOUND_VOLUME);
+            _ControlsToggle = new ToggleControl(_Font, Const.STRING_CONTROLS, CONTROL_SCHEME_OPTIONS);
+            _BrightnessSlider = new SliderControl(_Font, Const.STRING_BRIGHTNESS, DisplayAdjust.BRIGHTNESS_MIN, DisplayAdjust.BRIGHTNESS_MAX);
+            _BloomSlider = new SliderControl(_Font, Const.STRING_BLOOM, DisplayAdjust.BLOOM_MIN, DisplayAdjust.BLOOM_MAX);
+
+            // one line each, labels right-aligned in a shared column so the tracks and the toggle's value line up
+            var sliders = new[] { _MusicVolumeSlider, _SoundVolumeSlider, _BrightnessSlider, _BloomSlider };
+            var labelWidth = _ControlsToggle.GetLabelColumnWidth();
+
+            foreach (var slider in sliders)
+                labelWidth = MathF.Max(labelWidth, slider.GetLabelColumnWidth());
+
+            foreach (var slider in sliders)
+            {
+                slider.IsInline = true;
+                slider.LabelWidth = labelWidth;
+            }
+
+            _ControlsToggle.IsInline = true;
+            _ControlsToggle.LabelWidth = labelWidth;
+        }
+
+        public void Activate()
+        {
+            _SelectedItem = SettingsItem.MusicVolume;
+            _MusicVolumeSlider.Value = MusicManager.GetVolume() * 100f;
+            _SoundVolumeSlider.Value = SoundManager.GetVolume() * 100f;
+            _ControlsToggle.SelectedIndex = (int)ConfigManager.Settings.ControllerType;
+            _BrightnessSlider.Value = ConfigManager.Settings.Brightness;
+            _BloomSlider.Value = ConfigManager.Settings.Bloom;
+        }
+
+        public void Update(GameTime gameTime, Viewport viewport)
+        {
+            // exit screen?
+            if (InputManager.KeyPressed(Keys.Escape) || InputManager.GamePadButtonPressed(Buttons.B) || InputManager.GamePadButtonPressed(Buttons.Back))
+                ExitScreen();
+
+            // which item we looking at?
+            var selectedIndex = Array.IndexOf(SETTINGS_ITEMS, _SelectedItem);
+
+            if (InputManager.KeyPressed(Keys.Down) || 
+                InputManager.KeyPressed(Keys.S) || 
+                InputManager.GamePadButtonPressed(Buttons.DPadDown) || 
+                InputManager.GamePadButtonPressed(Buttons.LeftThumbstickDown))
+            {
+                _SelectedItem = SETTINGS_ITEMS[(selectedIndex + 1) % SETTINGS_ITEMS.Length];
+                SoundManager.PlaySound(Const.SFX_TICK);
+            }
+
+            if (InputManager.KeyPressed(Keys.Up) ||
+                InputManager.KeyPressed(Keys.W) ||
+                InputManager.GamePadButtonPressed(Buttons.DPadUp) ||
+                InputManager.GamePadButtonPressed(Buttons.LeftThumbstickUp))
+            {
+                _SelectedItem = SETTINGS_ITEMS[(selectedIndex - 1 + SETTINGS_ITEMS.Length) % SETTINGS_ITEMS.Length];
+                SoundManager.PlaySound(Const.SFX_TICK);
+            }
+
+            var leftPressed = InputManager.KeyPressed(Keys.Left) ||
+                InputManager.KeyPressed(Keys.A) ||
+                InputManager.GamePadButtonPressed(Buttons.DPadLeft) ||
+                InputManager.GamePadButtonPressed(Buttons.LeftThumbstickLeft);
+
+            var rightPressed = InputManager.KeyPressed(Keys.Right) ||
+                InputManager.KeyPressed(Keys.D) ||
+                InputManager.GamePadButtonPressed(Buttons.DPadRight) ||
+                InputManager.GamePadButtonPressed(Buttons.LeftThumbstickRight);
+
+            // If we are hovering a slider, figure out which one and process input for it.
+            var selectedSlider = _SelectedItem switch
+            {
+                SettingsItem.MusicVolume => _MusicVolumeSlider,
+                SettingsItem.SoundVolume => _SoundVolumeSlider,
+                SettingsItem.Brightness => _BrightnessSlider,
+                SettingsItem.Bloom => _BloomSlider,
+                _ => null
+            };
+
+            if (selectedSlider != null)
+            {
+                var adjust = (float)gameTime.ElapsedGameTime.TotalSeconds * VOLUME_ADJUST_RATE;
+
+                // once per press, not every frame the key is held
+                if (leftPressed || rightPressed)
+                    SoundManager.PlaySound(Const.SFX_TICK);
+
+                if (InputManager.KeyboardState.IsKeyDown(Keys.Right) || 
+                    InputManager.KeyboardState.IsKeyDown(Keys.D) ||
+                    InputManager.GamePadState[(int)PlayerIndex.One].IsButtonDown(Buttons.DPadRight) ||
+                    InputManager.GamePadState[(int)PlayerIndex.One].IsButtonDown(Buttons.LeftThumbstickRight))
+                    selectedSlider.AdjustValue(adjust);
+
+                if (InputManager.KeyboardState.IsKeyDown(Keys.Left) || 
+                    InputManager.KeyboardState.IsKeyDown(Keys.A) ||
+                    InputManager.GamePadState[(int)PlayerIndex.One].IsButtonDown(Buttons.DPadLeft) ||
+                    InputManager.GamePadState[(int)PlayerIndex.One].IsButtonDown(Buttons.LeftThumbstickLeft))
+                    selectedSlider.AdjustValue(-adjust);
+            }
+
+            // If we are toggling between controls, manage input
+            if (_SelectedItem == SettingsItem.Controls)
+            {
+                if (rightPressed)
+                    _ControlsToggle.Next();
+
+                if (leftPressed)
+                    _ControlsToggle.Previous();
+
+                if (leftPressed || rightPressed)
+                    SoundManager.PlaySound(Const.SFX_TICK);
+            }
+
+            // Unneeded local var? can we just store this in config manager?
+            _MusicVolumeSlider.Update(GetMusicSliderPosition(viewport));
+            MusicManager.SetVolume(_MusicVolumeSlider.Value / 100f);
+
+            // Unneeded local var? can we just store this in config manager?
+            _SoundVolumeSlider.Update(GetSoundSliderPosition(viewport));
+            SoundManager.SetVolume(_SoundVolumeSlider.Value / 100f);
+
+            // hover tracking, and a click moves to the next option
+            _ControlsToggle.Update(GetControlsPosition(viewport));
+
+            // Brightness takes effect straight away, so this screen previews it
+            _BrightnessSlider.Update(GetBrightnessSliderPosition(viewport));
+            ConfigManager.Settings.Brightness = _BrightnessSlider.Value;
+
+            // so does bloom
+            _BloomSlider.Update(GetBloomSliderPosition(viewport));
+            ConfigManager.Settings.Bloom = _BloomSlider.Value;
+
+            // user wants to go back?
+            if (_SelectedItem == SettingsItem.Back && (InputManager.KeyPressed(Keys.Enter) ||
+                InputManager.KeyPressed(Keys.Space) ||
+                InputManager.GamePadButtonPressed(Buttons.A)))
+                ExitScreen();
+
+            // Update config manager
+            ConfigManager.Settings.ControllerType = (eControllerType)_ControlsToggle.SelectedIndex;
+
+            var backBounds = GetBackBounds(viewport);
+            var mousePoint = new Point(InputManager.MouseState.X, InputManager.MouseState.Y);
+            var isBackHovered = backBounds.Contains(mousePoint);
+
+            var hoveredItem = true switch
+            {
+                _ when _MusicVolumeSlider.IsHovered => SettingsItem.MusicVolume,
+                _ when _SoundVolumeSlider.IsHovered => SettingsItem.SoundVolume,
+                _ when _ControlsToggle.IsHovered => SettingsItem.Controls,
+                _ when _BrightnessSlider.IsHovered => SettingsItem.Brightness,
+                _ when _BloomSlider.IsHovered => SettingsItem.Bloom,
+                _ when isBackHovered => SettingsItem.Back,
+                _ => (SettingsItem?)null,
+            };
+
+            var mouseActive = InputManager.MouseMoved() || InputManager.MouseButtonPressed(InputManager.MouseButton.Left);
+
+            if (mouseActive && hoveredItem.HasValue && hoveredItem.Value != _SelectedItem)
+                _SelectedItem = hoveredItem.Value;
+
+            if (isBackHovered && InputManager.MouseButtonPressed(InputManager.MouseButton.Left))
+            {
+                SoundManager.PlaySound(Const.SFX_TICK);
+                ExitScreen();
+            }
+        }
+
+        private void ExitScreen()
+        {
+            ConfigManager.Save();
+            _OnBack();
+        }
+
+        private Rectangle GetBackBounds(Viewport viewport)
+        {
+            var backSize = _Font.MeasureString(Const.STRING_BACK);
+            // Normally 80% of the way down, but never over the last setting
+            var controlsBottom = GetControlsPosition(viewport).Y + _ControlsToggle.GetHeight() + SLIDER_SPACING;
+            var backPosition = new Vector2((viewport.Width - backSize.X) / 2f, MathF.Max(viewport.Height * 0.8f, controlsBottom));
+            return new Rectangle((int)backPosition.X, (int)backPosition.Y, (int)backSize.X, (int)backSize.Y);
+        }
+
+        /// <summary>
+        /// Left edge shared by every setting, so the block is centred as a whole and the label column lines up.
+        /// </summary>
+        private float GetControlsLeft(Viewport viewport)
+        {
+            var width = MathF.Max(_MusicVolumeSlider.GetWidth(), _SoundVolumeSlider.GetWidth());
+            width = MathF.Max(width, MathF.Max(_BrightnessSlider.GetWidth(), _BloomSlider.GetWidth()));
+            width = MathF.Max(width, _ControlsToggle.GetWidth());
+            return (viewport.Width - width) / 2f;
+        }
+
+        private Vector2 GetMusicSliderPosition(Viewport viewport)
+        {
+            var headingSize = _TitleFont.MeasureString(Const.STRING_GAME_SETTINGS);
+            var headingPosition = new Vector2((viewport.Width - headingSize.X) / 2f, viewport.Height * 0.2f);
+            var sliderX = GetControlsLeft(viewport);
+            return new Vector2(sliderX, headingPosition.Y + headingSize.Y + _Font.LineSpacing);
+        }
+
+        private Vector2 GetSoundSliderPosition(Viewport viewport)
+        {
+            var musicPosition = GetMusicSliderPosition(viewport);
+            var sliderX = GetControlsLeft(viewport);
+            return new Vector2(sliderX, musicPosition.Y + _MusicVolumeSlider.GetHeight() + SLIDER_SPACING);
+        }
+
+        private Vector2 GetControlsPosition(Viewport viewport)
+        {
+            var bloomPosition = GetBloomSliderPosition(viewport);
+            var controlsX = GetControlsLeft(viewport);
+            return new Vector2(controlsX, bloomPosition.Y + _BloomSlider.GetHeight() + SLIDER_SPACING);
+        }
+
+        private Vector2 GetBrightnessSliderPosition(Viewport viewport)
+        {
+            var soundPosition = GetSoundSliderPosition(viewport);
+            var sliderX = GetControlsLeft(viewport);
+            return new Vector2(sliderX, soundPosition.Y + _SoundVolumeSlider.GetHeight() + SLIDER_SPACING);
+        }
+
+        private Vector2 GetBloomSliderPosition(Viewport viewport)
+        {
+            var brightnessPosition = GetBrightnessSliderPosition(viewport);
+            var sliderX = GetControlsLeft(viewport);
+            return new Vector2(sliderX, brightnessPosition.Y + _BrightnessSlider.GetHeight() + SLIDER_SPACING);
+        }
+
+        public void Draw(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            spriteBatch.Begin();
+
+            var headingSize = _TitleFont.MeasureString(Const.STRING_GAME_SETTINGS);
+            var headingPosition = new Vector2((viewport.Width - headingSize.X) / 2f, viewport.Height * 0.2f);
+            spriteBatch.DrawString(_TitleFont, Const.STRING_GAME_SETTINGS, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM);
+
+            _MusicVolumeSlider.Draw(spriteBatch, GetMusicSliderPosition(viewport), _SelectedItem == SettingsItem.MusicVolume);
+            _SoundVolumeSlider.Draw(spriteBatch, GetSoundSliderPosition(viewport), _SelectedItem == SettingsItem.SoundVolume);
+            _ControlsToggle.Draw(spriteBatch, GetControlsPosition(viewport), _SelectedItem == SettingsItem.Controls);
+            _BrightnessSlider.Draw(spriteBatch, GetBrightnessSliderPosition(viewport), _SelectedItem == SettingsItem.Brightness);
+            _BloomSlider.Draw(spriteBatch, GetBloomSliderPosition(viewport), _SelectedItem == SettingsItem.Bloom);
+
+            var backBounds = GetBackBounds(viewport);
+            var backColor = (_SelectedItem == SettingsItem.Back) ? ClientColors.COLOR_DARK_MENU_SELECTED : ClientColors.COLOR_DARK_MENU_ITEM;
+            spriteBatch.DrawString(_Font, Const.STRING_BACK, new Vector2(backBounds.X, backBounds.Y), backColor);
+
+            spriteBatch.End();
+        }
+    }
+}
