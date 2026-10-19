@@ -48,5 +48,16 @@ namespace EatMeLibrary
         /// Key: dead enemy pacs can't respawn while it works (PowerUpEffects.LocksSpawn).
         /// </summary>
         Lockdown = 9,
+
+        /// <summary>
+        /// Pretzel: everyone else within PowerUpEffects.EFFECT_RADIUS moves at half speed (PowerUpEffects.GetTwisterSpeedScale).
+        /// </summary>
+        Twister = 10,
+
+        /// <summary>
+        /// Starman: PacRules.INVINCIBLE_SPEED_SCALE times as fast, can't be killed, and kills any enemy pac or ghost it
+        /// touches (Player.IsInvincible). Ghosts run from it. Leaves a speed trail and blinks yellow.
+        /// </summary>
+        Invincible = 11,
     }
 }

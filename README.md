@@ -148,3 +148,16 @@ A new clip also needs an entry in `Content.mgcb` (`WavImporter`, `SoundEffectPro
 
 - **Level won** (about 2.3 s): a noise snare roll (six 50 ms hits), then G4 C5 E5 G5 E5 G5 at 130 ms a beat (beats 1, 1, 1, 2, 1, 6) on a 25% pulse wave, a third below it on a 12.5% pulse (E4 G4 C5 E5 C5 E5), a stepped triangle bass (C3, G2, C3), a short noise tick on each note and a crash on the last, which is held with vibrato and fades out.
 - **Level lost** (about 3.1 s): G4, F#4 and F4 for 420 ms each, then E4 for 1.7 s, on a 50% square wave with a triangle bass an octave and a half below (G2 F#2 F2 E2). Each note bends down slightly (0.6 semitones, 1 on the last) and the last one wobbles with vibrato and fades out.
+
+## POW block boom
+
+`SoundFX_Pow.wav` (2 s) is a low, percussive boom with a short room tail, synthesised as 44,100 Hz, 16-bit stereo PCM (the same sample in both channels) and normalized to a 0.9 peak. The dry sound is the sum of six parts:
+
+- a sine whose pitch drops from 120 Hz to 40 Hz (exponential, 60 ms time constant), decaying with a 350 ms time constant, like a big drum
+- a 32 Hz sub sine with a 10 ms fade in, decaying over 500 ms
+- a mid "thunk", a sine at 0.55 level dropping from 320 Hz to 160 Hz (50 ms time constant) and decaying over 120 ms
+- a mid "smack", white noise through a band pass at 600 Hz (Q 1.2) at 1.6 level, decaying over 70 ms
+- a burst of white noise put through two one-pole low pass filters (coefficient 0.08) and decaying over 30 ms, for the crack of the hit
+- a 180 Hz click decaying over 2 ms, at half level, so the front punches through
+
+The reverb is a Schroeder reverb: four damped comb filters in parallel (29.7, 37.1, 41.1 and 43.7 ms, feedback 0.78, damping 0.35, averaged), then two all pass filters in series (5 ms and 1.7 ms, gain 0.7). It is mixed in at 0.3 under the dry sound, the sum is soft clipped with `tanh(1.8 x)` for weight, and the last 150 ms fade out.

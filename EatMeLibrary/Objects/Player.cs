@@ -59,9 +59,14 @@
         public bool IsPowered => PowerUpEffect == ePowerUpEffect.PowerPill && PowerUpMs > 0;
 
         /// <summary>
-        /// True while ghosts won't chase the pac and run from it when it is within their vision: a power pill or
-        /// Doctor Away (apple) is working. Only a power pill lets it kill them (IsPowered).
+        /// True while Invincible (starman) is working: the pac can't be killed and kills any enemy pac or ghost it touches.
         /// </summary>
-        public bool RepelsGhosts => IsPowered || (PowerUpEffect == ePowerUpEffect.DoctorAway && PowerUpMs > 0);
+        public bool IsInvincible => PowerUpEffect == ePowerUpEffect.Invincible && PowerUpMs > 0;
+
+        /// <summary>
+        /// True while ghosts won't chase the pac and run from it when it is within their vision: a power pill,
+        /// Doctor Away (apple) or Invincible (starman) is working. Doctor Away doesn't let it kill them.
+        /// </summary>
+        public bool RepelsGhosts => IsPowered || IsInvincible || (PowerUpEffect == ePowerUpEffect.DoctorAway && PowerUpMs > 0);
     }
 }

@@ -47,7 +47,7 @@ namespace EatMeClient
         /// <summary>
         /// A pac with a power pill working pulses from its team color to yellow and back once in this time.
         /// </summary>
-        private const float POWER_PULSE_SECONDS = 0.5f;
+        private const float POWER_PULSE_SECONDS = 1.0f;
         private const int GHOST_FRAME_COUNT = 4;
 
         // rainbow ghost sheets, each moved round the gradient a little further, so the rainbow scrolls as ghosts move
@@ -161,6 +161,11 @@ namespace EatMeClient
         private readonly Stopwatch _Clock = Stopwatch.StartNew();
         private float _PingTimer;
         private float _AnimationTime;
+
+        /// <summary>
+        /// The board's shake (ShakeScreen), added to the camera every frame.
+        /// </summary>
+        private readonly ScreenShake _Shake = new();
         private eDirection _LastDirection;
         private uint _InputSequence;
 
@@ -249,6 +254,8 @@ namespace EatMeClient
             _Client.Connect(host, port, new HelloMessage { PlayerName = settings.PlayerName, PreferredTeam = settings.PreferredTeam });
 
             _Camera.Position = Vector2.Zero;
+            _Camera.ShakeOffset = Vector2.Zero;
+            _Shake.Stop();
         }
 
         /// <summary>
@@ -370,6 +377,10 @@ namespace EatMeClient
             if (ownPac.HasValue)
                 _Camera.Position = CellToWorld(ownPac.Value.X, ownPac.Value.Y);
 
+            _Shake.Update(deltaTime);
+            var (shakeX, shakeY) = _Shake.GetOffset();
+            _Camera.ShakeOffset = new Vector2(shakeX, shakeY);
+
             for (int i = DeathAnimations.Count - 1; i > -1; i--)
             {
                 DeathAnimations[i].Update(deltaTime);
@@ -471,7 +482,13 @@ namespace EatMeClient
 
                     case GameEventMessage gameEvent:
                         if (!paused)
+                        {
                             PlayEventSound(gameEvent);
+
+                            // the POW block's shockwave shakes the board for everyone it stuns
+                            if (_State.IsOwnPacHitByPow(gameEvent))
+                                ShakeScreen(ScreenShake.POW_AMPLITUDE_PIXELS, ScreenShake.POW_DURATION_SECONDS);
+                        }
 
                         StartDeathAnimation(gameEvent);
                         break;
@@ -501,6 +518,16 @@ namespace EatMeClient
             }
         }
 
+        /// <summary>
+        /// Shakes the game board (not the bars, mini map or panel) for any effect that should jolt the player's view:
+        /// a bounce amplitudePixels high that dies away over durationSeconds. A stronger shake already running
+        /// carries on instead (ScreenShake.Start).
+        /// </summary>
+        public void ShakeScreen(float amplitudePixels = ScreenShake.DEFAULT_AMPLITUDE_PIXELS, float durationSeconds = ScreenShake.DEFAULT_DURATION_SECONDS)
+        {
+            _Shake.Start(amplitudePixels, durationSeconds);
+        }
+
         private void PlayEventSound(GameEventMessage gameEvent)
         {
             var sound = gameEvent.EventType switch
@@ -508,6 +535,7 @@ namespace EatMeClient
                 eGameEvent.PacEaten => Const.SFX_DEATH,
                 eGameEvent.GhostKilled => Const.SFX_EAT_GHOST,
                 eGameEvent.PowerUpEaten => Const.SFX_POWER_UP_EATEN,
+                eGameEvent.Pow => Const.SFX_POW,
                 _ => null,
             };
 
@@ -1209,6 +1237,10 @@ namespace EatMeClient
                 var scale = pacWidth / frameWidth;
                 var color = ClientColors.GetPacColor(pac.Team, pac.PlayerId == _State.PlayerId);
                 var tint = pac.Powered ? GetPoweredColor(color) : color;
+
+                // an invincible pac blinks between its team color and yellow, trail included
+                if (pac.PowerUpEffect == ePowerUpEffect.Invincible && PowerUpEffects.IsStarBlinkYellow(_AnimationTime))
+                    tint = ClientColors.COLOR_PAC_YELLOW;
 
                 var (rotation, effects) = GetFacingTransform(pac.Facing);
 

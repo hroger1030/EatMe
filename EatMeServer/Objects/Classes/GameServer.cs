@@ -55,6 +55,11 @@ namespace EatMeServer
         private readonly DotRegenQueue _EatenDots = new();
         private readonly List<CellChange> _CellChanges = [];
         private readonly List<Player> _Living = [];
+
+        /// <summary>
+        /// Living pacs with Twister working this tick (CollectTwisters), so movement only checks those.
+        /// </summary>
+        private readonly List<Player> _Twisters = [];
         private Random _Random = new();
 
         // kept apart from _Random so joining players don't change what the ghosts do
@@ -476,23 +481,25 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// The POW block (instant): stuns every living pac (either team) and ghost within PowerUpEffects.POW_RADIUS
+        /// The POW block (instant): stuns every living pac (either team) and ghost within PowerUpEffects.EFFECT_RADIUS
         /// cells of the pac that ate it, except that pac, for POW_STUN_MS. A stun already running starts over. The
-        /// pac's own power up effect is left alone.
+        /// pac's own power up effect is left alone. Broadcasts a Pow event so clients play the boom and shake.
         /// </summary>
         public void PowStun(Player player)
         {
+            Broadcast(new GameEventMessage { EventType = eGameEvent.Pow, ActorId = player.Id, X = player.Location.X, Y = player.Location.Y, Team = player.Team });
+
             foreach (var serverPlayer in _Players.Values)
             {
                 var other = serverPlayer.Player;
 
-                if (other != player && other.Alive && PowerUpEffects.IsInPowRange(player.Location, other.Location))
+                if (other != player && other.Alive && PowerUpEffects.IsInEffectRange(player.Location, other.Location))
                     other.StunMs = PowerUpEffects.POW_STUN_MS;
             }
 
             foreach (var ghost in _Ghosts)
             {
-                if (ghost.Alive && PowerUpEffects.IsInPowRange(player.Location, ghost.Location))
+                if (ghost.Alive && PowerUpEffects.IsInEffectRange(player.Location, ghost.Location))
                     ghost.StunMs = PowerUpEffects.POW_STUN_MS;
             }
         }
@@ -583,7 +590,8 @@ namespace EatMeServer
                 if (pac.IsStunned)
                     continue;
 
-                var distance = PacRules.GetSpeed(config.PacSpeed, pac.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(pac.PowerUpEffect) * deltaSeconds;
+                var distance = PacRules.GetSpeed(config.PacSpeed, pac.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(pac.PowerUpEffect)
+                    * PowerUpEffects.GetTwisterSpeedScale(pac, pac.Location, _Twisters) * deltaSeconds;
                 world.FlagBasePaths = GetBasePaths(pac);
 
                 if (MazeMovement.GetDistanceToCentre(pac.Location, pac.Facing) <= distance)
@@ -603,11 +611,13 @@ namespace EatMeServer
         /// Moves every living pac at the speed for its size (PacRules.GetSpeed) times its effect's scale
         /// (PacRules.GetEffectSpeedScale), turning the way its player is holding when it can.
         /// The enemy spawn room counts as wall (MazeMovement.GetPacBlocked). A pac carrying a flag onto a spawn tile drops it
-        /// in the cell it came from. A stunned pac (PowStun) doesn't move.
+        /// in the cell it came from. A stunned pac (PowStun) doesn't move, and one near another pac's Twister moves at
+        /// half speed (PowerUpEffects.GetTwisterSpeedScale).
         /// </summary>
         public void MovePacs(float deltaSeconds, int elapsedMs)
         {
             var config = _Settings.GameConfig;
+            CollectLiving();
 
             foreach (var serverPlayer in _Players.Values)
             {
@@ -617,7 +627,8 @@ namespace EatMeServer
                     continue;
 
                 var from = MazeMovement.GetCell(pac.Location);
-                var speed = PacRules.GetSpeed(config.PacSpeed, pac.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(pac.PowerUpEffect);
+                var speed = PacRules.GetSpeed(config.PacSpeed, pac.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(pac.PowerUpEffect)
+                    * PowerUpEffects.GetTwisterSpeedScale(pac, pac.Location, _Twisters);
                 var distance = speed * deltaSeconds;
                 var blocked = MazeMovement.GetPacBlocked(pac.Team);
                 var wanted = MazeMovement.ToFacing(serverPlayer.Input);
@@ -872,7 +883,8 @@ namespace EatMeServer
 
         /// <summary>
         /// Enemy pacs that touch: the bigger one eats the smaller (PlayerKill points), and equal sizes bounce
-        /// off each other. Friendly pacs pass through each other.
+        /// off each other. An invincible pac (Player.IsInvincible) eats any enemy whatever its size, and two
+        /// invincible pacs bounce. Friendly pacs pass through each other.
         /// </summary>
         public void UpdatePacFights()
         {
@@ -888,14 +900,15 @@ namespace EatMeServer
                     if (!a.Alive || !b.Alive || a.Team == b.Team || !PacRules.IsTouchingPac(a.Location, a.Size, b.Location, b.Size))
                         continue;
 
-                    if (a.Size == b.Size)
+                    if (a.IsInvincible == b.IsInvincible && (a.IsInvincible || a.Size == b.Size))
                     {
                         Bounce(a, b);
                         Bounce(b, a);
                         continue;
                     }
 
-                    var (eater, eaten) = a.Size > b.Size ? (a, b) : (b, a);
+                    var aWins = a.IsInvincible != b.IsInvincible ? a.IsInvincible : a.Size > b.Size;
+                    var (eater, eaten) = aWins ? (a, b) : (b, a);
                     eater.PlayerKills++;
                     AddScore(eater, _Settings.GameConfig.PlayerKill);
                     KillPac(eaten, eGameEvent.PacEaten, eater.Id);
@@ -907,11 +920,19 @@ namespace EatMeServer
         private void CollectLiving()
         {
             _Living.Clear();
+            _Twisters.Clear();
 
             foreach (var serverPlayer in _Players.Values)
             {
-                if (serverPlayer.Player.Alive)
-                    _Living.Add(serverPlayer.Player);
+                var player = serverPlayer.Player;
+
+                if (!player.Alive)
+                    continue;
+
+                _Living.Add(player);
+
+                if (PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.Twister))
+                    _Twisters.Add(player);
             }
         }
 
@@ -1042,7 +1063,7 @@ namespace EatMeServer
                 var threat = ghost.Personality.Behavior == eGhostBehavior.Scaredy
                     ? GhostBrain.FindNearestPac(ghost.Location, _Living, vision)
                     : GhostBrain.FindThreat(ghost.Location, _Living, vision);
-                var distance = config.GhostSpeed * GetGhostSpeedScale(ghost) * bellScale * deltaSeconds;
+                var distance = config.GhostSpeed * GetGhostSpeedScale(ghost) * bellScale * PowerUpEffects.GetTwisterSpeedScale(ghost, ghost.Location, _Twisters) * deltaSeconds;
                 eFacing? wanted = null;
 
                 if (threat != null)
@@ -1280,7 +1301,8 @@ namespace EatMeServer
                 if (!player.Alive || !PacRules.IsTouchingGhost(player.Location, player.Size, ghost.Location, ghostRadius))
                     continue;
 
-                if (PacRules.CanKillGhost(player.Size, player.IsPowered, config.PacMaxSize))
+                // an invincible pac kills any ghost it touches and can't be killed by one
+                if (player.IsInvincible || PacRules.CanKillGhost(player.Size, player.IsPowered, config.PacMaxSize))
                 {
                     ghost.Alive = false;
                     ghost.RespawnTimer = config.GhostRegenTimeMs;
@@ -1451,6 +1473,14 @@ namespace EatMeServer
 
                 case ePowerUp.PowBlock:
                     PowStun(player);
+                    break;
+
+                case ePowerUp.Pretzel:
+                    StartPowerUpEffect(player, ePowerUpEffect.Twister);
+                    break;
+
+                case ePowerUp.Starman:
+                    StartPowerUpEffect(player, ePowerUpEffect.Invincible);
                     break;
             }
         }

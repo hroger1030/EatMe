@@ -28,5 +28,10 @@ namespace EatMeLibrary
         /// A pac (ActorId) ate a power up (TargetId) at X, Y.
         /// </summary>
         PowerUpEaten,
+
+        /// <summary>
+        /// A pac (ActorId) set off a POW block at X, Y, stunning everything within PowerUpEffects.EFFECT_RADIUS but itself.
+        /// </summary>
+        Pow,
     }
 }

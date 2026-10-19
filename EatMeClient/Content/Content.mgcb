@@ -290,6 +290,12 @@
 /processorParam:Quality=Best
 /build:Audio/SoundFX_PowerUpEaten.wav
 
+#begin Audio/SoundFX_Pow.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/SoundFX_Pow.wav
+
 #begin Audio/SoundFX_PowerUp.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
@@ -391,6 +397,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Images/powerups(60x60x32).png
+
+#begin Images/WeaponEffects(60x60x20).png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Images/WeaponEffects(60x60x20).png
 
 #begin Images/death (60x60x11).png
 /importer:TextureImporter

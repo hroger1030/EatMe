@@ -47,14 +47,17 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: AutoBalanceTeams (bool) defaults to true. When on, the server adds or removes as many bots as it takes, whenever a player joins or leaves, so both teams always have the same number of players. Each team gets as many players as the bigger team has humans, and the two teams together make at least MinPlayers (rounded up to an even number). Humans are never moved between teams.
 - Bot names are picked at random from bot_names.txt (one per line, blank lines skipped) in the server folder, never repeating a name in use. They don't have to follow the player name rules; the server operator manages the list. With no names left, bots are named Bot1, Bot2 and so on.
 - Bots play by the same rules as humans. Each time a bot reaches a cell centre it picks where to go, in this order:
-  - Run from ghosts (unless it can kill them) and bigger enemies that are close.
+  - Run from ghosts (unless it can kill them), bigger enemies and invincible enemies that are close.
   - Carrying the enemy flag: take it home. If its own flag isn't at base, get it back first when it's close.
   - Return its own dropped flag when it's close.
-  - Chase a smaller enemy carrying its flag, then any smaller enemy nearby, or a nearby ghost when it can kill ghosts.
-  - Grab a nearby power pill when it doesn't have one working.
+  - Chase a smaller enemy carrying its flag.
+  - Grab a power pill within 15 steps when it doesn't have one working.
+  - Grab a nearby power up (see Power ups).
+  - Chase any smaller enemy nearby, or a nearby ghost when it can kill ghosts.
   - Half the bots are attackers and go for the enemy flag; the rest stay to eat and hunt.
   - Eat the nearest dot, unless it is already at max size.
   - Otherwise wander, never turning back unless it has to.
+- An invincible bot (starman) goes into chase mode: it runs from nothing, counts every enemy pac (except an invincible one) and every ghost as prey, and chases the nearest one it can find (30 steps), flag carriers first, before rescuing its flag or anything else except taking a flag home. It leaves power pills and power ups alone, since they would replace the effect.
 - Bots stick to a plan. A bot keeps the goal it picks (a dot, a pac to chase, the enemy flag and so on) for 2 to 4 seconds, a random time for each goal, before it thinks again, so bots blunder a little like humans and don't change their minds every step. It drops a goal sooner only when the goal is done or gone (the dot is eaten, the prey dies or gets away), or when something urgent comes up: it picks up a flag, loses the one it carries, or its own flag is dropped nearby.
 - Running away always comes first, the moment something that can kill it is close (5 steps). Once running, a bot keeps running for at least a second and until the danger is 8 steps away. After that it keeps out of the area where the danger was (2 cells around it) for 3 seconds, going another way round or after something else, so it doesn't walk straight back into a ghost standing still.
 - Except when running away or chasing something that moves, a bot doesn't turn back while it keeps the same goal.
@@ -154,9 +157,10 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Eating a dot or power pill triggers a timer, after N ms, it will respawn again.
 - Power ups: every PowerUpSpawnTimerMs ms of play in a level (by default at 30, 60, 90 seconds and so on, until the level ends) a power up appears on one of the map's four power up spawn points, picked at random. It holds one of the level's bonus items, picked at random, and drifts slowly (3 cells a second) by the shortest way to a warp hole, also picked at random. If it gets there without being eaten it leaves the level. It can't pass through walls, but it crosses spawn tiles of either team.
 - Any pac, of either team, eats a power up by touching it. Eating one plays a short "blorp" (heard like other sounds in the maze) and will give a special effect that depends on the item (see Power up effects). Ghosts ignore power ups.
-- Bots go after a power up when it is near (within 10 steps), unless they are running from something, rescuing their flag, chasing a flag carrier or carrying a flag.
+- Bots go after a power up when it is near (within 10 steps), unless they are running from something, rescuing their flag, chasing a flag carrier, going for a power pill, carrying a flag or invincible.
 - Power ups are drawn with their bonus item's sprite, bobbing gently up and down as they move.
 - Power pills and power up items give power up effects. A pac has only one effect at a time: a new one replaces the one it has and restarts the timer. An effect normally lasts PowerUpDurationMs (10 seconds) and is lost when it runs out or the pac dies. A permanent effect never runs out (its meter stays full) and is lost only when the pac dies, a new level starts, or another effect replaces it.
+- Effects that work on others around the pac reach the standard effect radius: 15 cells in a straight line from the pac, through walls. Like the 10 second duration, new effects use it wherever they can.
 - Under the mini map is the player state panel, with the same yellow outline. It shows "Power Up:" and the name of the player's power up effect, left aligned, above a greyed out meter, with a yellow bar that counts down the time left until the effect runs out. With no effect, the label says "Power Up: None" and the meter is empty. Under the meter it shows the player's own size ("Size n"), also left aligned, and under that a hunger meter that fills up red as the player gets closer to starving (MsUntilStarvation since they last ate). It is full while they shrink and empties whenever they eat a dot or power pill.
 - Each player's name is displayed below their pac.
 
@@ -192,7 +196,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 | Tagalong | Plum | The Sidekick | Follows the nearest other ghost, and joins in when that ghost chases. |
 
 ## Power up effects
-- Draft: only the effects of the cherry, strawberry, orange, apple, melon, galaxian, bell, key and POW block are built; the rest are placeholders.
+- Draft: only the effects of the cherry, strawberry, orange, apple, melon, galaxian, bell, key, pretzel, starman and POW block are built; the rest are placeholders.
 - Eating a power up gives its item's effect. Unless it says "instant" or "permanent", an effect lasts PowerUpDurationMs (10 seconds), is lost on death, and follows the power up effect rules above (one at a time, a new one replaces the old). An instant effect happens once, when the item is eaten, and leaves the pac's current effect alone.
 - "Stunned" means it can't move until the stun wears off, and spins in place so players can see it. Nothing else changes: a stunned ghost still kills a pac that runs into it, and a stunned pac can still be eaten. Unless an item says otherwise, a stun lasts 2 seconds; being stunned again starts the stun over.
 
@@ -206,14 +210,14 @@ This is basically a game of capture the flag. There are numerous notes about it 
 | Galaxian | Rocket Science | Every point the pac scores counts double, for the pac and for its team. |
 | Bell | Dinner Bell | Every ghost in the level moves at double speed while the effect works (two pacs with it don't make it faster). |
 | Key | Lockdown | Locks the enemy team's spawn: enemy pacs that die can't respawn until the effect ends or the pac with it dies, then they come back as normal. |
-| Pretzel | Twister | Ghosts within vision move at half speed. |
+| Pretzel | Twister | Every pac (either team) and ghost within the effect radius, other than the pac itself, moves at half speed. Two pacs with it don't make anyone slower still. |
 | Pear | Shield | The first ghost to touch the pac doesn't kill it; the ghost is sent back to its spawn and the effect ends. |
 | Banana | Banana Peel | Instant: drops a peel on the pac's cell. The first enemy pac or ghost to cross it is stunned. |
 | Mushroom | Super Size | Sets size = 300, and lets the pac move through walls. sets size back to starting value when effect is over. |
 | 1-up mushroom | Extra Life | The next time the pac would die it doesn't; it drops any flag it carries, and the effect ends. |
 | Fire flower | Fireball | Throws a fireball straight ahead every 2 seconds; it kills the first ghost or player it hits and stops at walls. |
-| Starman | Invincible | Moves 30% faster and kills any ghost or enemy pac it touches, whatever its size. |
-| POW block | POW | Instant: stuns every ghost and every pac of either team within 15 cells (straight line) of the pac, except the pac itself, for 3 seconds. |
+| Starman | Invincible | Moves 25% faster, can't be killed, and kills any ghost or enemy pac it touches, whatever its size (scoring as usual). Two invincible enemies bounce off each other. Ghosts run from it as from a power pill. It leaves a fading speed trail and blinks between its team color and yellow. |
+| POW block | POW | Instant: stuns every ghost and every pac of either team within the effect radius of the pac, except the pac itself, for 3 seconds. It goes off with a low boom (heard like other sounds in the maze), and a player whose pac it stuns sees the board bounce for a moment, like a shockwave. |
 | Super leaf | Raccoon Tail | Passes through ghosts unharmed. |
 | Hammer | Hammer Time | Kills anything it touches at any size. Hammer animation is played. |
 | Triforce | Triforce | Works as a power pill, and the pac moves 20% faster. |

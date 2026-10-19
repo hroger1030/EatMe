@@ -18,17 +18,17 @@ namespace EatMeLibrary
         /// <summary>Chase a smaller enemy carrying its flag.</summary>
         HuntCarrier,
 
+        /// <summary>Eat a nearby power pill.</summary>
+        PowerPill,
+
         /// <summary>Eat a nearby power up.</summary>
         PowerUp,
 
-        /// <summary>Chase a smaller enemy.</summary>
+        /// <summary>Chase a smaller enemy (any enemy while invincible).</summary>
         Hunt,
 
         /// <summary>Chase a ghost it can kill.</summary>
         HuntGhost,
-
-        /// <summary>Eat a nearby power pill.</summary>
-        PowerPill,
 
         /// <summary>Go for the enemy flag (attackers only).</summary>
         EnemyFlag,

@@ -242,6 +242,20 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// True if a POW block event stuns our own pac: it is alive, isn't the pac that set it off, and is within
+        /// PowerUpEffects.EFFECT_RADIUS of where it went off. False for any other event.
+        /// </summary>
+        public bool IsOwnPacHitByPow(GameEventMessage gameEvent)
+        {
+            if (gameEvent == null || gameEvent.EventType != eGameEvent.Pow || gameEvent.ActorId == PlayerId)
+                return false;
+
+            var ownPac = GetOwnPac();
+            return ownPac.HasValue && ownPac.Value.Alive
+                && PowerUpEffects.IsInEffectRange(new FastG.Point2(gameEvent.X, gameEvent.Y), new FastG.Point2(ownPac.Value.X, ownPac.Value.Y));
+        }
+
+        /// <summary>
         /// True while our own pac is alive and the server says the last cell it entered had a dot or power pill.
         /// </summary>
         public bool IsOwnPacEating()

@@ -477,6 +477,39 @@ namespace EatMeTests
         }
 
         [Test]
+        public void Pretzel_StartsTwister()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+
+            server.ApplyPowerUp(red, ePowerUp.Pretzel);
+
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Twister));
+            Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
+        }
+
+        [Test]
+        public void Twister_SlowsOthersInRangeToHalfSpeed()
+        {
+            var normal = MakeServer();
+            var (alone, _) = Join(normal, 2, eTeamPreference.Blue);
+            var twisted = MakeServer();
+            var (slowed, _) = Join(twisted, 2, eTeamPreference.Blue);
+            var (red, _) = Join(twisted, 1, eTeamPreference.Red);
+            red.Location = slowed.Location;
+            twisted.StartPowerUpEffect(red, ePowerUpEffect.Twister);
+
+            var start = alone.Location;
+            normal.MovePacs(0.1f, 100);
+            twisted.MovePacs(0.1f, 100);
+
+            var aloneMoved = MathF.Abs(alone.Location.X - start.X) + MathF.Abs(alone.Location.Y - start.Y);
+            var slowedMoved = MathF.Abs(slowed.Location.X - start.X) + MathF.Abs(slowed.Location.Y - start.Y);
+            Assert.That(aloneMoved, Is.GreaterThan(0f));
+            Assert.That(slowedMoved, Is.EqualTo(aloneMoved * PowerUpEffects.TWISTER_SPEED_SCALE).Within(0.0001f));
+        }
+
+        [Test]
         public void SugarRush_MovesFaster()
         {
             var normal = MakeServer();
@@ -572,6 +605,71 @@ namespace EatMeTests
             Assert.That(server.RedScore, Is.EqualTo(Config.PlayerKill * PowerUpEffects.ROCKET_SCIENCE_SCORE_SCALE));
             Assert.That(red.Score, Is.EqualTo(Config.PlayerKill * PowerUpEffects.ROCKET_SCIENCE_SCORE_SCALE));
             Assert.That(red.TotalScore, Is.EqualTo(Config.PlayerKill * PowerUpEffects.ROCKET_SCIENCE_SCORE_SCALE));
+        }
+
+        [Test]
+        public void Starman_StartsInvincible()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+
+            server.ApplyPowerUp(red, ePowerUp.Starman);
+
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Invincible));
+            Assert.That(red.IsInvincible, Is.True);
+            Assert.That(red.RepelsGhosts, Is.True, "ghosts flee it like a power pill");
+        }
+
+        [Test]
+        public void Invincible_EatsBiggerEnemy_AndScores()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            blue.Location = red.Location;
+            red.Size = 10f;
+            blue.Size = 90f;
+            server.StartPowerUpEffect(red, ePowerUpEffect.Invincible);
+
+            server.UpdatePacFights();
+
+            Assert.That(red.Alive, Is.True);
+            Assert.That(blue.Alive, Is.False);
+            Assert.That(red.PlayerKills, Is.EqualTo(1));
+            Assert.That(server.RedScore, Is.EqualTo(Config.PlayerKill));
+        }
+
+        [Test]
+        public void TwoInvinciblePacs_Bounce()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            blue.Location = red.Location;
+            red.Size = 10f;
+            blue.Size = 90f;
+            server.StartPowerUpEffect(red, ePowerUpEffect.Invincible);
+            server.StartPowerUpEffect(blue, ePowerUpEffect.Invincible);
+
+            server.UpdatePacFights();
+
+            Assert.That(red.Alive && blue.Alive, Is.True);
+        }
+
+        [Test]
+        public void Invincible_KillsGhostItTouches_AndSurvives()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            red.Location = server.Ghosts[0].Location;
+            red.Size = 0f;
+            server.StartPowerUpEffect(red, ePowerUpEffect.Invincible);
+
+            server.UpdateGhosts(0f, 0);
+
+            Assert.That(red.Alive, Is.True);
+            Assert.That(server.Ghosts[0].Alive, Is.False);
+            Assert.That(server.RedScore, Is.EqualTo(Config.GhostKill));
         }
 
         [Test]
@@ -717,8 +815,8 @@ namespace EatMeTests
             var ghost = server.Ghosts[0];
             red.Location = new Point2(10.5f, 10.5f);
             mate.Location = new Point2(12.5f, 10.5f);
-            blue.Location = new Point2(10.5f, 10.5f + PowerUpEffects.POW_RADIUS);
-            far.Location = new Point2(10.5f + PowerUpEffects.POW_RADIUS + 1f, 10.5f);
+            blue.Location = new Point2(10.5f, 10.5f + PowerUpEffects.EFFECT_RADIUS);
+            far.Location = new Point2(10.5f + PowerUpEffects.EFFECT_RADIUS + 1f, 10.5f);
             ghost.Location = new Point2(15.5f, 15.5f);
             server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
 
@@ -734,6 +832,20 @@ namespace EatMeTests
             var snapshot = server.BuildSnapshot();
             Assert.That(snapshot.Pacs.Single(p => p.PlayerId == blue.Id).Stunned, Is.True);
             Assert.That(snapshot.Ghosts.Single().Stunned, Is.True);
+        }
+
+        [Test]
+        public void PowBlock_BroadcastsPowEvent()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            red.Location = new Point2(10.5f, 12.5f);
+
+            server.ApplyPowerUp(red, ePowerUp.PowBlock);
+
+            var pow = connection.ReceivedOf<GameEventMessage>().Single(e => e.EventType == eGameEvent.Pow);
+            Assert.That(pow.ActorId, Is.EqualTo(red.Id));
+            Assert.That((pow.X, pow.Y), Is.EqualTo((10.5f, 12.5f)));
         }
 
         [Test]

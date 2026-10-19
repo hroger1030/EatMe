@@ -28,6 +28,8 @@ namespace EatMeLibrary
 
         // Bonus items: one 60x60 cell per ePowerUp flag, in bit order, eight to a row (see PowerUpSprites)
         public const string IMAGE_POWER_UP_SHEET = "Images/powerups(60x60x32)";
+        // Projectiles and objects power up effects put in the maze, two frames each (WeaponEffectSprites)
+        public const string IMAGE_WEAPON_EFFECTS = "Images/WeaponEffects(60x60x20)";
 
         // Wall corner tile, joined below and right; walls are drawn in quarters cut from it (see WallTiles)
         public const string IMAGE_WALL = "Images/wall";

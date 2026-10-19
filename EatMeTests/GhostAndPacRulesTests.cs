@@ -40,6 +40,25 @@ namespace EatMeTests
         }
 
         [Test]
+        public void Invincible_GhostsIgnoreAndFleePac()
+        {
+            var star = MakePac(1, 3f, 0f);
+            star.PowerUpEffect = ePowerUpEffect.Invincible;
+            star.PowerUpMs = 1000;
+            var other = MakePac(2, 6f, 0f);
+
+            Assert.That(GhostBrain.PickTarget(GHOST, null, [star, other], VISION), Is.SameAs(other));
+            Assert.That(GhostBrain.FindThreat(GHOST, [star, other], VISION), Is.SameAs(star));
+        }
+
+        [Test]
+        public void GetEffectSpeedScale_InvincibleIsFaster()
+        {
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUpEffect.Invincible), Is.EqualTo(PacRules.INVINCIBLE_SPEED_SCALE));
+            Assert.That(PacRules.INVINCIBLE_SPEED_SCALE, Is.EqualTo(1.25f));
+        }
+
+        [Test]
         public void PickTarget_PrefersFlagCarriers()
         {
             var near = MakePac(1, 2f, 0f);

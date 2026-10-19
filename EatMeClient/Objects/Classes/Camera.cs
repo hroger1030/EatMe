@@ -10,6 +10,11 @@ namespace EatMeClient
 
         public Vector2 Position { get; set; }
 
+        /// <summary>
+        /// Whole pixels added to every screen position while the board shakes (ScreenShake); zero otherwise.
+        /// </summary>
+        public Vector2 ShakeOffset { get; set; }
+
         public Camera() { }
 
         /// <summary>
@@ -19,7 +24,7 @@ namespace EatMeClient
         public Vector2 ToScreenPosition(Vector2 worldPosition, Viewport viewport)
         {
             var offset = new Vector2(CameraMath.GetScreenOffset(Position.X, viewport.Width), CameraMath.GetScreenOffset(Position.Y, viewport.Height));
-            return worldPosition + offset;
+            return worldPosition + offset + ShakeOffset;
         }
 
         public Vector2 ToWorldPosition(Vector2 screenPosition, Viewport viewport)

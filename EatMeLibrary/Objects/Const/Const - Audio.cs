@@ -23,6 +23,8 @@ namespace EatMeLibrary
         public const string SFX_POWER_PILL = "Audio/SoundFX_PowerPill";
         // A pac ate a power up
         public const string SFX_POWER_UP_EATEN = "Audio/SoundFX_PowerUpEaten";
+        // A POW block went off (a low percussive boom)
+        public const string SFX_POW = "Audio/SoundFX_Pow";
         // Loops while any power up is in the level (one loop however many), a global sound heard everywhere at full volume
         public const string SFX_POWER_UP = "Audio/SoundFX_PowerUp";
 

@@ -183,6 +183,76 @@ namespace EatMeTests
             Assert.That(Choose(MakeWorld(map, [me, small]), me), Is.EqualTo(eFacing.Right));
         }
 
+        private static void MakeInvincible(Player pac)
+        {
+            pac.PowerUpEffect = ePowerUpEffect.Invincible;
+            pac.PowerUpMs = 1000;
+        }
+
+        [Test]
+        public void Invincible_ChasesBiggerEnemyAndGhosts()
+        {
+            var map = MakeMap(CORRIDOR);
+            var me = MakePac(1, eTeam.Red, 4, 1, 10f, eFacing.Left);
+            MakeInvincible(me);
+
+            Assert.That(Choose(MakeWorld(map, [me, MakePac(2, eTeam.Blue, 6, 1, 90f)]), me), Is.EqualTo(eFacing.Right), "bigger enemy is prey");
+            Assert.That(Choose(MakeWorld(map, [me], [MakeGhost(6, 1)]), me), Is.EqualTo(eFacing.Right), "ghost is prey, not a threat");
+        }
+
+        [Test]
+        public void Invincible_HuntsOutToSearchDistance()
+        {
+            var map = MakeMap(["##########################", "#........................#", "##########################"]);
+            var me = MakePac(1, eTeam.Red, 1, 1);
+            var far = MakePac(2, eTeam.Blue, 1 + PacBrain.HUNT_DISTANCE + 10, 1, 90f);
+            var world = MakeWorld(map, [me, far]);
+
+            MakeInvincible(me);
+            Assert.That(PacBrain.PickGoal(world, me, 1, 1, Fill(map, me), out var target), Is.EqualTo(eBotGoal.Hunt));
+            Assert.That(target, Is.EqualTo(MazeMovement.GetCell(far.Location)));
+        }
+
+        [Test]
+        public void Invincible_IgnoresPowerPillsAndPowerUps()
+        {
+            var map = MakeMap(["#########", "#O.....o#", "#########"]);
+            var me = MakePac(1, eTeam.Red, 3, 1);
+            var world = MakeWorld(map, [me]);
+            world.PowerUps = [new PowerUp { Item = ePowerUp.Cherry, Location = new Point2(2.5f, 1.5f), Alive = true }];
+
+            Assert.That(PacBrain.PickGoal(world, me, 3, 1, Fill(map, me), out _), Is.EqualTo(eBotGoal.PowerPill));
+
+            MakeInvincible(me);
+            Assert.That(PacBrain.PickGoal(world, me, 3, 1, Fill(map, me), out var target), Is.EqualTo(eBotGoal.Dot));
+            Assert.That(target, Is.EqualTo((7, 1)), "the plain dot, not the power pill");
+        }
+
+        [Test]
+        public void RunsFromInvincibleEnemy_EvenWhenBigger()
+        {
+            var map = MakeMap(CORRIDOR);
+            var me = MakePac(1, eTeam.Red, 4, 1, 90f);
+            var star = MakePac(2, eTeam.Blue, 6, 1, 10f);
+            MakeInvincible(star);
+            var world = MakeWorld(map, [me, star]);
+
+            Assert.That(PacBrain.IsThreat(world, me, star), Is.True);
+            Assert.That(PacBrain.IsPrey(world, me, star), Is.False);
+            Assert.That(Choose(world, me), Is.EqualTo(eFacing.Left));
+        }
+
+        [Test]
+        public void PrefersNearbyPowerPill_OverHunting()
+        {
+            var map = MakeMap(["#########", "#O......#", "#########"]);
+            var me = MakePac(1, eTeam.Red, 4, 1, 50f);
+            var world = MakeWorld(map, [me, MakePac(2, eTeam.Blue, 6, 1, 10f)]);
+
+            Assert.That(PacBrain.PickGoal(world, me, 4, 1, Fill(map, me), out var target), Is.EqualTo(eBotGoal.PowerPill));
+            Assert.That(target, Is.EqualTo((1, 1)));
+        }
+
         [Test]
         public void IgnoresBiggerTeammate()
         {

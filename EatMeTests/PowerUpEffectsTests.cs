@@ -78,14 +78,52 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsInPowRange_UpToPowRadius()
+        public void IsInEffectRange_UpToEffectRadius()
         {
             var from = new FastG.Point2(10f, 10f);
 
-            Assert.That(PowerUpEffects.IsInPowRange(from, from), Is.True);
-            Assert.That(PowerUpEffects.IsInPowRange(from, new FastG.Point2(10f + PowerUpEffects.POW_RADIUS, 10f)), Is.True);
-            Assert.That(PowerUpEffects.IsInPowRange(from, new FastG.Point2(19f, 22f)), Is.True, "9, 12 is 15 cells away");
-            Assert.That(PowerUpEffects.IsInPowRange(from, new FastG.Point2(20f, 22f)), Is.False);
+            Assert.That(PowerUpEffects.IsInEffectRange(from, from), Is.True);
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f + PowerUpEffects.EFFECT_RADIUS, 10f)), Is.True);
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(19f, 22f)), Is.True, "9, 12 is 15 cells away");
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(20f, 22f)), Is.False);
+        }
+
+        [Test]
+        public void GetTwisterSpeedScale_HalfWithinRadiusOfAnotherTwister()
+        {
+            var twister = MakePac(eTeam.Red, ePowerUpEffect.Twister);
+            twister.Location = new FastG.Point2(10f, 10f);
+            var ghost = new Ghost();
+            var near = new FastG.Point2(10f, 10f + PowerUpEffects.EFFECT_RADIUS);
+            var far = new FastG.Point2(10f, 10f + PowerUpEffects.EFFECT_RADIUS + 1f);
+
+            Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, near, [twister]), Is.EqualTo(PowerUpEffects.TWISTER_SPEED_SCALE));
+            Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, far, [twister]), Is.EqualTo(1f), "out of range");
+            Assert.That(PowerUpEffects.GetTwisterSpeedScale(twister, twister.Location, [twister]), Is.EqualTo(1f), "not the pac itself");
+
+            var other = MakePac(eTeam.Blue, ePowerUpEffect.Twister);
+            other.Location = twister.Location;
+            Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, near, [twister, other]), Is.EqualTo(PowerUpEffects.TWISTER_SPEED_SCALE), "doesn't stack");
+            Assert.That(PowerUpEffects.GetTwisterSpeedScale(twister, twister.Location, [twister, other]), Is.EqualTo(PowerUpEffects.TWISTER_SPEED_SCALE), "slowed by another pac's twister");
+
+            Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, near, [MakePac(eTeam.Red, ePowerUpEffect.SugarRush)]), Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void GetName_Twister()
+        {
+            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.Twister), Is.EqualTo(Const.STRING_TWISTER));
+        }
+
+        [Test]
+        public void Invincible_NameTrailAndBlink()
+        {
+            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.Invincible), Is.EqualTo(Const.STRING_INVINCIBLE));
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUpEffect.Invincible), Is.True);
+
+            Assert.That(PowerUpEffects.IsStarBlinkYellow(0f), Is.True);
+            Assert.That(PowerUpEffects.IsStarBlinkYellow(PowerUpEffects.STAR_BLINK_SECONDS * 1.5f), Is.False);
+            Assert.That(PowerUpEffects.IsStarBlinkYellow(PowerUpEffects.STAR_BLINK_SECONDS * 2.5f), Is.True);
         }
 
         [Test]

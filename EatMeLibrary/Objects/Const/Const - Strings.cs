@@ -64,6 +64,8 @@
         public const string STRING_ROCKET_SCIENCE = "Rocket Science";
         public const string STRING_DINNER_BELL = "Dinner Bell";
         public const string STRING_LOCKDOWN = "Lockdown";
+        public const string STRING_TWISTER = "Twister";
+        public const string STRING_INVINCIBLE = "Invincible";
 
         // Game screen stats bar
         public const string STRING_SIZE = "Size";

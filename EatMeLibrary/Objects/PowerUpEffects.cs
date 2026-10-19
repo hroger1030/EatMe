@@ -25,6 +25,8 @@ namespace EatMeLibrary
                 ePowerUpEffect.RocketScience => Const.STRING_ROCKET_SCIENCE,
                 ePowerUpEffect.DinnerBell => Const.STRING_DINNER_BELL,
                 ePowerUpEffect.Lockdown => Const.STRING_LOCKDOWN,
+                ePowerUpEffect.Twister => Const.STRING_TWISTER,
+                ePowerUpEffect.Invincible => Const.STRING_INVINCIBLE,
                 _ => Const.STRING_POWER_UP_NONE,
             };
         }
@@ -35,9 +37,15 @@ namespace EatMeLibrary
         public const float DINNER_BELL_GHOST_SPEED_SCALE = 2f;
 
         /// <summary>
-        /// The POW block stuns everything within this many cells (straight line) of the pac that ate it.
+        /// The standard reach in cells (straight line, through walls) of every power up effect that works on others
+        /// around the pac (IsInEffectRange): the POW block's stun, Twister's slow.
         /// </summary>
-        public const float POW_RADIUS = 15f;
+        public const float EFFECT_RADIUS = 15f;
+
+        /// <summary>
+        /// Everyone within EFFECT_RADIUS of a pac with Twister (pretzel), other than that pac, moves this many times as fast.
+        /// </summary>
+        public const float TWISTER_SPEED_SCALE = 0.5f;
 
         /// <summary>
         /// How long the POW block's stun lasts.
@@ -50,13 +58,13 @@ namespace EatMeLibrary
         public const float STUN_SPIN_TURNS_PER_SECOND = 2f;
 
         /// <summary>
-        /// True if a position is within POW_RADIUS of where the POW block went off.
+        /// True if a position is within EFFECT_RADIUS of an effect's centre (straight line, so walls don't block it).
         /// </summary>
-        public static bool IsInPowRange(Point2 from, Point2 to)
+        public static bool IsInEffectRange(Point2 from, Point2 to)
         {
             var dx = to.X - from.X;
             var dy = to.Y - from.Y;
-            return dx * dx + dy * dy <= POW_RADIUS * POW_RADIUS;
+            return dx * dx + dy * dy <= EFFECT_RADIUS * EFFECT_RADIUS;
         }
 
         /// <summary>
@@ -87,6 +95,21 @@ namespace EatMeLibrary
             {
                 if (HasActiveEffect(pac, ePowerUpEffect.DinnerBell))
                     return DINNER_BELL_GHOST_SPEED_SCALE;
+            }
+
+            return 1f;
+        }
+
+        /// <summary>
+        /// What the speed of a pac or ghost at position is multiplied by: TWISTER_SPEED_SCALE if it is within
+        /// EFFECT_RADIUS of any living pac with Twister (pretzel) other than itself (however many), otherwise 1.
+        /// </summary>
+        public static float GetTwisterSpeedScale(GameEntity self, Point2 position, IEnumerable<Player> pacs)
+        {
+            foreach (var pac in pacs)
+            {
+                if (pac != self && HasActiveEffect(pac, ePowerUpEffect.Twister) && IsInEffectRange(pac.Location, position))
+                    return TWISTER_SPEED_SCALE;
             }
 
             return 1f;
@@ -133,11 +156,25 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if a pac with this effect leaves a speed trail (PacTrails): only Sugar Rush.
+        /// True if a pac with this effect leaves a speed trail (PacTrails): Sugar Rush and Invincible.
         /// </summary>
         public static bool HasSpeedTrail(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.SugarRush;
+            return effect == ePowerUpEffect.SugarRush || effect == ePowerUpEffect.Invincible;
+        }
+
+        /// <summary>
+        /// An invincible pac switches between its team color and yellow this often.
+        /// </summary>
+        public const float STAR_BLINK_SECONDS = 0.08f;
+
+        /// <summary>
+        /// True if an invincible pac is drawn yellow at a time in seconds (otherwise its team color): yellow for the
+        /// first STAR_BLINK_SECONDS of every two.
+        /// </summary>
+        public static bool IsStarBlinkYellow(float seconds)
+        {
+            return seconds % (STAR_BLINK_SECONDS * 2f) < STAR_BLINK_SECONDS;
         }
 
         /// <summary>

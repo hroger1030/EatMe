@@ -43,7 +43,7 @@ namespace EatMeLibrary
         /// <summary>
         /// Steps away at which a bot without a power pill working goes for one.
         /// </summary>
-        public const int POWER_PILL_DISTANCE = 10;
+        public const int POWER_PILL_DISTANCE = 15;
 
         /// <summary>
         /// Steps away a power up can be for a bot to go after it.
@@ -79,10 +79,25 @@ namespace EatMeLibrary
         [
             eBotGoal.Rescue,
             eBotGoal.HuntCarrier,
+            eBotGoal.PowerPill,
             eBotGoal.PowerUp,
             eBotGoal.Hunt,
             eBotGoal.HuntGhost,
-            eBotGoal.PowerPill,
+            eBotGoal.EnemyFlag,
+            eBotGoal.Dot,
+        ];
+
+        /// <summary>
+        /// The order PickGoal tries goals in, after CarryHome, while the bot is invincible (Player.IsInvincible): chase
+        /// mode, hunting everything in reach before anything else. It skips power pills and power ups, which would
+        /// replace the effect.
+        /// </summary>
+        private static readonly eBotGoal[] INVINCIBLE_GOAL_ORDER =
+        [
+            eBotGoal.HuntCarrier,
+            eBotGoal.Hunt,
+            eBotGoal.HuntGhost,
+            eBotGoal.Rescue,
             eBotGoal.EnemyFlag,
             eBotGoal.Dot,
         ];
@@ -172,7 +187,7 @@ namespace EatMeLibrary
                 return target.HasValue ? eBotGoal.CarryHome : eBotGoal.None;
             }
 
-            foreach (var goal in GOAL_ORDER)
+            foreach (var goal in me.IsInvincible ? INVINCIBLE_GOAL_ORDER : GOAL_ORDER)
             {
                 target = FindGoalTarget(world, me, x, y, paths, goal);
 
@@ -190,7 +205,11 @@ namespace EatMeLibrary
         /// </summary>
         public static (int X, int Y)? FindGoalTarget(BotWorld world, Player me, int x, int y, PathMap paths, eBotGoal goal)
         {
-            var ghostKiller = PacRules.CanKillGhost(me.Size, me.IsPowered, world.MaxSize);
+            var ghostKiller = CanKillGhosts(world, me);
+
+            // in chase mode (invincible) it hunts out to everything it can see
+            var huntDistance = me.IsInvincible ? SEARCH_DISTANCE : HUNT_DISTANCE;
+            var carrierHuntDistance = me.IsInvincible ? SEARCH_DISTANCE : CARRIER_HUNT_DISTANCE;
 
             switch (goal)
             {
@@ -207,16 +226,16 @@ namespace EatMeLibrary
                     return FindNearestFlag(world, paths, f => f.Team == me.Team && !f.IsAtBase && !f.IsCarried, RESCUE_DISTANCE);
 
                 case eBotGoal.HuntCarrier:
-                    return FindNearestPac(world, me, paths, CARRIER_HUNT_DISTANCE, true);
+                    return FindNearestPac(world, me, paths, carrierHuntDistance, true);
 
                 case eBotGoal.PowerUp:
-                    return FindNearestPowerUp(world, paths, POWER_UP_DISTANCE);
+                    return !me.IsInvincible ? FindNearestPowerUp(world, paths, POWER_UP_DISTANCE) : null;
 
                 case eBotGoal.Hunt:
-                    return FindNearestPac(world, me, paths, HUNT_DISTANCE, false);
+                    return FindNearestPac(world, me, paths, huntDistance, false);
 
                 case eBotGoal.HuntGhost:
-                    return ghostKiller ? FindNearestGhost(world, paths, HUNT_DISTANCE) : null;
+                    return ghostKiller ? FindNearestGhost(world, paths, huntDistance) : null;
 
                 case eBotGoal.PowerPill:
                     return !ghostKiller && !me.IsPowered ? FindNearestCell(world.Map, paths, eGridDef.PowerPill, POWER_PILL_DISTANCE) : null;
@@ -230,7 +249,9 @@ namespace EatMeLibrary
                         ?? FindNearestBase(world, x, y, f => f.Team != me.Team && f.IsAtBase);
 
                 case eBotGoal.Dot:
-                    return !IsFull(me.Size, world.MaxSize) ? FindNearestCell(world.Map, paths, eGridDef.Food | eGridDef.PowerPill, SEARCH_DISTANCE) : null;
+                    // an invincible bot leaves power pills alone, since one would replace its effect
+                    var food = me.IsInvincible ? eGridDef.Food : eGridDef.Food | eGridDef.PowerPill;
+                    return !IsFull(me.Size, world.MaxSize) ? FindNearestCell(world.Map, paths, food, SEARCH_DISTANCE) : null;
 
                 default:
                     return null;
@@ -245,6 +266,10 @@ namespace EatMeLibrary
         {
             if (me.HasFlag != (goal == eBotGoal.CarryHome))
                 return true;
+
+            // in chase mode a rescue waits its turn (INVINCIBLE_GOAL_ORDER)
+            if (me.IsInvincible)
+                return false;
 
             return goal != eBotGoal.CarryHome && goal != eBotGoal.Rescue && FindGoalTarget(world, me, x, y, paths, eBotGoal.Rescue).HasValue;
         }
@@ -322,19 +347,36 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if other is an enemy that looks big enough to eat me (GetPerceivedSize).
+        /// True if other is an enemy that can kill me: it is invincible, or looks big enough to eat me
+        /// (GetPerceivedSize). Nothing is a threat to an invincible bot.
         /// </summary>
         public static bool IsThreat(BotWorld world, Player me, Player other)
         {
-            return other.Alive && other.Team != me.Team && GetPerceivedSize(world, me, other) > me.Size;
+            if (!other.Alive || other.Team == me.Team || me.IsInvincible)
+                return false;
+
+            return other.IsInvincible || GetPerceivedSize(world, me, other) > me.Size;
         }
 
         /// <summary>
-        /// True if other is an enemy that looks small enough for me to hunt (GetPerceivedSize).
+        /// True if other is an enemy I can kill and should hunt: any enemy that isn't invincible when I am, otherwise
+        /// one that looks small enough (GetPerceivedSize). An invincible enemy is never prey.
         /// </summary>
         public static bool IsPrey(BotWorld world, Player me, Player other)
         {
-            return other.Alive && other.Team != me.Team && me.Size > GetPerceivedSize(world, me, other) * PREY_SIZE_MARGIN;
+            if (!other.Alive || other.Team == me.Team || other.IsInvincible)
+                return false;
+
+            return me.IsInvincible || me.Size > GetPerceivedSize(world, me, other) * PREY_SIZE_MARGIN;
+        }
+
+        /// <summary>
+        /// True if touching a ghost kills the ghost rather than me: a power pill at full size (PacRules.CanKillGhost)
+        /// or Invincible.
+        /// </summary>
+        public static bool CanKillGhosts(BotWorld world, Player me)
+        {
+            return me.IsInvincible || PacRules.CanKillGhost(me.Size, me.IsPowered, world.MaxSize);
         }
 
         /// <summary>
@@ -387,7 +429,7 @@ namespace EatMeLibrary
         {
             var threats = new List<(int X, int Y)>();
 
-            if (!PacRules.CanKillGhost(me.Size, me.IsPowered, world.MaxSize))
+            if (!CanKillGhosts(world, me))
                 foreach (var ghost in world.Ghosts)
                     if (ghost.Alive)
                         AddIfClose(threats, paths, MazeMovement.GetCell(ghost.Location), maxDistance);
@@ -441,7 +483,7 @@ namespace EatMeLibrary
         /// </summary>
         public static bool ShouldTurnBack(BotWorld world, Player me)
         {
-            if (!PacRules.CanKillGhost(me.Size, me.IsPowered, world.MaxSize))
+            if (!CanKillGhosts(world, me))
                 foreach (var ghost in world.Ghosts)
                     if (ghost.Alive && IsAhead(me, ghost.Location))
                         return true;
