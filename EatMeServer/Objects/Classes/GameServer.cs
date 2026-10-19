@@ -90,6 +90,11 @@ namespace EatMeServer
         private readonly List<HighScoreEntry> _HighScores;
         private readonly Action<List<HighScoreEntry>> _OnHighScoresChanged;
 
+        /// <summary>
+        /// The settings the server was started with, as changed since by console commands.
+        /// </summary>
+        public ServerSettings Settings => _Settings;
+
         public LevelInfo CurrentLevel { get; private set; }
         public eGridDef[,] Map { get; private set; }
         public uint Tick { get; private set; }
@@ -1891,6 +1896,60 @@ namespace EatMeServer
                 while (_BotCount > wanted)
                     RemoveBot(eTeamPreference.Either);
             }
+        }
+
+        /// <summary>
+        /// Sets how many players (humans plus bots) the server keeps, between 0 and MaxPlayers, and adds or removes
+        /// bots to match. Runtime only; server.cfg isn't changed.
+        /// </summary>
+        public void SetMinPlayers(int minPlayers)
+        {
+            var config = _Settings.GameConfig;
+            config.MinPlayers = Math.Clamp(minPlayers, 0, config.MaxPlayers);
+            BalanceBots();
+        }
+
+        /// <summary>
+        /// Turns AutoBalanceTeams on or off and rebalances the bots. Runtime only; server.cfg isn't changed.
+        /// </summary>
+        public void SetAutoBalanceTeams(bool autoBalanceTeams)
+        {
+            _Settings.AutoBalanceTeams = autoBalanceTeams;
+            BalanceBots();
+        }
+
+        /// <summary>
+        /// Every player, human or bot, whose id is the given text or whose name matches it ignoring case.
+        /// </summary>
+        public List<ServerPlayer> FindPlayers(string nameOrId)
+        {
+            var found = new List<ServerPlayer>();
+            var text = nameOrId?.Trim() ?? string.Empty;
+            var isId = int.TryParse(text, out var id);
+
+            foreach (var serverPlayer in _Players.Values)
+                if ((isId && serverPlayer.Player.Id == id) || string.Equals(serverPlayer.Player.Name, text, StringComparison.OrdinalIgnoreCase))
+                    found.Add(serverPlayer);
+
+            return found;
+        }
+
+        /// <summary>
+        /// Removes a human from the game: they are sent a Kicked reject and their connection closes once it has
+        /// gone. Bots can't be kicked, since BalanceBots would only add them back; false for a bot or a player who
+        /// has already left.
+        /// </summary>
+        public bool Kick(ServerPlayer serverPlayer)
+        {
+            if (serverPlayer.IsBot || !_Players.ContainsKey(serverPlayer.Player.Id))
+                return false;
+
+            Console.WriteLine($"{serverPlayer.Player.Name} was kicked");
+            Send(serverPlayer.Connection, new RejectMessage { Reason = eRejectReason.Kicked });
+            serverPlayer.Connection.CloseAfterSending();
+            Remove(serverPlayer);
+            BalanceBots();
+            return true;
         }
 
         /// <summary>

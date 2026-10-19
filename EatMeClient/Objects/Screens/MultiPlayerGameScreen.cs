@@ -727,6 +727,7 @@ namespace EatMeClient
                     eRejectReason.ServerFull => Const.STRING_REJECT_SERVER_FULL,
                     eRejectReason.InvalidName => Const.STRING_REJECT_INVALID_NAME,
                     eRejectReason.VersionMismatch => Const.STRING_REJECT_VERSION,
+                    eRejectReason.Kicked => Const.STRING_REJECT_KICKED,
                     _ => _State.RejectReason.Value.ToString(),
                 };
             }

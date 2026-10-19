@@ -35,7 +35,7 @@ dotnet build EatMe.sln
 dotnet run --project EatMeServer
 ```
 
-The server loads `server.cfg` from its output directory, prints the loaded settings, then runs its tick loop until Ctrl+C. If `server.cfg` is missing or invalid, it prints an error and exits with code 1.
+The server loads `server.cfg` from its output directory, prints the loaded settings, then runs its tick loop until Ctrl+C or `quit`. Type `help` in its window for the other console commands (next level, kick, add bot and so on). If `server.cfg` is missing or invalid, it prints an error and exits with code 1.
 
 ### server.cfg
 

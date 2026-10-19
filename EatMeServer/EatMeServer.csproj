@@ -8,9 +8,6 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="banned.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="server.cfg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

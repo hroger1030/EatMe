@@ -1,5 +1,6 @@
 using EatMeServer;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
@@ -67,7 +68,27 @@ catch (SocketException ex)
 }
 
 Console.WriteLine("Game paused until a player joins");
-Console.WriteLine("Press Ctrl+C to stop.");
+Console.WriteLine("Type help for commands, quit or Ctrl+C to stop.");
+
+// typed lines are read on their own thread and run on the main loop, so commands touch the game on one thread only
+var commands = new ConcurrentQueue<string>();
+var commandReader = new Thread(() =>
+{
+    try
+    {
+        string line;
+
+        // null once input is closed, e.g. with no console
+        while ((line = Console.ReadLine()) != null)
+            commands.Enqueue(line);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Console commands off: {ex.Message}");
+    }
+})
+{ IsBackground = true, Name = "Console commands" };
+commandReader.Start();
 
 var tickInterval = TimeSpan.FromSeconds(1.0 / Math.Max(1, settings.TickRate));
 var stopwatch = Stopwatch.StartNew();
@@ -84,6 +105,17 @@ while (!shutdown.IsCancellationRequested)
 
     while (network.TryGetEvent(out var networkEvent))
         game.HandleEvent(networkEvent);
+
+    while (commands.TryDequeue(out var command))
+    {
+        var output = ServerCommands.Execute(game, command, out var quit);
+
+        if (output.Length > 0)
+            Console.WriteLine(output);
+
+        if (quit)
+            shutdown.Cancel();
+    }
 
     game.Update(elapsedMs);
 

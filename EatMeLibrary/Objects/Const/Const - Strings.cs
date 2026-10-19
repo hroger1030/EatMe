@@ -39,7 +39,7 @@
         public const string STRING_JOIN = "Join";
         public const string STRING_LAN_GAMES = "LAN Games";
         public const string STRING_SEARCHING = "Searching...";
-        public const string STRING_INVALID_NAME = "Name must be 1-12 letters or digits";
+        public const string STRING_INVALID_NAME = "Name must be 1-20 letters or digits";
         public const string STRING_INVALID_ADDRESS = "Enter a server address";
 
         // Game screen
@@ -49,6 +49,7 @@
         public const string STRING_REJECT_SERVER_FULL = "Server is full";
         public const string STRING_REJECT_INVALID_NAME = "Server refused your name";
         public const string STRING_REJECT_VERSION = "Server runs a different version";
+        public const string STRING_REJECT_KICKED = "You were kicked from the server";
         public const string STRING_RED_WINS = "Red team wins!";
         public const string STRING_BLUE_WINS = "Blue team wins!";
         public const string STRING_NEXT_LEVEL_IN = "Next Level in";

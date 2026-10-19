@@ -94,11 +94,26 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: DiscoveryPort (int) defaults to 7778, the UDP port that answers LAN game searches.
 - Server setting: TickRate (int) defaults to 60, times per second the server updates the game.
 - Server setting: TargetFps (int) defaults to 30, times per second the server sends the game state to clients.
-- Server accepts command line input. (start a new game, stop current game, kick player, ban player)
+- The server console takes typed commands (case doesn't matter). Nothing a command changes is saved to server.cfg.
+
+| Command | Does |
+|---|---|
+| `help` | Lists the commands. |
+| `status` | The level, both team scores, and how many players and bots there are. |
+| `players` | Every player with their id, name, team, bot or human, level score, total score and lag. |
+| `next level` | Starts the next level now. |
+| `level {n}` | Jumps to level n (1 or more). |
+| `restart` | Restarts the current level. |
+| `new game` | Goes back to the starting level. |
+| `kick {name or id}` | Removes a human from the server; they are told they were kicked. Bots can't be kicked. If two players share the name, kick by id. |
+| `add bot [n]` / `remove bot [n]` | Keeps n more or fewer players (humans plus bots, default 1, per team with AutoBalanceTeams on), adding or removing bots to match. |
+| `bots [n]` | Shows or sets MinPlayers. |
+| `autobalance [on\|off]` | Shows or sets AutoBalanceTeams. |
+| `motd [text]` | Shows or sets the message of the day for players who join from then on. |
+| `quit` | Stops the server, as Ctrl+C does. |
+
 - Server setting: MessageOfTheDay (string) in server.cfg, sent to every player who joins and shown on the scroller at the bottom of their title screen. Empty or missing means the default, "Find Friends, Play Games. Visit https://GamrTable.com".
 - Loading screen tips are in the LoadingScreenTips.txt file, one tip per line, any number of tips. Blank lines are skipped. When a player joins, the tips are sent to them, and the intermission screen shows one picked at random at its bottom centre.
-- kicked players get their name/ip added to banned.txt. 
-- players on the banned.txt list cannot join the server.
 
 ## Game rules
 
