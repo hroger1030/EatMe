@@ -262,5 +262,14 @@ namespace EatMeTests
         {
             Assert.That(PacRules.GetGhostRadius(isRainbow: false), Is.EqualTo(PacRules.GHOST_RADIUS));
         }
+
+        [Test]
+        public void IsSpawnChargeBlinkPurple_IsPurpleForTheFirstBlinkOfEveryTwo()
+        {
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(0f), Is.True);
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(PacRules.SPAWN_CHARGE_BLINK_SECONDS * 0.5f), Is.True);
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(PacRules.SPAWN_CHARGE_BLINK_SECONDS * 1.5f), Is.False);
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(PacRules.SPAWN_CHARGE_BLINK_SECONDS * 2.5f), Is.True);
+        }
     }
 }

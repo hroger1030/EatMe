@@ -47,10 +47,6 @@ namespace EatMeClient
         /// </summary>
         private const float FLAG_BASE_BLINK_SECONDS = 0.5f;
 
-        /// <summary>
-        /// A pac with a power pill working pulses from its team color to yellow and back once in this time.
-        /// </summary>
-        private const float POWER_PULSE_SECONDS = 1.0f;
         private const int GHOST_FRAME_COUNT = 4;
 
         // rainbow ghost sheets, each moved round the gradient a little further, so the rainbow scrolls as ghosts move
@@ -1373,16 +1369,6 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// A powered pac's tint right now: it pulses smoothly between its team color and white (the sprite untinted) every
-        /// POWER_PULSE_SECONDS.
-        /// </summary>
-        private Color GetPoweredColor(Color teamColor)
-        {
-            var amount = 0.5f - 0.5f * MathF.Cos(_AnimationTime * MathHelper.TwoPi / POWER_PULSE_SECONDS);
-            return Color.Lerp(teamColor, Color.White, amount);
-        }
-
-        /// <summary>
         /// A flag's tint right now: it flickers between yellow and its team's color.
         /// </summary>
         private Color GetFlagColor(eTeam team)
@@ -1536,16 +1522,11 @@ namespace EatMeClient
                 var screen = _Camera.ToScreenPosition(CellToWorld(pac.X, pac.Y), viewport);
                 var pacWidth = CELL_PIXELS * PacRules.GetDiameter(pac.Size);
                 var scale = pacWidth / frameWidth;
-                var color = ClientColors.GetPacColor(pac.Team, pac.PlayerId == _State.PlayerId);
-                var tint = pac.Powered ? GetPoweredColor(color) : color;
+                var isOwn = pac.PlayerId == _State.PlayerId;
+                var color = ClientColors.GetPacColor(pac.Team, isOwn);
 
-                // an invincible pac blinks between its team color and yellow, trail included
-                if (pac.PowerUpEffect == ePowerUpEffect.Invincible && PowerUpEffects.IsStarBlinkYellow(_AnimationTime))
-                    tint = ClientColors.COLOR_PAC_YELLOW;
-
-                // a pac with Fireball or Screw Attack flashes white
-                if (PowerUpEffects.FlashesWhite(pac.PowerUpEffect) && PowerUpEffects.IsFireFlashWhite(_AnimationTime))
-                    tint = Color.White;
+                // power pulse, star blink, white flash and spawn charge blink, trail included (the mini map uses the same)
+                var tint = ClientColors.GetPacTint(pac, isOwn, _AnimationTime);
 
                 var (rotation, effects) = GetFacingTransform(pac.Facing);
 

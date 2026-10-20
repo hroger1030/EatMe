@@ -48,7 +48,7 @@ namespace EatMeLibrary
         /// <summary>
         /// Number of ghosts in the maze.
         /// </summary>
-        public int GhostCount { get; set; } = 4;
+        public int GhostCount { get; set; } = 6;
 
         /// <summary>
         /// Number of power pills in the maze.

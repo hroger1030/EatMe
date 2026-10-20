@@ -114,10 +114,10 @@ namespace EatMeTests
 
             Assert.That(red, Has.Count.EqualTo(config.PlayerBaseCount));
             Assert.That(blue, Has.Count.EqualTo(config.PlayerBaseCount));
-            Assert.That(red.All(b => b.Width == MapMaker.SPAWN_ROOM_SIZE && b.Height == MapMaker.SPAWN_ROOM_SIZE), Is.True);
+            Assert.That(red.All(b => b.Width == MapMaker.SPAWN_AREA_SIZE && b.Height == MapMaker.SPAWN_AREA_SIZE), Is.True);
             Assert.That(ghosts, Has.Count.EqualTo(1));
-            Assert.That(ghosts[0].Width, Is.EqualTo(2));
-            Assert.That(ghosts[0].Height, Is.EqualTo(2));
+            Assert.That(ghosts[0].Width, Is.EqualTo(MapMaker.GHOST_GENERATOR_SIZE));
+            Assert.That(ghosts[0].Height, Is.EqualTo(MapMaker.GHOST_GENERATOR_SIZE));
         }
     }
 }

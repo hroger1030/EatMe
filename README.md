@@ -122,9 +122,9 @@ JSON, deserialized into `ServerSettings`. Edit `EatMeServer/server.cfg`; it is c
 | `GameConfig.FlagRescue` | int | 3 | Points for returning your own dropped flag to base. |
 | `GameConfig.PlayerKill` | int | 1 | Points for eating an enemy pac. |
 | `GameConfig.GhostKill` | int | 2 | Points for killing a ghost. |
-| `GameConfig.MazeSize` | int | 100 | Width and height of the maze in cells. Must be even, minimum 18. |
+| `GameConfig.MazeSize` | int | 100 | Width and height of the maze in cells. Must be even, minimum 20. |
 | `GameConfig.WarpTunnelCount` | int | 4 | Warp tunnels through the outer wall; a hole warps to the hole directly opposite. Symmetry may add one extra. |
-| `GameConfig.GhostCount` | int | 4 | Number of ghosts in the maze. Each gets a personality; past the 21 unique ones, the rest are Norm. |
+| `GameConfig.GhostCount` | int | 6 | Number of ghosts in the maze. Each gets a personality; past the 21 unique ones, the rest are Norm. |
 | `GameConfig.PowerPillCount` | int | 4 | Power pills in the maze, split evenly between the two halves. |
 | `GameConfig.FlagCount` | int | 1 | Flags per team. |
 | `GameConfig.PlayerBaseCount` | int | 1 | Player spawn points per team. |

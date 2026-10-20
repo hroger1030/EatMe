@@ -91,42 +91,60 @@ namespace EatMeClient
                     DrawIcon(spriteBatch, _icons, eMiniMapIcon.Ghost, inner, mapSize, ghost.X, ghost.Y, ClientColors.COLOR_MINI_MAP_GHOST);
             }
 
+            // a pac carrying a flag is drawn as that flag instead (below), except the player's own, which stays so it can
+            // be found, with the flag over it
             foreach (var pac in snapshot.Pacs)
             {
-                if (!pac.Alive)
+                var isOwn = pac.PlayerId == ownPlayerId;
+
+                if (!pac.Alive || (!isOwn && IsCarrier(pac, snapshot.Flags)))
                     continue;
 
                 // the player's own pac is a bigger Pac-Man facing its way, so it's easy to find
-                var isOwn = pac.PlayerId == ownPlayerId;
                 var icon = isOwn ? MiniMapSprites.GetOwnPacIcon(pac.Facing) : eMiniMapIcon.Dot;
-                DrawIcon(spriteBatch, _icons, icon, inner, mapSize, pac.X, pac.Y, GetPacColor(pac, snapshot.Flags, isOwn, animationTime));
+                DrawIcon(spriteBatch, _icons, icon, inner, mapSize, pac.X, pac.Y, ClientColors.GetPacTint(pac, isOwn, animationTime));
             }
 
-            // a carried flag isn't drawn; its carrier's dot shows where it is
+            // every flag once, carried or not: a carried one sits on its carrier
             foreach (var flag in snapshot.Flags)
             {
-                if (flag.IsCarried)
-                    continue;
+                var (x, y) = GetFlagPosition(flag, snapshot.Pacs);
 
                 // a flag sealed in a force field (triforce) blinks gold
                 var color = flag.IsSealed && ForceField.IsMiniMapGold(animationTime) ? ClientColors.COLOR_FORCE_FIELD : ClientColors.GetFlagColor(flag.Team, animationTime);
-                DrawIcon(spriteBatch, _icons, eMiniMapIcon.Flag, inner, mapSize, flag.X, flag.Y, color);
+                DrawIcon(spriteBatch, _icons, eMiniMapIcon.Flag, inner, mapSize, x, y, color);
             }
         }
 
         /// <summary>
-        /// A pac's color (the lighter shade for the player's own pac), or, while it carries a flag, that flag's flicker so
-        /// the carried flag can be seen.
+        /// True if the pac is carrying a flag.
         /// </summary>
-        private static Color GetPacColor(PacState pac, List<FlagState> flags, bool isOwn, float animationTime)
+        private static bool IsCarrier(PacState pac, List<FlagState> flags)
         {
             foreach (var flag in flags)
             {
                 if (flag.CarrierId == pac.PlayerId)
-                    return ClientColors.GetFlagColor(flag.Team, animationTime);
+                    return true;
             }
 
-            return ClientColors.GetPacColor(pac.Team, isOwn);
+            return false;
+        }
+
+        /// <summary>
+        /// Where a flag is drawn: on its carrier while carried, otherwise where it lies.
+        /// </summary>
+        private static (float X, float Y) GetFlagPosition(FlagState flag, List<PacState> pacs)
+        {
+            if (flag.IsCarried)
+            {
+                foreach (var pac in pacs)
+                {
+                    if (pac.PlayerId == flag.CarrierId)
+                        return (pac.X, pac.Y);
+                }
+            }
+
+            return (flag.X, flag.Y);
         }
 
         /// <summary>

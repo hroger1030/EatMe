@@ -49,6 +49,20 @@ namespace EatMeLibrary
         public const float MELON_BELLY_SIZE_GAIN = 50f;
 
         /// <summary>
+        /// A pac charging on its own spawn (PacState.SpawnFeeding) blinks purple, showing it for this long out of every two.
+        /// </summary>
+        public const float SPAWN_CHARGE_BLINK_SECONDS = 0.15f;
+
+        /// <summary>
+        /// True if a pac charging on its spawn is drawn purple at a time in seconds (otherwise its own color): purple for
+        /// the first SPAWN_CHARGE_BLINK_SECONDS of every two.
+        /// </summary>
+        public static bool IsSpawnChargeBlinkPurple(float seconds)
+        {
+            return seconds % (SPAWN_CHARGE_BLINK_SECONDS * 2f) < SPAWN_CHARGE_BLINK_SECONDS;
+        }
+
+        /// <summary>
         /// A flag counts as a circle half a cell across, centred on its position.
         /// </summary>
         public const float FLAG_RADIUS = 0.5f;

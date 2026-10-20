@@ -14,7 +14,7 @@ namespace EatMeLibrary
         /// <summary>
         /// Smallest map with room for the ghost pen and the flag rooms beside it. Map sizes must be even.
         /// </summary>
-        public const int MIN_MAZE_SIZE = 18;
+        public const int MIN_MAZE_SIZE = 20;
 
         /// <summary>
         /// Walls are added until this share of the maze's open cells are junctions (3 or 4 ways out).
@@ -41,9 +41,24 @@ namespace EatMeLibrary
         public const int MAX_FLAG_ROOM_SIZE = 5;
 
         /// <summary>
-        /// Spawn room side, in cells.
+        /// Spawn room side, in cells: the spawn tiles with an open ring one cell wide all round them.
         /// </summary>
-        public const int SPAWN_ROOM_SIZE = 3;
+        public const int SPAWN_ROOM_SIZE = 5;
+
+        /// <summary>
+        /// Side of the square of spawn tiles in the middle of each spawn room, in cells.
+        /// </summary>
+        public const int SPAWN_AREA_SIZE = 3;
+
+        /// <summary>
+        /// Side of the ghost generator block in the middle of the map, in cells.
+        /// </summary>
+        public const int GHOST_GENERATOR_SIZE = 4;
+
+        /// <summary>
+        /// Side of the ghost pen: the generator with one open cell all round it.
+        /// </summary>
+        public const int GHOST_PEN_SIZE = GHOST_GENERATOR_SIZE + 2;
 
         /// <summary>
         /// Walls inside the map with fewer cells than this are removed, so there are no lone pillars or stubs.
@@ -223,16 +238,15 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Carves the ghost pen in the center of the map: the 2x2 ghost generator block with one open cell
-        /// all round it. Returns the pen.
+        /// Carves the ghost pen in the center of the map: the GHOST_GENERATOR_SIZE square ghost generator block with one
+        /// open cell all round it. Returns the pen.
         /// </summary>
         public static (int X, int Y, int Width, int Height) AddGhostPen(eGridDef[,] grid, bool rotate)
         {
-            const int SIDE = 4;
-            int start = (int)(grid.GetLength(0) * 0.5f) - 2;
+            int start = (int)(grid.GetLength(0) * 0.5f) - (int)(GHOST_PEN_SIZE * 0.5f);
 
-            AddRoom(grid, rotate, start, start, SIDE, SIDE);
-            return (start, start, SIDE, SIDE);
+            AddRoom(grid, rotate, start, start, GHOST_PEN_SIZE, GHOST_PEN_SIZE);
+            return (start, start, GHOST_PEN_SIZE, GHOST_PEN_SIZE);
         }
 
         /// <summary>
@@ -588,7 +602,8 @@ namespace EatMeLibrary
 
         /// <summary>
         /// Places the map items. Red flag bases go on flagCells (the centers of the flag rooms) and blue
-        /// ones on their copies. Every cell of the spawn rooms is a red spawn tile, and its copy a blue one.
+        /// ones on their copies. The SPAWN_AREA_SIZE square in the middle of each spawn room is blue spawn tiles, and its
+        /// copy red ones; the ring round them gets dots.
         /// </summary>
         public static void PlaceItems(eGridDef[,] grid, GameConfiguration config, bool rotate, Random random,
                                       List<(int X, int Y)> flagCells, List<(int X, int Y, int Side)> spawnRooms)
@@ -596,20 +611,21 @@ namespace EatMeLibrary
             int size = grid.GetLength(0);
             var used = new HashSet<(int X, int Y)>();
 
-            // The ghost generator is a 2x2 block in the middle of the ghost pen. Its left column is placed and
-            // copied, which fills the block whether the map is mirrored or rotated.
+            // The ghost generator is a GHOST_GENERATOR_SIZE square block in the middle of the ghost pen. Its left half
+            // is placed and copied, which fills the block whether the map is mirrored or rotated.
             int halfWidth = (int)(size * 0.5f);
-            int ghostX = halfWidth - 1;
+            int ghostStart = halfWidth - (int)(GHOST_GENERATOR_SIZE * 0.5f);
 
-            for (int y = ghostX; y <= halfWidth; y++)
-            {
-                var ghostCopy = GetCopy(ghostX, y, size, rotate);
+            for (int x = ghostStart; x < halfWidth; x++)
+                for (int y = ghostStart; y < ghostStart + GHOST_GENERATOR_SIZE; y++)
+                {
+                    var ghostCopy = GetCopy(x, y, size, rotate);
 
-                grid[ghostX, y] |= eGridDef.GhostGenerator;
-                grid[ghostCopy.X, ghostCopy.Y] |= eGridDef.GhostGenerator;
-                used.Add((ghostX, y));
-                used.Add(ghostCopy);
-            }
+                    grid[x, y] |= eGridDef.GhostGenerator;
+                    grid[ghostCopy.X, ghostCopy.Y] |= eGridDef.GhostGenerator;
+                    used.Add((x, y));
+                    used.Add(ghostCopy);
+                }
 
             // Team items are placed on the left (blue) and copied to the right (red). Flags and spawns sit in their rooms.
 
@@ -623,9 +639,11 @@ namespace EatMeLibrary
                 used.Add(copy);
             }
 
+            int ring = (int)((SPAWN_ROOM_SIZE - SPAWN_AREA_SIZE) * 0.5f);
+
             foreach (var room in spawnRooms)
-                for (int x = room.X; x < room.X + room.Side; x++)
-                    for (int y = room.Y; y < room.Y + room.Side; y++)
+                for (int x = room.X + ring; x < room.X + ring + SPAWN_AREA_SIZE; x++)
+                    for (int y = room.Y + ring; y < room.Y + ring + SPAWN_AREA_SIZE; y++)
                     {
                         var copy = GetCopy(x, y, size, rotate);
 

@@ -248,9 +248,9 @@ namespace EatMeTests
         {
             var map = Generate(size, seed);
 
-            // The generators fill an open 2x2 block in the middle of the map.
-            const int SIDE = 2;
-            int start = size / 2 - 1;
+            // The generators fill an open GHOST_GENERATOR_SIZE square block in the middle of the map.
+            const int SIDE = MapMaker.GHOST_GENERATOR_SIZE;
+            int start = size / 2 - SIDE / 2;
 
             for (int x = 0; x < size; x++)
                 for (int y = 0; y < size; y++)
@@ -453,8 +453,29 @@ namespace EatMeTests
             for (int seed = 0; seed < 50; seed++)
             {
                 var map = Generate(size, seed);
-                Assert.That(FindCells(map, eGridDef.SpawnPointRed), Has.Count.EqualTo(9), $"seed {seed}");
+                Assert.That(FindCells(map, eGridDef.SpawnPointRed), Has.Count.EqualTo(MapMaker.SPAWN_AREA_SIZE * MapMaker.SPAWN_AREA_SIZE), $"seed {seed}");
             }
+        }
+
+        [TestCaseSource(nameof(Maps))]
+        [TestCase(MapMaker.MIN_MAZE_SIZE, 1)]
+        [TestCase(MapMaker.MIN_MAZE_SIZE + 2, 2)]
+        public void Generate_SpawnAreasHaveAnOpenRingRoundThem(int size, int seed)
+        {
+            var map = Generate(size, seed);
+
+            foreach (var flag in new[] { eGridDef.SpawnPointRed, eGridDef.SpawnPointBlue })
+                foreach (var spawn in FindCells(map, flag))
+                    for (int dx = -1; dx <= 1; dx++)
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            int x = spawn.X + dx;
+                            int y = spawn.Y + dy;
+
+                            Assert.That(IsOpen(map, x, y), Is.True, $"spawn at ({spawn.X}, {spawn.Y}) has a wall at ({x}, {y})");
+                            Assert.That(map[x, y].HasFlag(flag) || (map[x, y] & (eGridDef.SpawnPointRed | eGridDef.SpawnPointBlue)) == 0, Is.True,
+                                        $"spawn at ({spawn.X}, {spawn.Y}) has no open ring at ({x}, {y})");
+                        }
         }
 
         [Test]

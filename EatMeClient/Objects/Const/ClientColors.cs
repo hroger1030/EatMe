@@ -1,3 +1,4 @@
+using System;
 using EatMeLibrary;
 using Microsoft.Xna.Framework;
 
@@ -12,6 +13,11 @@ namespace EatMeClient
         /// </summary>
         public const float FLAG_FLICKER_SECONDS = 0.1f;
 
+        /// <summary>
+        /// A pac with a power pill working pulses from its color to white and back once in this time.
+        /// </summary>
+        public const float POWER_PULSE_SECONDS = 1.0f;
+
         // Basic colors
 
         public static readonly Color COLOR_PAC_WHITE = new(1f, 1f, 1f);
@@ -21,18 +27,22 @@ namespace EatMeClient
 
         // Team colors
 
-        public static readonly Color COLOR_PAC_RED = new(1f, 0f, 0f);
-        public static readonly Color COLOR_PAC_BLUE = new(0f, 0.5f, 1f);
+        public static readonly Color COLOR_PAC_RED = new(215, 0, 0);
+        public static readonly Color COLOR_PAC_BLUE = new(0, 105, 225);
 
         // The player's own pac: lighter shades of the team colors so it stands out in a crowd.
 
-        public static readonly Color COLOR_PAC_RED_OWN = new(255, 145, 110);
-        public static readonly Color COLOR_PAC_BLUE_OWN = new(110, 190, 255);
+        public static readonly Color COLOR_PAC_RED_OWN = new(255, 85, 85);
+        public static readonly Color COLOR_PAC_BLUE_OWN = new(95, 170, 255);
 
-        // Spawn floors: bright and equally bright, so neither team's stands out more on any background.
+        // Spawn floors: darker shades of the team colors, a burgundy and a navy.
 
-        public static readonly Color COLOR_SPAWN_RED = new(255, 80, 110);
-        public static readonly Color COLOR_SPAWN_BLUE = new(80, 150, 255);
+        public static readonly Color COLOR_SPAWN_RED = new(128, 16, 48);
+        public static readonly Color COLOR_SPAWN_BLUE = new(16, 32, 128);
+
+        // A pac charging on its spawn blinks this purple, whatever its team.
+
+        public static readonly Color COLOR_SPAWN_CHARGE = new(170, 60, 255);
 
         // Dots: pale enough to read as dots but strong enough to tell the halves apart.
 
@@ -116,6 +126,33 @@ namespace EatMeClient
                 return GetTeamColor(team);
 
             return team == eTeam.Blue ? COLOR_PAC_BLUE_OWN : COLOR_PAC_RED_OWN;
+        }
+
+        /// <summary>
+        /// A pac's tint at animationTime seconds, the same on the board and the mini map: its color (GetPacColor), pulsing
+        /// to white with a power pill, blinking yellow while invincible, flashing white with Fire Flower or Screw Attack,
+        /// and blinking purple while it charges on its spawn.
+        /// </summary>
+        public static Color GetPacTint(PacState pac, bool isOwn, float animationTime)
+        {
+            var tint = GetPacColor(pac.Team, isOwn);
+
+            if (pac.Powered)
+            {
+                var amount = 0.5f - 0.5f * MathF.Cos(animationTime * MathHelper.TwoPi / POWER_PULSE_SECONDS);
+                tint = Color.Lerp(tint, Color.White, amount);
+            }
+
+            if (pac.PowerUpEffect == ePowerUpEffect.Invincible && PowerUpEffects.IsStarBlinkYellow(animationTime))
+                tint = COLOR_PAC_YELLOW;
+
+            if (PowerUpEffects.FlashesWhite(pac.PowerUpEffect) && PowerUpEffects.IsFireFlashWhite(animationTime))
+                tint = Color.White;
+
+            if (pac.SpawnFeeding && PacRules.IsSpawnChargeBlinkPurple(animationTime))
+                tint = COLOR_SPAWN_CHARGE;
+
+            return tint;
         }
 
         /// <summary>
