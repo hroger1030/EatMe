@@ -6,7 +6,7 @@ namespace EatMeServer
     /// <summary>
     /// Writes server console lines colored by what they are about (eLogType). Safe to call from any thread, since
     /// network tasks log too; errors go to standard error. Once EnablePrompt is called the console's last line is
-    /// always the typing prompt, "[Up: h:mm] " (GetPrompt): it is written again after every line logged.
+    /// always the typing prompt, "[Up:h:mm] " (GetPrompt): it is written again after every line logged.
     /// </summary>
     public static class ServerLog
     {

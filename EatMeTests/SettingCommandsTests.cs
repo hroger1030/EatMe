@@ -205,10 +205,10 @@ namespace EatMeTests
             Assert.That(ServerLog.GetColor(eLogType.Info), Is.EqualTo(ConsoleColor.Gray));
         }
 
-        [TestCase(0, 0, "[Uptime: 0:00] ")]
-        [TestCase(0, 5, "[Uptime: 0:05] ")]
-        [TestCase(2, 45, "[Uptime: 2:45] ")]
-        [TestCase(30, 7, "[Uptime: 30:07] ")]
+        [TestCase(0, 0, "[Up:0:00] ")]
+        [TestCase(0, 5, "[Up:0:05] ")]
+        [TestCase(2, 45, "[Up:2:45] ")]
+        [TestCase(30, 7, "[Up:30:07] ")]
         public void ServerLog_PromptShowsHoursAndMinutes(int hours, int minutes, string prompt)
         {
             Assert.That(ServerLog.GetPrompt(new TimeSpan(hours, minutes, 59)), Is.EqualTo(prompt));
