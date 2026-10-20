@@ -20,14 +20,14 @@ This is the feature manifest for the SRG client and server application. It will 
 - improve spawn points look
 - add logging for perf
 - run optimization checks
-- *nix buiilds?
 - screw attack and ball rotate too fast
-- power ups move too fast
 - Rescale spawn points to use a single image
 - bold font on loading screen tip
 - ghosts appear on mini-map
 - anything touched in mushroom mode is destroyed
-- red logo?
+- redo logo?
+- what is shit like this:         public void UpdatePowerUps(float deltaSeconds, int elapsedMs)
+- add a clear command to console
 
 ## Game Client 
 - Dumb game client; relies upon the server to process all packets and messages. The server decides everything that happens; the client only sends the direction the player is holding and draws what the server tells it.
@@ -98,6 +98,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: PacMaxSize (float) defaults to 100.0, the most dots can make a pac (power pills can take it past this).
 - Server setting: PacSpeed (float) defaults to 6.0, the speed in map cells per second of a size 0 pac.
 - Server setting: GhostSpeed (float) defaults to 5.0, ghost speed in map cells per second.
+- Server setting: PowerUpSpeed (float) defaults to 3.0, power up speed in map cells per second.
 - Server setting: PacShrinkPerSecond (float) defaults to 3.0, the size a starving pac loses each second.
 - Server setting: MsUntilStarvation (int) defaults to 1000, time in ms after a pac last ate a dot or power pill before it starts starving.
 - Server setting: DotSizeGain (float) defaults to 1.0, the size a pac gains for each dot it eats.
@@ -191,7 +192,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Sounds from things happening in the maze (a pac or ghost being eaten) are loudest at the middle of the screen and fade towards its edge; anything off screen can't be heard. Flag captures, flags lost and returned, and a team about to win are heard by everyone at full volume.
 - The first time in a level a team's score passes 90% of MaxScore (without winning outright), the announcer tells everyone "Red is about to win" or "Blue is about to win". It is said once per team per level.
 - Eating a dot or power pill triggers a timer, after N ms, it will respawn again.
-- Power ups: every PowerUpSpawnTimerMs ms of play in a level (by default at 30, 60, 90 seconds and so on, until the level ends) a power up appears on one of the map's four power up spawn points, picked at random. It holds one of the level's bonus items, picked at random, and drifts at ghost speed (GhostSpeed) by the shortest way to a warp hole, also picked at random. If it gets there without being eaten it leaves the level. It can't pass through walls, but it crosses spawn tiles of either team.
+- Power ups: every PowerUpSpawnTimerMs ms of play in a level (by default at 30, 60, 90 seconds and so on, until the level ends) a power up appears on one of the map's four power up spawn points, picked at random. It holds one of the level's bonus items, picked at random, and drifts at PowerUpSpeed (3 cells a second by default) by the shortest way to a warp hole, also picked at random. If it gets there without being eaten it leaves the level. It can't pass through walls, but it crosses spawn tiles of either team.
 - Any pac, of either team, eats a power up by touching it. Eating one plays a short "blorp" (heard like other sounds in the maze) and will give a special effect that depends on the item (see Power up effects). Ghosts ignore power ups.
 - Bots go after a power up when it is near (within 10 steps), unless they are running from something, rescuing their flag, chasing a flag carrier, going for a power pill, carrying a flag or invincible.
 - Power ups are drawn with their bonus item's sprite, bobbing gently up and down as they move.
@@ -311,3 +312,14 @@ This is basically a game of capture the flag. There are numerous notes about it 
 ## Performance
 - Use multiplies over divides.
 - Use structs for smaller data structures over classes. in particular ones that are short lived.
+
+
+## Output and publish
+- `~PublishPC.bat` publishes the client and server for Windows (win-x64) to `publish\pc_client` and `publish\pc_server`; `~PublishMac.bat` publishes them for macOS on Apple silicon (osx-arm64) to `publish\mac_client` and `publish\mac_server`. Each deletes its folders first.
+- Builds are Release, framework-dependent (players need the .NET runtime installed) and have no `.pdb` files.
+- Each app is a single-file executable: the app, its .NET libraries and the runtime settings (`.deps.json`, `.runtimeconfig.json`) are all inside the exe. The client's native SDL and OpenAL libraries stay next to the exe (`SDL2.dll` and `openal.dll` on Windows, `libSDL2-2.0.0.dylib` and `libopenal.dylib` on macOS), because MonoGame only loads them from the exe's folder.
+- The client folder holds only the exe, the two native libraries and `Content`. The built content, all but the music, is packed into `Content\Content.pak`, a plain zip. The music stays loose in `Content\Music` (each song's `.xnb` next to its `.ogg`), since songs play from files on disk.
+- The client reads each asset from `Content.pak` when it has one, and from the loose built files otherwise, so normal builds and debugging use loose files.
+- The server folder holds only the exe, `server.cfg`, `LoadingScreenTips.txt`, `bot_names.txt` and `highscores.txt`.
+- Both apps read and write their files (settings, high scores, server config) next to the exe.
+- `~StartClient.bat` and `~StartServer.bat` run the published Windows builds.

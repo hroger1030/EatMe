@@ -67,7 +67,8 @@ namespace EatMeClient
             // Program.cs has loaded the settings, so the window is created in the saved mode
             SetDisplayMode();
 
-            Content.RootDirectory = "Content";
+            // Reads Content.pak in published builds, the loose built files otherwise
+            Content = new PakContentManager(Services, "Content");
             IsMouseVisible = true;
             Window.Title = Const.GAME_TITLE;
             Window.TextInput += (_, e) => InputManager.AddTypedCharacter(e.Character);
@@ -90,7 +91,7 @@ namespace EatMeClient
 
             ConfigManager.ApplyVolumes();
             HighScoreStore.Load();
-            AssetCache.Initialize(Content);
+            AssetCache.Initialize((PakContentManager)Content);
 
             LoadAllAssets();
 

@@ -47,7 +47,6 @@ namespace EatMeTests
             Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex(ePowerUp.None));
             Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex(ePowerUp.Any));
             Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex(ePowerUp.Cherry | ePowerUp.Bell));
-            Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex((ePowerUp)(1L << 40)));
         }
     }
 }

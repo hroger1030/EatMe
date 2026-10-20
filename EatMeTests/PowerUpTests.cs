@@ -7,9 +7,9 @@ namespace EatMeTests
     public class PowerUpTests
     {
         /// <summary>
-        /// Power ups move at GhostSpeed; the default.
+        /// Power ups move at PowerUpSpeed; the default.
         /// </summary>
-        private static readonly float SPEED = new GameConfiguration().GhostSpeed;
+        private static readonly float SPEED = new GameConfiguration().PowerUpSpeed;
 
         /// <summary>
         /// A corridor whose open left end, (0, 1), is a warp exit, with a team spawn tile in the way at (3, 1).
@@ -142,7 +142,7 @@ namespace EatMeTests
 
             var ticks = MoveToExit(map, powerUp);
 
-            // four cells at ghost speed, 60 ticks a second
+            // four cells at power up speed, 60 ticks a second
             Assert.That(ticks, Is.EqualTo(4f / SPEED * 60f).Within(2));
         }
 
@@ -154,7 +154,7 @@ namespace EatMeTests
 
             var ticks = MoveToExit(map, powerUp);
 
-            // ten cells at ghost speed, 60 ticks a second
+            // ten cells at power up speed, 60 ticks a second
             Assert.That(ticks, Is.EqualTo(10f / SPEED * 60f).Within(2));
         }
 

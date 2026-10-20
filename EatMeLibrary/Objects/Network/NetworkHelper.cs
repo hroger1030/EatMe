@@ -57,6 +57,7 @@ namespace EatMeLibrary
             writer.Write(config.PacMaxSize);
             writer.Write(config.PacSpeed);
             writer.Write(config.GhostSpeed);
+            writer.Write(config.PowerUpSpeed);
             writer.Write(config.PacShrinkPerSecond);
             writer.Write(config.MsUntilStarvation);
             writer.Write(config.DotSizeGain);
@@ -95,6 +96,7 @@ namespace EatMeLibrary
                 PacMaxSize = reader.ReadSingle(),
                 PacSpeed = reader.ReadSingle(),
                 GhostSpeed = reader.ReadSingle(),
+                PowerUpSpeed = reader.ReadSingle(),
                 PacShrinkPerSecond = reader.ReadSingle(),
                 MsUntilStarvation = reader.ReadInt32(),
                 DotSizeGain = reader.ReadSingle(),

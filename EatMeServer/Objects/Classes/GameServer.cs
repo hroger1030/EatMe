@@ -1621,7 +1621,7 @@ namespace EatMeServer
 
         /// <summary>
         /// Runs the power ups: one appears each time the level's play time passes a multiple of PowerUpSpawnTimerMs, each
-        /// drifts toward its exit at GhostSpeed and leaves on reaching it, and any living pac touching one eats it.
+        /// drifts toward its exit at PowerUpSpeed and leaves on reaching it, and any living pac touching one eats it.
         /// Ghosts ignore them.
         /// </summary>
         public void UpdatePowerUps(float deltaSeconds, int elapsedMs)
@@ -1633,7 +1633,7 @@ namespace EatMeServer
             for (var i = 0; i < due; i++)
                 SpawnPowerUp();
 
-            var distance = _Settings.GameConfig.GhostSpeed * deltaSeconds;
+            var distance = _Settings.GameConfig.PowerUpSpeed * deltaSeconds;
 
             for (var i = _PowerUps.Count - 1; i >= 0; i--)
             {

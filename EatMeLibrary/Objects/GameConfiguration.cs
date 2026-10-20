@@ -108,6 +108,11 @@ namespace EatMeLibrary
         public float GhostSpeed { get; set; } = 5.0f;
 
         /// <summary>
+        /// Power up speed in map cells per second.
+        /// </summary>
+        public float PowerUpSpeed { get; set; } = 2.5f;
+
+        /// <summary>
         /// Size a starving pac loses each second.
         /// </summary>
         public float PacShrinkPerSecond { get; set; } = 3.0f;

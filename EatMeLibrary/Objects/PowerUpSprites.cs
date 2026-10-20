@@ -18,7 +18,7 @@ namespace EatMeLibrary
         /// </summary>
         public static int GetCellIndex(ePowerUp item)
         {
-            var bits = (ulong)item;
+            var bits = (uint)item;
 
             if (bits == 0 || (bits & (bits - 1)) != 0 || (item & ePowerUp.Any) != item)
                 throw new ArgumentException("Expected exactly one bonus item", nameof(item));

@@ -30,4 +30,20 @@
     <ProjectReference Include="..\..\FastG\FastG\FastG.csproj" />
     <ProjectReference Include="..\EatMeLibrary\EatMeLibrary.csproj" />
   </ItemGroup>
+  <!-- Publishing zips the built content into Content\Content.pak, all but the music (songs play from files on disk) -->
+  <Target Name="PackContent" AfterTargets="Publish">
+    <PropertyGroup>
+      <PackContentDir>$(PublishDir)Content\</PackContentDir>
+      <PackStagingDir>$(IntermediateOutputPath)ContentPack\</PackStagingDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <PackFiles Include="$(PackContentDir)**\*" Exclude="$(PackContentDir)Music\**;$(PackContentDir)Content.pak" />
+      <PackFolders Include="@(PackFiles->'$(PackContentDir)%(RecursiveDir)')" Condition="'%(PackFiles.RecursiveDir)' != ''" />
+    </ItemGroup>
+    <RemoveDir Directories="$(PackStagingDir)" />
+    <Copy SourceFiles="@(PackFiles)" DestinationFiles="@(PackFiles->'$(PackStagingDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+    <ZipDirectory SourceDirectory="$(PackStagingDir)" DestinationFile="$(PackContentDir)Content.pak" Overwrite="true" />
+    <Delete Files="@(PackFiles)" />
+    <RemoveDir Directories="@(PackFolders->Distinct());$(PackStagingDir)" />
+  </Target>
 </Project>

@@ -38,6 +38,7 @@ namespace EatMeServer
         public const string PAC_MAX_SIZE = "pacmaxsize";
         public const string PAC_SPEED = "pacspeed";
         public const string GHOST_SPEED = "ghostspeed";
+        public const string POWER_UP_SPEED = "powerupspeed";
         public const string PAC_SHRINK_PER_SECOND = "pacshrinkpersecond";
         public const string MS_UNTIL_STARVATION = "msuntilstarvation";
         public const string DOT_SIZE_GAIN = "dotsizegain";
@@ -82,6 +83,7 @@ namespace EatMeServer
             { PAC_MAX_SIZE, "pacmaxsize [x]", "Biggest a pac grows from dots" },
             { PAC_SPEED, "pacspeed [x]", "Pac speed in cells per second" },
             { GHOST_SPEED, "ghostspeed [x]", "Ghost speed in cells per second" },
+            { POWER_UP_SPEED, "powerupspeed [x]", "Power up speed in cells per second" },
             { PAC_SHRINK_PER_SECOND, "pacshrinkpersecond [x]", "Size a starving pac loses each second" },
             { MS_UNTIL_STARVATION, "msuntilstarvation [n]", "ms without eating before a pac starves" },
             { DOT_SIZE_GAIN, "dotsizegain [x]", "Size a pac gains per dot" },
@@ -216,6 +218,9 @@ namespace EatMeServer
                 case GHOST_SPEED:
                     return SetFloat(game, command, argument, nameof(GameConfiguration.GhostSpeed), () => config.GhostSpeed, value => config.GhostSpeed = value);
 
+                case POWER_UP_SPEED:
+                    return SetFloat(game, command, argument, nameof(GameConfiguration.PowerUpSpeed), () => config.PowerUpSpeed, value => config.PowerUpSpeed = value);
+
                 case PAC_SHRINK_PER_SECOND:
                     return SetFloat(game, command, argument, nameof(GameConfiguration.PacShrinkPerSecond), () => config.PacShrinkPerSecond, value => config.PacShrinkPerSecond = value);
 
@@ -292,6 +297,7 @@ namespace EatMeServer
                 new[] { nameof(GameConfiguration.PacMaxSize), PAC_MAX_SIZE, Format(config.PacMaxSize) },
                 new[] { nameof(GameConfiguration.PacSpeed), PAC_SPEED, Format(config.PacSpeed) },
                 new[] { nameof(GameConfiguration.GhostSpeed), GHOST_SPEED, Format(config.GhostSpeed) },
+                new[] { nameof(GameConfiguration.PowerUpSpeed), POWER_UP_SPEED, Format(config.PowerUpSpeed) },
                 new[] { nameof(GameConfiguration.PacShrinkPerSecond), PAC_SHRINK_PER_SECOND, Format(config.PacShrinkPerSecond) },
                 new[] { nameof(GameConfiguration.MsUntilStarvation), MS_UNTIL_STARVATION, Format(config.MsUntilStarvation) },
                 new[] { nameof(GameConfiguration.DotSizeGain), DOT_SIZE_GAIN, Format(config.DotSizeGain) },

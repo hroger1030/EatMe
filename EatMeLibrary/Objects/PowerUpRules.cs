@@ -58,9 +58,9 @@ namespace EatMeLibrary
         {
             var choices = new List<ePowerUp>();
 
-            for (var bit = 0; bit < 64; bit++)
+            for (var bit = 0; bit < 32; bit++)
             {
-                var item = (ePowerUp)(1L << bit);
+                var item = (ePowerUp)(1u << bit);
 
                 if ((items & item) != 0)
                     choices.Add(item);

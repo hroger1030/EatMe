@@ -87,6 +87,7 @@ Every other `server.cfg` setting has its own command, its name in lower case: ty
 | `pacmaxsize [x]` | PacMaxSize |
 | `pacspeed [x]` | PacSpeed |
 | `ghostspeed [x]` | GhostSpeed |
+| `powerupspeed [x]` | PowerUpSpeed |
 | `pacshrinkpersecond [x]` | PacShrinkPerSecond |
 | `msuntilstarvation [n]` | MsUntilStarvation |
 | `dotsizegain [x]` | DotSizeGain |
@@ -133,6 +134,7 @@ JSON, deserialized into `ServerSettings`. Edit `EatMeServer/server.cfg`; it is c
 | `GameConfig.PacMaxSize` | float | 100.0 | The most dots can make a pac (power pills can take it past this). A pac needs at least this size and a power pill working to eat ghosts. |
 | `GameConfig.PacSpeed` | float | 6.0 | Speed in map cells per second of a size 0 pac; a pac at max size is 20% faster. |
 | `GameConfig.GhostSpeed` | float | 5.0 | Ghost speed in map cells per second. |
+| `GameConfig.PowerUpSpeed` | float | 3.0 | Power up speed in map cells per second. |
 | `GameConfig.PacShrinkPerSecond` | float | 3.0 | Size a starving pac loses each second. |
 | `GameConfig.MsUntilStarvation` | int | 1000 | ms after a pac last ate a dot or power pill before it starts starving (shrinking). |
 | `GameConfig.DotSizeGain` | float | 1.0 | Size a pac gains for each dot it eats. |

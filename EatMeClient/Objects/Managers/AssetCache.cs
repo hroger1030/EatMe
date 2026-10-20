@@ -1,7 +1,5 @@
 using EatMeLibrary;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Media;
 using System;
@@ -12,7 +10,7 @@ namespace EatMeClient
 {
     public static class AssetCache
     {
-        private static ContentManager _ContentManager;
+        private static PakContentManager _ContentManager;
         private static readonly Dictionary<string, Texture2D> _Textures = new();
         private static readonly Dictionary<string, SoundEffect> _Sounds = new();
         private static readonly Dictionary<string, Song> _Songs = new();
@@ -28,7 +26,7 @@ namespace EatMeClient
         ];
 
 
-        public static void Initialize(ContentManager contentManager)
+        public static void Initialize(PakContentManager contentManager)
         {
             _ContentManager = contentManager;
         }
@@ -105,7 +103,7 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Loads plain text files copied into the content folder (mgcb /copy entries).
+        /// Loads plain text files copied into the content folder (mgcb /copy entries), from Content.pak when there is one.
         /// </summary>
         public static void LoadTexts(IEnumerable<string> newTexts)
         {
@@ -116,7 +114,7 @@ namespace EatMeClient
                 if (_Texts.ContainsKey(name))
                     continue;
 
-                using var stream = TitleContainer.OpenStream(Path.Combine(_ContentManager.RootDirectory, name));
+                using var stream = _ContentManager.OpenFile(name);
                 using var reader = new StreamReader(stream);
                 _Texts[name] = ToAscii(reader.ReadToEnd());
             }

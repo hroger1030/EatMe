@@ -6,6 +6,9 @@ namespace EatMeClient
 {
     public class AnimatedTexture : BaseObject
     {
+        private int _AnimationFrame;
+        private float _AnimationFrameTime;
+
         public int Rows { get; set; }
         public int Columns { get; set; }
         public float AnimationDuration { get; set; }
@@ -13,9 +16,6 @@ namespace EatMeClient
         public bool Loop { get; set; }
 
         public bool IsComplete => !Loop && _AnimationFrame >= Rows * Columns;
-
-        private int _AnimationFrame;
-        private float _AnimationFrameTime;
 
         public AnimatedTexture() { }
 
