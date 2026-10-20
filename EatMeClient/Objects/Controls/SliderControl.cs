@@ -162,12 +162,12 @@ namespace EatMeClient
 
             if (IsInline)
             {
-                spriteBatch.DrawString(Font, Label, labelPosition, textColor);
+                TextHelper.DrawShadowedString(spriteBatch, Font, Label, labelPosition, textColor);
                 var valuePosition = new Vector2(trackPosition.X + trackSize.X + INLINE_GAP, labelPosition.Y);
-                spriteBatch.DrawString(Font, FormatValue(Value), valuePosition, textColor);
+                TextHelper.DrawShadowedString(spriteBatch, Font, FormatValue(Value), valuePosition, textColor);
             }
             else
-                spriteBatch.DrawString(Font, GetControlLabel(), labelPosition, textColor);
+                TextHelper.DrawShadowedString(spriteBatch, Font, GetControlLabel(), labelPosition, textColor);
 
             var fillColor = isActive ? ClientColors.COLOR_DARK_MENU_SELECTED : ClientColors.COLOR_DARK_MENU_ITEM;
             var backgroundColor = isActive ? ClientColors.COLOR_DARK_MENU_SLIDER_SELECTED_BACKGROUND : ClientColors.COLOR_DARK_MENU_SLIDER_BACKGROUND;

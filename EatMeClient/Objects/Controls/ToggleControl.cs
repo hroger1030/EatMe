@@ -109,8 +109,8 @@ namespace EatMeClient
                 valuePosition = new Vector2(position.X + (totalWidth - valueSize.X) / 2f, position.Y + labelSize.Y);
             }
 
-            spriteBatch.DrawString(Font, Label, labelPosition, textColor);
-            spriteBatch.DrawString(Font, Options[SelectedIndex], valuePosition, textColor);
+            TextHelper.DrawShadowedString(spriteBatch, Font, Label, labelPosition, textColor);
+            TextHelper.DrawShadowedString(spriteBatch, Font, Options[SelectedIndex], valuePosition, textColor);
         }
 
         public void Next()

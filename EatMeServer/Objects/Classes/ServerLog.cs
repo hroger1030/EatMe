@@ -8,7 +8,10 @@ namespace EatMeServer
     /// <summary>
     /// Writes server console lines colored by what they are about (eLogType). Safe to call from any thread, since
     /// network tasks log too; errors go to standard error. Once EnablePrompt is called the console's last line is
-    /// always the typing prompt, "[Up:h:mm] " (GetPrompt): it is written again after every line logged.
+    /// always the typing prompt, "[Up:h:mm] " (GetPrompt), followed by the line being typed (ConsoleInput), which
+    /// the server draws itself from the keys HandleKey is given. With ANSI on, a scroll region keeps the prompt on
+    /// the window's bottom row and the log scrolls above it; without, the prompt line is wiped before each logged
+    /// line and drawn again after it. Either way logged lines never break into what is being typed.
     /// </summary>
     public static class ServerLog
     {
@@ -22,6 +25,33 @@ namespace EatMeServer
         /// </summary>
         public const string ANSI_RESET_COLOR = "[39m";
 
+        /// <summary>
+        /// ANSI code that saves the cursor (where the next logged line goes while the prompt is pinned).
+        /// </summary>
+        public const string ANSI_SAVE_CURSOR = "\u001b7";
+
+        /// <summary>
+        /// ANSI code that puts the cursor back where ANSI_SAVE_CURSOR saved it.
+        /// </summary>
+        public const string ANSI_RESTORE_CURSOR = "\u001b8";
+
+        /// <summary>
+        /// ANSI code that clears the cursor's whole line.
+        /// </summary>
+        public const string ANSI_CLEAR_LINE = "\u001b[2K";
+
+        /// <summary>
+        /// ANSI code that puts the scroll region back to the whole window.
+        /// </summary>
+        public const string ANSI_RESET_SCROLL_REGION = "\u001b[r";
+
+        /// <summary>
+        /// The fewest window rows the prompt is pinned at, so the log keeps at least two rows of its own.
+        /// </summary>
+        public const int MIN_PINNED_HEIGHT = 3;
+
+        private const string ANSI_CURSOR_UP = "\u001b[1A";
+
         private const int STD_OUTPUT_HANDLE = -11;
         private const uint ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
 
@@ -29,8 +59,17 @@ namespace EatMeServer
 
         private static bool _UseAnsi;
 
+        // null while the prompt is off
         private static Stopwatch _Uptime;
-        private static bool _IsPromptShowing;
+        private static ConsoleInput _Input;
+
+        // a scroll region keeps the prompt on the bottom row
+        private static bool _IsPinned;
+
+        // the window size the prompt was last drawn for, and the prompt text drawn
+        private static int _Width;
+        private static int _Height;
+        private static string _ShownPrompt;
 
         /// <summary>
         /// The console color for a kind of line.
@@ -121,53 +160,121 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Starts showing the prompt, timed from uptime, and shows it now.
+        /// ANSI code that keeps scrolling to rows 1 to height - 1, leaving the bottom row to the prompt. Row 1 is
+        /// the region's top, so lines scrolling out of it still go into the console's scrollback.
+        /// </summary>
+        public static string GetScrollRegionCode(int height)
+        {
+            return $"\u001b[1;{height - 1}r";
+        }
+
+        /// <summary>
+        /// ANSI code that moves the cursor to a row and column of the window, both counted from 1.
+        /// </summary>
+        public static string GetMoveCode(int row, int column)
+        {
+            return $"\u001b[{row};{column}H";
+        }
+
+        /// <summary>
+        /// Starts showing the prompt, timed from uptime, with an empty line to type in, and shows it now. Only
+        /// for a console someone types at: keys come in through HandleKey.
         /// </summary>
         public static void EnablePrompt(Stopwatch uptime)
         {
             lock (LOCK)
             {
                 _Uptime = uptime;
-                WritePrompt();
+                _Input = new ConsoleInput();
+                _IsPinned = _UseAnsi && Console.WindowHeight >= MIN_PINNED_HEIGHT;
+
+                if (_IsPinned)
+                    StartPinning(keepLogCursor: true);
+
+                DrawPrompt();
             }
         }
 
         /// <summary>
-        /// Stops showing the prompt, ending the line it is on.
+        /// Stops showing the prompt: wipes it and gives the window back its whole height.
         /// </summary>
         public static void DisablePrompt()
         {
             lock (LOCK)
             {
-                EndPromptLine();
+                if (_Uptime == null)
+                    return;
+
+                if (_IsPinned)
+                    Console.Write(GetMoveCode(_Height, 1) + ANSI_CLEAR_LINE + ANSI_RESET_SCROLL_REGION + ANSI_RESTORE_CURSOR);
+                else
+                    WipePromptLine();
+
+                _IsPinned = false;
                 _Uptime = null;
+                _Input = null;
             }
         }
 
         /// <summary>
-        /// Shows the prompt again, e.g. after a command that printed nothing.
+        /// Applies a key typed at the console and draws the line again. On Enter returns true with the typed
+        /// line, which is also logged after the prompt, as it would have been echoed.
         /// </summary>
-        public static void ShowPrompt()
+        public static bool HandleKey(ConsoleKeyInfo key, out string line)
         {
             lock (LOCK)
             {
-                EndPromptLine();
-                WritePrompt();
+                line = null;
+
+                if (_Input == null)
+                    return false;
+
+                if (!_Input.HandleKey(key, out line))
+                {
+                    DrawPrompt();
+                    return false;
+                }
+
+                Write(eLogType.Info, GetPrompt(_Uptime.Elapsed) + line);
+                return true;
             }
         }
 
         /// <summary>
-        /// Called when a typed line has been read: Enter already ended the prompt's line.
+        /// Draws the prompt again if the window has changed size or the uptime it shows has moved on. Called
+        /// every tick.
         /// </summary>
-        public static void OnLineTyped()
+        public static void Refresh()
         {
             lock (LOCK)
-                _IsPromptShowing = false;
+            {
+                if (_Uptime == null)
+                    return;
+
+                try
+                {
+                    if (_IsPinned && Console.WindowHeight != _Height)
+                    {
+                        if (Console.WindowHeight < MIN_PINNED_HEIGHT)
+                            return;
+
+                        StartPinning(keepLogCursor: false);
+                        DrawPrompt();
+                    }
+                    else if (Console.WindowWidth != _Width || GetPrompt(_Uptime.Elapsed) != _ShownPrompt)
+                    {
+                        DrawPrompt();
+                    }
+                }
+                catch (IOException)
+                {
+                }
+            }
         }
 
         /// <summary>
-        /// Clears the console. The prompt goes with it; ShowPrompt brings it back. Does nothing when the output
-        /// isn't a console (redirected, or under tests).
+        /// Clears the console, and draws the prompt again if it is on. Does nothing to the console when the output
+        /// isn't one (redirected, or under tests).
         /// </summary>
         public static void Clear()
         {
@@ -181,7 +288,14 @@ namespace EatMeServer
                 {
                 }
 
-                _IsPromptShowing = false;
+                if (_Uptime == null)
+                    return;
+
+                // the log starts again at the top
+                if (_IsPinned)
+                    Console.Write(GetScrollRegionCode(_Height) + GetMoveCode(1, 1) + ANSI_SAVE_CURSOR);
+
+                DrawPrompt();
             }
         }
 
@@ -189,7 +303,10 @@ namespace EatMeServer
         {
             lock (LOCK)
             {
-                EndPromptLine();
+                if (_IsPinned)
+                    Console.Write(ANSI_RESTORE_CURSOR + ANSI_CLEAR_LINE);
+                else if (_Uptime != null)
+                    WipePromptLine();
 
                 var old = Console.ForegroundColor;
                 Console.ForegroundColor = GetColor(type);
@@ -204,25 +321,62 @@ namespace EatMeServer
                     Console.WriteLine(text);
 
                 Console.ForegroundColor = old;
-                WritePrompt();
+
+                if (_IsPinned)
+                    Console.Write(ANSI_SAVE_CURSOR);
+
+                DrawPrompt();
             }
         }
 
-        private static void EndPromptLine()
+        // sets the scroll region for the window's height and saves where the log goes on: where the cursor is
+        // (moved up a row first if it is on the bottom row, which becomes the prompt's), or the region's last row
+        private static void StartPinning(bool keepLogCursor)
         {
-            if (_IsPromptShowing)
-                Console.WriteLine();
+            _Height = Console.WindowHeight;
 
-            _IsPromptShowing = false;
+            // a line feed scrolls the window when the cursor is on the bottom row, then the cursor goes back up
+            var logCursor = keepLogCursor
+                ? "\n" + ANSI_CURSOR_UP
+                : GetMoveCode(_Height - 1, 1);
+
+            // setting the region homes the cursor, so it is saved first and put back after
+            Console.Write(logCursor + ANSI_SAVE_CURSOR + GetScrollRegionCode(_Height) + ANSI_RESTORE_CURSOR);
         }
 
-        private static void WritePrompt()
+        // blanks the prompt's line and leaves the cursor at its start, for a console with no ANSI
+        private static void WipePromptLine()
         {
-            if (_Uptime == null)
+            Console.Write("\r" + new string(' ', Math.Max(0, _Width - 1)) + "\r");
+        }
+
+        // draws the prompt and as much of the typed line as fits, with the cursor where typing goes
+        private static void DrawPrompt()
+        {
+            if (_Uptime == null || _Input == null)
                 return;
 
-            Console.Write(GetPrompt(_Uptime.Elapsed));
-            _IsPromptShowing = true;
+            _Width = Console.WindowWidth;
+            _ShownPrompt = GetPrompt(_Uptime.Elapsed);
+
+            // the last column is left empty, so the line never wraps
+            var room = _Width - 1 - _ShownPrompt.Length;
+            var text = _Input.Text;
+            var start = ConsoleInput.GetViewStart(text.Length, _Input.Cursor, room);
+            var shown = room > 0 ? text.Substring(start, Math.Min(room, text.Length - start)) : string.Empty;
+            var beforeCursor = shown.Substring(0, Math.Min(shown.Length, _Input.Cursor - start));
+
+            if (_IsPinned)
+            {
+                Console.Write(GetMoveCode(_Height, 1) + ANSI_CLEAR_LINE + _ShownPrompt + shown
+                    + GetMoveCode(_Height, _ShownPrompt.Length + beforeCursor.Length + 1));
+            }
+            else
+            {
+                // padded to the end so nothing drawn before is left over, then rewritten up to the cursor
+                var padding = new string(' ', Math.Max(0, room - shown.Length));
+                Console.Write("\r" + _ShownPrompt + shown + padding + "\r" + _ShownPrompt + beforeCursor);
+            }
         }
     }
 }

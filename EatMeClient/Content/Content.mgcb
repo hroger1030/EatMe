@@ -506,7 +506,7 @@
 /processorParam:TextureFormat=Color
 /build:Images/powerpill0.png
 
-#begin Images/Pacbase0.png
+#begin Images/Pacbase0.png (48x48x4).png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -516,7 +516,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Images/Pacbase0.png
+/build:Images/Pacbase0.png (48x48x4).png
 
 #begin Images/GhostBase0.png
 /importer:TextureImporter

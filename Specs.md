@@ -23,8 +23,10 @@ This is the feature manifest for the SRG client and server application. It will 
 - Rainbow shaders
 - sliding on ice level
 - alternate wall art
-- change menus back to white and yellow colors with drop shadow.
 - the console needs to have input at the bottom, and a text buffer.
+- power pill needs to be an effect, pow didn't remove effect. 
+- print game effect 'stunned' in middle of screen
+- main pac still to pinkish. more orange?
 
 
 ## Game Client 
@@ -111,6 +113,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: TickRate (int) defaults to 60, times per second the server updates the game.
 - Server setting: TargetFps (int) defaults to 30, times per second the server sends the game state to clients.
 - The server console takes typed commands (case doesn't matter). Nothing a command changes is saved to server.cfg.
+- The typing prompt, `[Up:h:mm] ` (how long the server has been up), stays on the console's bottom row with the line being typed, and everything the server logs scrolls above it, so it never breaks into a half typed command. Left/Right, Home/End, Backspace and Delete edit the line, Up/Down bring back earlier lines, Esc clears it.
 
 | Command | Does |
 |---|---|
@@ -311,7 +314,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Spawn rooms are kept at least one cell clear of flag rooms and the ghost pen, so a flag base is always at least 3 cells from a spawn tile.
 - There are two power up spawn points on each half, near the ghost pen: on the left half, the plain dot cells outside the pen nearest its centre above and below its middle, copied to the right half like everything else. They look like normal cells with a dot.
 - Dots and power pills on blue's half of the map are drawn in a light blue, and on red's half in a light red.
-- The ghost pen floor is drawn in yellow over the ghost generator, and each team's spawn tiles in a darker shade of its team color (a burgundy for red, a navy for blue), each as one image stretched over the whole area (the pen uses GhostBase0.png, the spawn rooms Pacbase0.png).
+- Every spawn tile is drawn with its team's spawn sprite, blinking slowly between two frames (half a second each). The ghost pen floor over the ghost generator is drawn in its own colors (untinted), as one image stretched over the whole area (GhostBase0.png). The spawn sprites come from Pacbase0.png (48x48x4).png, a 2x2 grid with blue's two frames on top and red's below.
 
 ## Performance
 - Use multiplies over divides.

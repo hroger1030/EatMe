@@ -11,7 +11,7 @@ namespace EatMeLibrary
         public const string IMAGE_DOT = "Images/dot0";
         public const string IMAGE_POWER_PILL = "Images/powerpill0";
         // Floor tile drawn under the spawn rooms (team colors)
-        public const string IMAGE_PAC_BASE = "Images/Pacbase0";
+        public const string IMAGE_PAC_BASE = "Images/Pacbase0.png (48x48x4)";
         // Floor tile drawn under the ghost generator (yellow)
         public const string IMAGE_GHOST_BASE = "Images/GhostBase0";
         public const string IMAGE_FLAG0 = "Images/flag0";

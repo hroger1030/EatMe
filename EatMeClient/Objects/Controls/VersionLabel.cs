@@ -24,7 +24,7 @@ namespace EatMeClient
         {
             var textWidth = _font.MeasureString(_text).X;
             var position = new Vector2(VersionLabelMath.GetTextX(viewport.Width, textWidth, MARGIN), MARGIN);
-            spriteBatch.DrawString(_font, _text, position, ClientColors.COLOR_DARK_TITLE_ITEM);
+            TextHelper.DrawShadowedString(spriteBatch, _font, _text, position, ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
         }
     }
 }

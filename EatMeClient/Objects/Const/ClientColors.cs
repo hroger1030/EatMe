@@ -73,14 +73,17 @@ namespace EatMeClient
         // Panels: half-transparent black drawn behind text so it reads against the background image.
 
         public static readonly Color COLOR_TEXT_PANEL = new(0f, 0f, 0f, 0.5f);
+        public static readonly Color COLOR_TEXT_SHADOW = Color.Black;
         public static readonly Color COLOR_TRANSPARENT_BLUE10 = new(0.0f, 0.0f, 0.2f, 0.1f);
 
-        // Dark menu: text drawn straight onto the bright title background (title menu and every menu screen).
+        // Dark menu: text drawn straight onto the bright title background (title menu and every menu screen); items,
+        // selection and headings are drawn with a drop shadow (TextHelper.DrawShadowedString); titles are purple with a white shadow.
 
-        public static readonly Color COLOR_DARK_TITLE_ITEM = new(8, 8, 24);
-        public static readonly Color COLOR_DARK_MENU_ITEM = new(16, 16, 112);
-        public static readonly Color COLOR_DARK_MENU_SELECTED = new(176, 0, 0);
-        public static readonly Color COLOR_DARK_MENU_HEADING = new(16, 16, 112);
+        public static readonly Color COLOR_DARK_TITLE_ITEM = new(120, 40, 200);
+        public static readonly Color COLOR_DARK_TITLE_SHADOW = Color.White;
+        public static readonly Color COLOR_DARK_MENU_ITEM = COLOR_PAC_WHITE;
+        public static readonly Color COLOR_DARK_MENU_SELECTED = COLOR_PAC_YELLOW;
+        public static readonly Color COLOR_DARK_MENU_HEADING = COLOR_PAC_WHITE;
         public static readonly Color COLOR_DARK_MENU_HINT = new(64, 64, 96);
         public static readonly Color COLOR_DARK_MENU_SLIDER_BACKGROUND = new(128, 128, 160);
         public static readonly Color COLOR_DARK_MENU_SLIDER_SELECTED_BACKGROUND = new(224, 144, 144);

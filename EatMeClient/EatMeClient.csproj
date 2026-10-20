@@ -27,6 +27,11 @@
     <MonoGameContentReference Include="Content\Content.mgcb" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="readme.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\FastG\FastG\FastG.csproj" />
     <ProjectReference Include="..\EatMeLibrary\EatMeLibrary.csproj" />
   </ItemGroup>

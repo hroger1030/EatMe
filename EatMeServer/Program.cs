@@ -77,19 +77,33 @@ catch (SocketException ex)
 ServerLog.Write(eLogType.Info, "Game paused until a player joins");
 ServerLog.Write(eLogType.Info, "Type help for commands, quit or Ctrl+C to stop.");
 
+// someone types at a console: the server draws the typed line itself, under the log, so logged lines never break into it
+var isInteractive = !Console.IsInputRedirected && !Console.IsOutputRedirected;
+
+if (isInteractive)
+    ServerLog.EnablePrompt(uptime);
+
 // typed lines are read on their own thread and run on the main loop, so commands touch the game on one thread only
 var commands = new ConcurrentQueue<string>();
 var commandReader = new Thread(() =>
 {
     try
     {
-        string line;
-
-        // null once input is closed, e.g. with no console
-        while ((line = Console.ReadLine()) != null)
+        if (isInteractive)
         {
-            ServerLog.OnLineTyped();
-            commands.Enqueue(line);
+            while (true)
+            {
+                if (ServerLog.HandleKey(Console.ReadKey(intercept: true), out var typed))
+                    commands.Enqueue(typed);
+            }
+        }
+        else
+        {
+            string line;
+
+            // null once input is closed
+            while ((line = Console.ReadLine()) != null)
+                commands.Enqueue(line);
         }
     }
     catch (Exception ex)
@@ -99,7 +113,6 @@ var commandReader = new Thread(() =>
 })
 { IsBackground = true, Name = "Console commands" };
 commandReader.Start();
-ServerLog.EnablePrompt(uptime);
 
 var stopwatch = Stopwatch.StartNew();
 var lastTickMs = stopwatch.ElapsedMilliseconds;
@@ -122,14 +135,15 @@ while (!shutdown.IsCancellationRequested)
 
         if (output.Length > 0)
             ServerLog.Write(ServerCommands.GetOutputType(command), output);
-        else
-            ServerLog.ShowPrompt();
 
         if (quit)
             shutdown.Cancel();
     }
 
     game.Update(elapsedMs);
+
+    // the prompt follows window resizes and its uptime
+    ServerLog.Refresh();
 
     // read each tick, so the console's set TickRate takes effect at once
     var tickInterval = TimeSpan.FromSeconds(1.0 / Math.Max(1, settings.TickRate));

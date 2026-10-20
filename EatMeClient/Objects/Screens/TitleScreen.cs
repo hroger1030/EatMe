@@ -631,7 +631,7 @@ namespace EatMeClient
             {
                 var optionColor = i == _SelectedMenuIndex ? ClientColors.COLOR_DARK_MENU_SELECTED : ClientColors.COLOR_DARK_MENU_ITEM;
                 var optionPosition = new Vector2(optionBounds[i].X, optionBounds[i].Y);
-                _SpriteBatch.DrawString(_MenuFont, MENU_OPTIONS[i], optionPosition, optionColor);
+                TextHelper.DrawShadowedString(_SpriteBatch, _MenuFont, MENU_OPTIONS[i], optionPosition, optionColor);
             }
 
             // message scroller along the bottom

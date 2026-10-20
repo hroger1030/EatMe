@@ -152,7 +152,7 @@ namespace EatMeClient
 
             // label right-aligned in its column
             var labelSize = Font.MeasureString(Label);
-            spriteBatch.DrawString(Font, Label, new Vector2(position.X + labelColumnWidth - labelSize.X, position.Y), textColor);
+            TextHelper.DrawShadowedString(spriteBatch, Font, Label, new Vector2(position.X + labelColumnWidth - labelSize.X, position.Y), textColor);
 
             var valueX = position.X + labelColumnWidth + LABEL_GAP;
 
@@ -165,7 +165,7 @@ namespace EatMeClient
             }
 
             var showCursor = isFocused && _BlinkTime < CURSOR_BLINK_SECONDS;
-            spriteBatch.DrawString(Font, showCursor ? Value + CURSOR : Value, new Vector2(valueX, position.Y), textColor);
+            TextHelper.DrawShadowedString(spriteBatch, Font, showCursor ? Value + CURSOR : Value, new Vector2(valueX, position.Y), textColor);
         }
     }
 }

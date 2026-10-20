@@ -305,7 +305,7 @@ namespace EatMeClient
 
             var headingSize = _TitleFont.MeasureString(Const.STRING_JOIN_GAME);
             var headingPosition = new Vector2((viewport.Width - headingSize.X) / 2f, viewport.Height * HEADING_Y_RATIO);
-            spriteBatch.DrawString(_TitleFont, Const.STRING_JOIN_GAME, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM);
+            TextHelper.DrawShadowedString(spriteBatch, _TitleFont, Const.STRING_JOIN_GAME, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
 
             var items = GetItems(viewport);
 
@@ -331,7 +331,7 @@ namespace EatMeClient
                         break;
 
                     case eItemKind.Join:
-                        spriteBatch.DrawString(_Font, Const.STRING_JOIN, position, color);
+                        TextHelper.DrawShadowedString(spriteBatch, _Font, Const.STRING_JOIN, position, color);
                         DrawLanHeading(spriteBatch, viewport, item.Bounds.Bottom + ITEM_SPACING + LAN_HEADING_GAP);
                         break;
 
@@ -342,11 +342,11 @@ namespace EatMeClient
                         if (!isSelected && !listing.CanJoin())
                             color = ClientColors.COLOR_DARK_MENU_HINT;
 
-                        spriteBatch.DrawString(_Font, GetLanGameText(listing), position, color);
+                        TextHelper.DrawShadowedString(spriteBatch, _Font, GetLanGameText(listing), position, color);
                         break;
 
                     case eItemKind.Back:
-                        spriteBatch.DrawString(_Font, Const.STRING_BACK, position, color);
+                        TextHelper.DrawShadowedString(spriteBatch, _Font, Const.STRING_BACK, position, color);
 
                         if (_Error != null)
                         {
@@ -372,7 +372,7 @@ namespace EatMeClient
         private void DrawLanHeading(SpriteBatch spriteBatch, Viewport viewport, float y)
         {
             var size = _Font.MeasureString(Const.STRING_LAN_GAMES);
-            spriteBatch.DrawString(_Font, Const.STRING_LAN_GAMES, new Vector2((viewport.Width - size.X) / 2f, y), ClientColors.COLOR_DARK_TITLE_ITEM);
+            TextHelper.DrawShadowedString(spriteBatch, _Font, Const.STRING_LAN_GAMES, new Vector2((viewport.Width - size.X) / 2f, y), ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
 
             if (_LanGames.Count > 0)
                 return;

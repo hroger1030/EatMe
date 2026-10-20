@@ -46,10 +46,12 @@ namespace EatMeClient
                 InputManager.GamePadButtonPressed(Buttons.A) ||
                 InputManager.GamePadButtonPressed(Buttons.Back);
 
-            // W/S and up/down scroll the story text; A/D and left/right select the Back option
+            // W/S and up/down scroll the story text; down, A/D and left/right also select the Back option
             if (InputManager.KeyPressed(Keys.A) || InputManager.KeyPressed(Keys.D) ||
                 InputManager.KeyPressed(Keys.Left) || InputManager.KeyPressed(Keys.Right) ||
+                InputManager.KeyPressed(Keys.S) || InputManager.KeyPressed(Keys.Down) ||
                 InputManager.GamePadButtonPressed(Buttons.DPadLeft) || InputManager.GamePadButtonPressed(Buttons.DPadRight) ||
+                InputManager.GamePadButtonPressed(Buttons.DPadDown) || InputManager.GamePadButtonPressed(Buttons.LeftThumbstickDown) ||
                 InputManager.GamePadButtonPressed(Buttons.LeftThumbstickLeft) || InputManager.GamePadButtonPressed(Buttons.LeftThumbstickRight))
             {
                 if (!_IsBackSelected)
@@ -104,7 +106,7 @@ namespace EatMeClient
             // screen title
             var headingSize = _TitleFont.MeasureString(Const.STRING_STORY);
             var headingPosition = new Vector2((viewport.Width - headingSize.X) / 2f, viewport.Height * 0.2f);
-            spriteBatch.DrawString(_TitleFont, Const.STRING_STORY, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM);
+            TextHelper.DrawShadowedString(spriteBatch, _TitleFont, Const.STRING_STORY, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
 
             // story text
             _TypingText.Draw(spriteBatch, GetTextAreaBounds(viewport));
@@ -112,7 +114,7 @@ namespace EatMeClient
             // back option
             var backBounds = GetBackBounds(viewport);
             var backColor = _IsBackSelected || _IsBackHovered ? ClientColors.COLOR_DARK_MENU_SELECTED : ClientColors.COLOR_DARK_MENU_ITEM;
-            spriteBatch.DrawString(_Font, Const.STRING_BACK, new Vector2(backBounds.X, backBounds.Y), backColor);
+            TextHelper.DrawShadowedString(spriteBatch, _Font, Const.STRING_BACK, new Vector2(backBounds.X, backBounds.Y), backColor);
 
             spriteBatch.End();
         }

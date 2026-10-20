@@ -69,7 +69,6 @@ namespace EatMeClient
         /// The results screen's countdown and tip sit straight on the picture, so each gets a black drop shadow
         /// this many pixels down and to the right to stay readable.
         /// </summary>
-        private const float RESULTS_SHADOW_PIXELS = 2f;
 
         /// <summary>
         /// A carried flag is drawn this fraction of its carrier's width, over the carrier's shoulder.
@@ -1017,14 +1016,14 @@ namespace EatMeClient
                 var tipSize = _NameFont.MeasureString(tip);
                 var tipTop = viewport.Height - RESULTS_GAP - tipSize.Y;
                 var tipPosition = new Vector2((float)Math.Round(viewport.Width * 0.5f - tipSize.X * 0.5f), (float)Math.Round(tipTop));
-                DrawShadowedString(spriteBatch, _NameFont, tip, tipPosition, 1f, ClientColors.COLOR_PAC_WHITE);
+                TextHelper.DrawShadowedString(spriteBatch, _NameFont, tip, tipPosition, ClientColors.COLOR_PAC_WHITE);
                 countdownBottom = tipTop - RESULTS_GAP;
             }
 
             var countdownTop = countdownBottom - countdownHeight;
             var countdownWidth = _Font.MeasureString(countdown).X * RESULTS_COUNTDOWN_SCALE;
             var countdownPosition = new Vector2((float)Math.Round(viewport.Width * 0.5f - countdownWidth * 0.5f), (float)Math.Round(countdownTop));
-            DrawShadowedString(spriteBatch, _Font, countdown, countdownPosition, RESULTS_COUNTDOWN_SCALE, ClientColors.COLOR_PAC_WHITE);
+            TextHelper.DrawShadowedString(spriteBatch, _Font, countdown, countdownPosition, ClientColors.COLOR_PAC_WHITE, RESULTS_COUNTDOWN_SCALE);
 
             var halfWidth = viewport.Width * 0.5f;
             var blockTop = titleTop + titleHeight + RESULTS_GAP;
@@ -1110,16 +1109,6 @@ namespace EatMeClient
                 spriteBatch.Draw(_Pixel, new Rectangle(x + inset, y + row, w - inset * 2, 1), Color.Black);
                 spriteBatch.Draw(_Pixel, new Rectangle(x + inset, y + h - 1 - row, w - inset * 2, 1), Color.Black);
             }
-        }
-
-        /// <summary>
-        /// Draws text with a black drop shadow RESULTS_SHADOW_PIXELS down and to the right, so it reads on any picture.
-        /// </summary>
-        private static void DrawShadowedString(SpriteBatch spriteBatch, SpriteFont font, string text, Vector2 position, float scale, Color color)
-        {
-            var shadow = position + new Vector2(RESULTS_SHADOW_PIXELS, RESULTS_SHADOW_PIXELS);
-            spriteBatch.DrawString(font, text, shadow, Color.Black, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(font, text, position, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
 
         /// <summary>
@@ -1258,13 +1247,37 @@ namespace EatMeClient
             }
 
             foreach (var box in _GhostPenBoxes)
-                DrawFloor(spriteBatch, viewport, box, _GhostBaseTexture, ClientColors.COLOR_PAC_YELLOW);
+                DrawFloor(spriteBatch, viewport, box, _GhostBaseTexture, Color.White);
+
+            var frame = PacBaseSprites.GetFrame(_AnimationTime);
 
             foreach (var box in _RedSpawnBoxes)
-                DrawFloor(spriteBatch, viewport, box, _PacBaseTexture, ClientColors.GetSpawnColor(eTeam.Red));
+                DrawSpawnTiles(spriteBatch, viewport, box, eTeam.Red, frame);
 
             foreach (var box in _BlueSpawnBoxes)
-                DrawFloor(spriteBatch, viewport, box, _PacBaseTexture, ClientColors.GetSpawnColor(eTeam.Blue));
+                DrawSpawnTiles(spriteBatch, viewport, box, eTeam.Blue, frame);
+        }
+
+        /// <summary>
+        /// Draws one pac base sprite on every cell of a spawn area, its team's row at the current blink frame.
+        /// </summary>
+        private void DrawSpawnTiles(SpriteBatch spriteBatch, Viewport viewport, CellBox box, eTeam team, int frame)
+        {
+            var source = new Rectangle(PacBaseSprites.GetCellX(frame), PacBaseSprites.GetCellY(team), PacBaseSprites.CELL_PIXELS, PacBaseSprites.CELL_PIXELS);
+
+            for (var y = box.Y; y < box.Y + box.Height; y++)
+            {
+                for (var x = box.X; x < box.X + box.Width; x++)
+                {
+                    var screen = _Camera.ToScreenPosition(CellToWorld(x, y), viewport);
+                    var bounds = new Rectangle((int)screen.X, (int)screen.Y, CELL_PIXELS, CELL_PIXELS);
+
+                    if (bounds.Right < 0 || bounds.Bottom < 0 || bounds.Left > viewport.Width || bounds.Top > viewport.Height)
+                        continue;
+
+                    spriteBatch.Draw(_PacBaseTexture, bounds, source, Color.White);
+                }
+            }
         }
 
         private void DrawFloor(SpriteBatch spriteBatch, Viewport viewport, CellBox box, Texture2D texture, Color tint)

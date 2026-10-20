@@ -304,7 +304,7 @@ namespace EatMeClient
 
             var headingSize = _TitleFont.MeasureString(Const.STRING_GAME_SETTINGS);
             var headingPosition = new Vector2((viewport.Width - headingSize.X) / 2f, viewport.Height * 0.2f);
-            spriteBatch.DrawString(_TitleFont, Const.STRING_GAME_SETTINGS, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM);
+            TextHelper.DrawShadowedString(spriteBatch, _TitleFont, Const.STRING_GAME_SETTINGS, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
 
             _MusicVolumeSlider.Draw(spriteBatch, GetMusicSliderPosition(viewport), _SelectedItem == SettingsItem.MusicVolume);
             _SoundVolumeSlider.Draw(spriteBatch, GetSoundSliderPosition(viewport), _SelectedItem == SettingsItem.SoundVolume);
@@ -315,7 +315,7 @@ namespace EatMeClient
 
             var backBounds = GetBackBounds(viewport);
             var backColor = (_SelectedItem == SettingsItem.Back) ? ClientColors.COLOR_DARK_MENU_SELECTED : ClientColors.COLOR_DARK_MENU_ITEM;
-            spriteBatch.DrawString(_Font, Const.STRING_BACK, new Vector2(backBounds.X, backBounds.Y), backColor);
+            TextHelper.DrawShadowedString(spriteBatch, _Font, Const.STRING_BACK, new Vector2(backBounds.X, backBounds.Y), backColor);
 
             spriteBatch.End();
         }

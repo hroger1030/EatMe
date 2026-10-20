@@ -68,10 +68,12 @@ namespace EatMeClient
                 InputManager.GamePadButtonPressed(Buttons.A) ||
                 InputManager.GamePadButtonPressed(Buttons.Back);
 
-            // up and down scroll the table, so left and right select the Back option (the only one on this screen)
+            // up and down scroll the table; down, left and right also select the Back option (the only one on this screen)
             if (InputManager.KeyPressed(Keys.A) || InputManager.KeyPressed(Keys.D) ||
                 InputManager.KeyPressed(Keys.Left) || InputManager.KeyPressed(Keys.Right) ||
+                InputManager.KeyPressed(Keys.S) || InputManager.KeyPressed(Keys.Down) ||
                 InputManager.GamePadButtonPressed(Buttons.DPadLeft) || InputManager.GamePadButtonPressed(Buttons.DPadRight) ||
+                InputManager.GamePadButtonPressed(Buttons.DPadDown) || InputManager.GamePadButtonPressed(Buttons.LeftThumbstickDown) ||
                 InputManager.GamePadButtonPressed(Buttons.LeftThumbstickLeft) || InputManager.GamePadButtonPressed(Buttons.LeftThumbstickRight))
             {
                 if (!_isBackSelected)
@@ -223,12 +225,12 @@ namespace EatMeClient
             // screen title
             var headingSize = _TitleFont.MeasureString(Const.STRING_HIGH_SCORES);
             var headingPosition = new Vector2((viewport.Width - headingSize.X) / 2f, viewport.Height * TITLE_Y_RATIO);
-            spriteBatch.DrawString(_TitleFont, Const.STRING_HIGH_SCORES, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM);
+            TextHelper.DrawShadowedString(spriteBatch, _TitleFont, Const.STRING_HIGH_SCORES, headingPosition, ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
 
             // back option
             var backBounds = GetBackBounds(viewport);
             var backColor = _isBackSelected || _isBackHovered ? ClientColors.COLOR_DARK_MENU_SELECTED : ClientColors.COLOR_DARK_MENU_ITEM;
-            spriteBatch.DrawString(_font, Const.STRING_BACK, new Vector2(backBounds.X, backBounds.Y), backColor);
+            TextHelper.DrawShadowedString(spriteBatch, _font, Const.STRING_BACK, new Vector2(backBounds.X, backBounds.Y), backColor);
 
             // high score table (ends the batch and begins a fresh one around its clipped rows)
             DrawTable(spriteBatch, viewport);
@@ -246,10 +248,10 @@ namespace EatMeClient
             for (var column = 0; column < TABLE_COLUMNS; column++)
             {
                 var (rankX, nameX, scoreX, dateX) = GetColumnPositions(viewport, column);
-                spriteBatch.DrawString(_TableFont, Const.STRING_RANK, new Vector2(rankX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
-                spriteBatch.DrawString(_TableFont, Const.STRING_NAME, new Vector2(nameX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
-                spriteBatch.DrawString(_TableFont, Const.STRING_SCORE, new Vector2(scoreX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
-                spriteBatch.DrawString(_TableFont, Const.STRING_DATE, new Vector2(dateX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
+                TextHelper.DrawShadowedString(spriteBatch, _TableFont, Const.STRING_RANK, new Vector2(rankX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
+                TextHelper.DrawShadowedString(spriteBatch, _TableFont, Const.STRING_NAME, new Vector2(nameX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
+                TextHelper.DrawShadowedString(spriteBatch, _TableFont, Const.STRING_SCORE, new Vector2(scoreX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
+                TextHelper.DrawShadowedString(spriteBatch, _TableFont, Const.STRING_DATE, new Vector2(dateX, headerY), ClientColors.COLOR_DARK_MENU_HEADING);
             }
 
             DrawRows(spriteBatch, viewport);
@@ -286,10 +288,10 @@ namespace EatMeClient
                     var entry = Scores[index];
                     var (rankX, nameX, scoreX, dateX) = GetColumnPositions(viewport, column);
 
-                    spriteBatch.DrawString(_TableFont, HighScoreRules.GetRankText(index), new Vector2(rankX, y), ClientColors.COLOR_DARK_MENU_ITEM);
-                    spriteBatch.DrawString(_TableFont, entry.Name, new Vector2(nameX, y), ClientColors.COLOR_DARK_MENU_ITEM);
-                    spriteBatch.DrawString(_TableFont, entry.Score.ToString(), new Vector2(scoreX, y), ClientColors.COLOR_DARK_MENU_ITEM);
-                    spriteBatch.DrawString(_TableFont, entry.Date, new Vector2(dateX, y), ClientColors.COLOR_DARK_MENU_ITEM);
+                    TextHelper.DrawShadowedString(spriteBatch, _TableFont, HighScoreRules.GetRankText(index), new Vector2(rankX, y), ClientColors.COLOR_DARK_MENU_ITEM);
+                    TextHelper.DrawShadowedString(spriteBatch, _TableFont, entry.Name, new Vector2(nameX, y), ClientColors.COLOR_DARK_MENU_ITEM);
+                    TextHelper.DrawShadowedString(spriteBatch, _TableFont, entry.Score.ToString(), new Vector2(scoreX, y), ClientColors.COLOR_DARK_MENU_ITEM);
+                    TextHelper.DrawShadowedString(spriteBatch, _TableFont, entry.Date, new Vector2(dateX, y), ClientColors.COLOR_DARK_MENU_ITEM);
                 }
             }
 
