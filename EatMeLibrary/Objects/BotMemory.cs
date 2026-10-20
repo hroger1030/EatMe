@@ -42,6 +42,12 @@ namespace EatMeLibrary
         /// </summary>
         public const int TURN_BACK_COOLDOWN_MS = 500;
 
+        /// <summary>
+        /// How long, in ms, a bot takes to react to a new threat, as a human would: it carries on with what it was
+        /// doing until then.
+        /// </summary>
+        public const int REACTION_MS = 150;
+
         private readonly List<(int X, int Y)> _ThreatCells = [];
         private bool[,] _AvoidMask = new bool[0, 0];
 
@@ -81,6 +87,21 @@ namespace EatMeLibrary
         public bool CanTurnBack => TurnBackMsLeft <= 0;
 
         /// <summary>
+        /// True from the moment the bot sees a threat until it has none (ForgetThreat).
+        /// </summary>
+        public bool IsNoticing { get; private set; }
+
+        /// <summary>
+        /// ms left before the bot reacts to the threat it has noticed.
+        /// </summary>
+        public int ReactionMsLeft { get; private set; }
+
+        /// <summary>
+        /// True once the bot may act on a threat: it is already fleeing, or its reaction time is up.
+        /// </summary>
+        public bool HasReacted => IsFleeing || (IsNoticing && ReactionMsLeft <= 0);
+
+        /// <summary>
         /// True if the goal should be kept rather than picked again: there is one and its time isn't up.
         /// </summary>
         public bool IsCommitted => Goal != eBotGoal.None && GoalMsLeft > 0;
@@ -94,6 +115,7 @@ namespace EatMeLibrary
             FleeMsLeft = Math.Max(0, FleeMsLeft - ms);
             AvoidMsLeft = Math.Max(0, AvoidMsLeft - ms);
             TurnBackMsLeft = Math.Max(0, TurnBackMsLeft - ms);
+            ReactionMsLeft = Math.Max(0, ReactionMsLeft - ms);
         }
 
         /// <summary>
@@ -108,6 +130,7 @@ namespace EatMeLibrary
             _ThreatCells.Clear();
             AvoidMsLeft = 0;
             TurnBackMsLeft = 0;
+            ForgetThreat();
         }
 
         /// <summary>
@@ -155,6 +178,7 @@ namespace EatMeLibrary
             IsFleeing = false;
             FleeMsLeft = 0;
             ClearGoal();
+            ForgetThreat();
 
             if (_AvoidMask.GetLength(0) != width || _AvoidMask.GetLength(1) != height)
                 _AvoidMask = new bool[width, height];
@@ -175,6 +199,27 @@ namespace EatMeLibrary
         public void TurnedBack()
         {
             TurnBackMsLeft = TURN_BACK_COOLDOWN_MS;
+        }
+
+        /// <summary>
+        /// Notes that the bot sees a threat; the first time, it starts reactionMs to react (0 reacts at once).
+        /// </summary>
+        public void NoticeThreat(int reactionMs = REACTION_MS)
+        {
+            if (IsNoticing)
+                return;
+
+            IsNoticing = true;
+            ReactionMsLeft = reactionMs;
+        }
+
+        /// <summary>
+        /// The bot sees no threat any more, so the next one it sees takes the full reaction time again.
+        /// </summary>
+        public void ForgetThreat()
+        {
+            IsNoticing = false;
+            ReactionMsLeft = 0;
         }
     }
 }

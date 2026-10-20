@@ -73,6 +73,12 @@ namespace EatMeLibrary
         public const int CALM_DISTANCE = DANGER_DISTANCE + 3;
 
         /// <summary>
+        /// A fleeing bot only turns back when that takes it at least this many steps further from its threats than the
+        /// best way on, so it doesn't flip back and forth as a chasing ghost re-picks its path.
+        /// </summary>
+        public const int FLEE_TURN_BACK_MARGIN = 2;
+
+        /// <summary>
         /// The order PickGoal tries goals in, after CarryHome.
         /// </summary>
         private static readonly eBotGoal[] GOAL_ORDER =
@@ -110,10 +116,12 @@ namespace EatMeLibrary
         /// BotMemory.FLEE_MIN_MS has passed, then keeps out of where they were for a while (BotMemory.AvoidMask).
         /// Outside fleeing it only turns back when its goal changed or its target moves (IsMovingTarget).
         /// randomTurnPercent is the chance it wanders instead of heading for a target (never while fleeing or
-        /// carrying a flag). Null when it has nowhere better to go than straight on.
+        /// carrying a flag). A bot that isn't fleeing takes reactionMs (BotMemory.NoticeThreat) to start fleeing from
+        /// a threat it has just seen, carrying on as if it weren't there until then. Null when it has nowhere better
+        /// to go than straight on.
         /// </summary>
         public static eFacing? ChooseDirection(BotWorld world, Player me, int x, int y, PathMap paths, PathMap threatPaths, Random random,
-            BotMemory memory = null, int randomTurnPercent = RANDOM_TURN_PERCENT)
+            BotMemory memory = null, int randomTurnPercent = RANDOM_TURN_PERCENT, int reactionMs = BotMemory.REACTION_MS)
         {
             memory ??= new BotMemory();
 
@@ -125,10 +133,20 @@ namespace EatMeLibrary
             if (threats.Count == 0 && memory.IsFleeing && memory.FleeMsLeft > 0f)
                 threats.AddRange(memory.ThreatCells);
 
+            if (threats.Count == 0)
+                memory.ForgetThreat();
+            else if (!memory.IsFleeing)
+            {
+                memory.NoticeThreat(reactionMs);
+
+                if (!memory.HasReacted)
+                    threats.Clear();
+            }
+
             if (threats.Count > 0)
             {
                 memory.Flee(threats);
-                return ChooseFleeDirection(world.Map, x, y, threats, threatPaths, blocked);
+                return ChooseFleeDirection(world.Map, x, y, me.Facing, threats, threatPaths, blocked);
             }
 
             if (memory.IsFleeing)
@@ -487,54 +505,73 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Which way a bot on the centre of cell (x, y) runs from threats in the given cells: toward the open
-        /// neighbour furthest from all of them by path, turning back if that is best. Null if it is boxed in.
+        /// Which way a bot on the centre of cell (x, y), heading facing, runs from threats in the given cells: toward
+        /// the open neighbour furthest from all of them by path, straight on when that ties. It turns back only when
+        /// there is no other way or turning back is FLEE_TURN_BACK_MARGIN steps further away than the best way on.
+        /// Null if it is boxed in.
         /// </summary>
-        public static eFacing? ChooseFleeDirection(eGridDef[,] map, int x, int y, List<(int X, int Y)> threats, PathMap threatPaths, eGridDef blocked = eGridDef.Wall)
+        public static eFacing? ChooseFleeDirection(eGridDef[,] map, int x, int y, eFacing facing, List<(int X, int Y)> threats, PathMap threatPaths, eGridDef blocked = eGridDef.Wall)
         {
             // the bot's neighbours are at most CALM_DISTANCE + 1 from a threat; anything further is far enough
             threatPaths.Fill(map, threats, CALM_DISTANCE + 2);
 
-            var width = map.GetLength(0);
-            var height = map.GetLength(1);
+            var back = MazeMovement.GetOpposite(facing);
             eFacing? best = null;
             var bestDistance = -1;
 
             foreach (var direction in Enum.GetValues<eFacing>())
             {
-                if (!MazeMovement.CanMove(map, x, y, direction, true, blocked))
+                if (direction == back)
                     continue;
 
-                var (nx, ny) = MazeMovement.GetNeighbor(x, y, direction, width, height);
-                var distance = threatPaths.GetDistance(nx, ny);
+                var distance = GetFleeDistance(map, x, y, direction, threatPaths, blocked);
 
-                // a cell no threat can reach is as far away as it gets
-                if (distance == PathMap.UNREACHED)
-                    distance = int.MaxValue;
-
-                if (distance > bestDistance)
+                if (distance > bestDistance || (distance == bestDistance && direction == facing))
                 {
                     best = direction;
                     bestDistance = distance;
                 }
             }
 
+            var backDistance = GetFleeDistance(map, x, y, back, threatPaths, blocked);
+
+            if (backDistance >= 0 && (!best.HasValue || backDistance >= bestDistance + FLEE_TURN_BACK_MARGIN))
+                return back;
+
             return best;
         }
 
         /// <summary>
+        /// Steps from the threats to the neighbour of (x, y) the given way: CALM_DISTANCE + 2 for one no threat
+        /// reaches (as far away as it gets), -1 if the bot can't go that way.
+        /// </summary>
+        private static int GetFleeDistance(eGridDef[,] map, int x, int y, eFacing direction, PathMap threatPaths, eGridDef blocked)
+        {
+            if (!MazeMovement.CanMove(map, x, y, direction, true, blocked))
+                return -1;
+
+            var (nx, ny) = MazeMovement.GetNeighbor(x, y, direction, map.GetLength(0), map.GetLength(1));
+            var distance = threatPaths.GetDistance(nx, ny);
+
+            return distance == PathMap.UNREACHED ? CALM_DISTANCE + 2 : distance;
+        }
+
+        /// <summary>
         /// True if a bot between cell centres is heading straight at a threat within DANGER_DISTANCE along its row or
-        /// column, so it should turn back now rather than wait for the next centre.
+        /// column with no wall between them, so it should turn back now rather than wait for the next centre.
         /// </summary>
         public static bool ShouldTurnBack(BotWorld world, Player me)
         {
+            var (x, y) = MazeMovement.GetCell(me.Location);
+            var clear = WeaponRules.GetClearCells(world.Map, x, y, me.Facing, DANGER_DISTANCE);
+
             if (!CanKillGhosts(world, me) && !me.PassesThrough)
                 foreach (var ghost in world.Ghosts)
-                    if (ghost.Alive && IsAhead(me, ghost.Location))
+                    if (ghost.Alive && IsAhead(world, me, x, y, clear, ghost.Location))
                         return true;
 
             foreach (var pac in world.Pacs)
-                if (IsThreat(world, me, pac) && IsAhead(me, pac.Location))
+                if (IsThreat(world, me, pac) && IsAhead(world, me, x, y, clear, pac.Location))
                     return true;
 
             return false;
@@ -574,14 +611,15 @@ namespace EatMeLibrary
             return MazeMovement.CanMove(map, x, y, back, true, blocked) ? back : null;
         }
 
-        private static bool IsAhead(Player me, Point2 other)
+        /// <summary>
+        /// True if other is in me's own cell ahead of it, or in one of the clear cells ahead of cell (x, y).
+        /// </summary>
+        private static bool IsAhead(BotWorld world, Player me, int x, int y, int clear, Point2 other)
         {
-            var dx = other.X - me.Location.X;
-            var dy = other.Y - me.Location.Y;
-            var along = MazeMovement.IsHorizontal(me.Facing) ? MathF.Abs(dx) : MathF.Abs(dy);
-            var across = MazeMovement.IsHorizontal(me.Facing) ? MathF.Abs(dy) : MathF.Abs(dx);
+            if (MazeMovement.GetCell(other) == (x, y))
+                return MazeMovement.IsHeadingToward(me.Location, me.Facing, other);
 
-            return across < 1f && along <= DANGER_DISTANCE && MazeMovement.IsHeadingToward(me.Location, me.Facing, other);
+            return WeaponRules.IsInLineAhead(x, y, me.Facing, clear, other, world.Map.GetLength(0), world.Map.GetLength(1));
         }
 
         private static void AddIfClose(List<(int X, int Y)> cells, PathMap paths, (int X, int Y) cell, int maxDistance)

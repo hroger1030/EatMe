@@ -21,9 +21,9 @@ namespace EatMeLibrary
         public const int MAX_SWORDS = 2;
 
         /// <summary>
-        /// A fireball moves this many times PacSpeed, a little faster than a pac.
+        /// A fireball moves this many times PacSpeed, much faster than a pac.
         /// </summary>
-        public const float FIREBALL_SPEED_SCALE = 1.25f;
+        public const float FIREBALL_SPEED_SCALE = 3.75f;
 
         /// <summary>
         /// After the action button does something it does nothing again for this long, whatever the effect, so it
@@ -183,6 +183,32 @@ namespace EatMeLibrary
         {
             var cell = map[x, y];
             return cell.HasFlag(eGridDef.Wall) && !cell.HasFlag(eGridDef.TetrisBlock) && !IsOuterCell(x, y, map.GetLength(0), map.GetLength(1));
+        }
+
+        /// <summary>
+        /// Fills cells with every map cell a circle of radius (in cells) at centre overlaps, so a big pac's reach matches
+        /// its size. Cells off the map are left out; a cell only touched at its edge doesn't count.
+        /// </summary>
+        public static void GetTouchedCells(Point2 centre, float radius, int width, int height, List<(int X, int Y)> cells)
+        {
+            cells.Clear();
+            var minX = Math.Max(0, (int)MathF.Floor(centre.X - radius));
+            var maxX = Math.Min(width - 1, (int)MathF.Floor(centre.X + radius));
+            var minY = Math.Max(0, (int)MathF.Floor(centre.Y - radius));
+            var maxY = Math.Min(height - 1, (int)MathF.Floor(centre.Y + radius));
+
+            for (var x = minX; x <= maxX; x++)
+            {
+                for (var y = minY; y <= maxY; y++)
+                {
+                    // the nearest point of the cell's square to the centre
+                    var dx = centre.X - Math.Clamp(centre.X, x, x + 1f);
+                    var dy = centre.Y - Math.Clamp(centre.Y, y, y + 1f);
+
+                    if (dx * dx + dy * dy < radius * radius)
+                        cells.Add((x, y));
+                }
+            }
         }
 
         /// <summary>

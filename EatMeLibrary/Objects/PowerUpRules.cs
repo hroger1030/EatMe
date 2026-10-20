@@ -35,6 +35,39 @@ namespace EatMeLibrary
         public const float HOVER_PHASE_PER_ID = 0.37f;
 
         /// <summary>
+        /// Size, in cells, of the oval shadow drawn under a power up at its true position, so its bob shows whichever
+        /// way it moves.
+        /// </summary>
+        public const float SHADOW_WIDTH_CELLS = 0.7f;
+        public const float SHADOW_HEIGHT_CELLS = 0.25f;
+
+        /// <summary>
+        /// How far, in cells, the shadow's centre sits below the power up's position.
+        /// </summary>
+        public const float SHADOW_OFFSET_CELLS = 0.45f;
+
+        /// <summary>
+        /// Opacity of the shadow at its centre; it fades to nothing at its edge.
+        /// </summary>
+        public const float SHADOW_ALPHA = 0.6f;
+
+        /// <summary>
+        /// Opacity (0 to 1) of pixel (x, y) of a shadow texture width by height pixels: SHADOW_ALPHA at the oval's
+        /// centre, fading to 0 at its edge, and 0 outside it.
+        /// </summary>
+        public static float GetShadowAlpha(int x, int y, int width, int height)
+        {
+            var dx = (x + 0.5f - width * 0.5f) / (width * 0.5f);
+            var dy = (y + 0.5f - height * 0.5f) / (height * 0.5f);
+            var distance = MathF.Sqrt(dx * dx + dy * dy);
+
+            if (distance >= 1f)
+                return 0f;
+
+            return SHADOW_ALPHA * (1f - distance * distance);
+        }
+
+        /// <summary>
         /// Vertical offset, in cells, of a power up's sprite at the given time: a sine wave between -HOVER_CELLS and HOVER_CELLS.
         /// </summary>
         public static float GetHoverOffset(double seconds, int powerUpId)

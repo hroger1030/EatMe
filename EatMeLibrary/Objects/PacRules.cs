@@ -76,6 +76,15 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// Growth for a pac standing on its own team's spawn for the given seconds: the same rate as running over a line of
+        /// dots, one dot (dotGain) for every cell it would move at speed (cells a second).
+        /// </summary>
+        public static float GetSpawnFeedGain(float dotGain, float speed, float seconds)
+        {
+            return dotGain * speed * seconds;
+        }
+
+        /// <summary>
         /// What a power up effect multiplies a dot's growth (DotSizeGain) by: SWEET_TOOTH_DOT_GAIN_SCALE for Sweet Tooth, otherwise 1.
         /// </summary>
         public static float GetDotGainScale(ePowerUpEffect effect)

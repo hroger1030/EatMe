@@ -26,6 +26,44 @@ namespace EatMeTests
         }
 
         [Test]
+        public void PickRandomLevel_IsInRangeAndNeverTheCurrentLevel()
+        {
+            var random = new Random(5);
+
+            for (var current = 1; current <= Levels.Count; current++)
+            {
+                for (var i = 0; i < 200; i++)
+                {
+                    var level = Levels.PickRandomLevel(current, random);
+
+                    Assert.That(level, Is.InRange(1, Levels.Count));
+                    Assert.That(level, Is.Not.EqualTo(current));
+                }
+            }
+        }
+
+        [Test]
+        public void PickRandomLevel_PastTheLastLevel_SkipsTheSameLevel()
+        {
+            var random = new Random(9);
+
+            for (var i = 0; i < 200; i++)
+                Assert.That(Levels.PickRandomLevel(Levels.Count + 3, random), Is.Not.EqualTo(3));
+        }
+
+        [Test]
+        public void PickRandomLevel_ReachesEveryOtherLevel()
+        {
+            var random = new Random(11);
+            var seen = new HashSet<int>();
+
+            for (var i = 0; i < 5000; i++)
+                seen.Add(Levels.PickRandomLevel(1, random));
+
+            Assert.That(seen.Count, Is.EqualTo(Levels.Count - 1));
+        }
+
+        [Test]
         public void EveryLevel_HasName()
         {
             for (var level = 1; level <= Levels.Count; level++)

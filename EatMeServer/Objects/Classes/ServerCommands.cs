@@ -25,6 +25,7 @@ namespace EatMeServer
         public const string AUTO_BALANCE = "autobalance";
         public const string MOTD = "motd";
         public const string SETTINGS = "settings";
+        public const string CLEAR = "clear";
         public const string QUIT = "quit";
 
         /// <summary>
@@ -46,6 +47,7 @@ namespace EatMeServer
             { AUTO_BALANCE, "autobalance [on|off]", "Show or set whether bots keep the teams the same size" },
             { MOTD, "motd [text]", "Show or set the message of the day for players who join from now on" },
             { SETTINGS, "settings", "Every server.cfg setting with its command and value" },
+            { CLEAR, "clear", "Clear the console" },
             { QUIT, "quit", "Stop the server" },
         };
 
@@ -63,6 +65,7 @@ namespace EatMeServer
             { "minplayers", BOTS },
             { "autobalanceteams", AUTO_BALANCE },
             { "messageoftheday", MOTD },
+            { "cls", CLEAR },
             { "stop", QUIT },
             { "exit", QUIT },
         };
@@ -125,7 +128,7 @@ namespace EatMeServer
                     return GetPlayers(game);
 
                 case NEXT_LEVEL:
-                    game.StartLevel(game.CurrentLevel.Level + 1);
+                    game.StartLevel(game.GetNextLevel());
                     return string.Empty;
 
                 case LEVEL:
@@ -180,6 +183,10 @@ namespace EatMeServer
                 case SETTINGS:
                     return FormatTable(SettingCommands.GetSettingRows(game.Settings), [false, false, false]);
 
+                case CLEAR:
+                    ServerLog.Clear();
+                    return string.Empty;
+
                 case QUIT:
                     quit = true;
                     return "Stopping";
@@ -214,6 +221,14 @@ namespace EatMeServer
                     value = false;
                     return false;
             }
+        }
+
+        /// <summary>
+        /// The kind of log line a typed line's output is: Help for help, Command for everything else.
+        /// </summary>
+        public static eLogType GetOutputType(string line)
+        {
+            return Parse(line, out _) == HELP ? eLogType.Help : eLogType.Command;
         }
 
         public static string GetHelp()

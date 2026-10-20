@@ -103,6 +103,34 @@ namespace EatMeTests
         }
 
         [Test]
+        public void GetNextLevel_RandomLevelsOff_IsTheNextLevel()
+        {
+            var settings = new ServerSettings { ServerName = "Next", TargetFps = 30, AutoBalanceTeams = false };
+            var server = new GameServer(settings, [], level: 7);
+
+            Assert.That(server.GetNextLevel(), Is.EqualTo(8));
+        }
+
+        [Test]
+        public void GetNextLevel_RandomLevelsOn_IsAnotherLevel()
+        {
+            var settings = new ServerSettings { ServerName = "Next", TargetFps = 30, AutoBalanceTeams = false, RandomLevels = true };
+            var server = new GameServer(settings, [], level: 7);
+            var seen = new HashSet<int>();
+
+            for (var i = 0; i < 200; i++)
+            {
+                var level = server.GetNextLevel();
+
+                Assert.That(level, Is.InRange(1, Levels.Count));
+                Assert.That(level, Is.Not.EqualTo(7));
+                seen.Add(level);
+            }
+
+            Assert.That(seen.Count, Is.GreaterThan(1), "picks more than one level");
+        }
+
+        [Test]
         public void LoadingScreenTips_Parse_EmptyFile_NoMessages()
         {
             Assert.That(LoadingScreenTipsManager.Parse(""), Is.Empty);

@@ -30,9 +30,11 @@ namespace EatMeLibrary
         public const string IMAGE_POWER_UP_SHEET = "Images/powerups(60x60x32)";
         // Projectiles and objects power up effects put in the maze, two frames each (WeaponEffectSprites)
         public const string IMAGE_WEAPON_EFFECTS = "Images/WeaponEffects(60x60x20)";
+        // Mini map icons: one 16x16 cell per eMiniMapIcon, in enum order, in one row, white tinted when drawn (MiniMapSprites)
+        public const string IMAGE_MINI_MAP_ICONS = "Images/MiniMapIcons(16x16x10)";
 
         // Wall corner tile, joined below and right; walls are drawn in quarters cut from it (see WallTiles)
-        public const string IMAGE_WALL = "Images/wall";
+        public const string IMAGE_WALL = "Images/wall0";
 
         // Wall fill mask, laid out like IMAGE_WALL: white inside the tube, tinted with the level's wall fill color
         public const string IMAGE_WALL_FILL = "Images/wallfill";

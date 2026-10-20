@@ -320,6 +320,12 @@
 /processorParam:Quality=Best
 /build:Audio/SoundFX_Pow.wav
 
+#begin Audio/SoundFX_SpawnCharge.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/SoundFX_SpawnCharge.wav
+
 #begin Audio/SoundFX_AngelicChorus.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
@@ -452,6 +458,18 @@
 /processorParam:TextureFormat=Color
 /build:Images/WeaponEffects(60x60x20).png
 
+#begin Images/MiniMapIcons(16x16x10).png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Images/MiniMapIcons(16x16x10).png
+
 #begin Images/death (60x60x11).png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -524,7 +542,7 @@
 /processorParam:TextureFormat=Color
 /build:Images/flagbase0.png
 
-#begin Images/wall.png
+#begin Images/wall0.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -534,7 +552,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Images/wall.png
+/build:Images/wall0.png
 
 #begin Images/wallfill.png
 /importer:TextureImporter

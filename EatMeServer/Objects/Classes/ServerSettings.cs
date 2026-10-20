@@ -36,6 +36,12 @@ namespace EatMeServer
         /// </summary>
         public int StartingLevel { get; set; } = 1;
 
+        /// <summary>
+        /// When true, every level after the starting one is picked at random (never the one just played) instead of
+        /// going on to the next level in the list.
+        /// </summary>
+        public bool RandomLevels { get; set; } = false;
+
         public GameConfiguration GameConfig { get; set; } = new GameConfiguration();
 
         public ServerSettings() { }

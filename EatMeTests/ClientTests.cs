@@ -186,6 +186,61 @@ namespace EatMeTests
             Assert.That(state.Map[1, 1], Is.EqualTo(eGridDef.PowerPill));
         }
 
+        private static (int X, int Y) FindInnerWall(eGridDef[,] map)
+        {
+            for (var x = 1; x < map.GetLength(0) - 1; x++)
+                for (var y = 1; y < map.GetLength(1) - 1; y++)
+                    if (map[x, y].HasFlag(eGridDef.Wall))
+                        return (x, y);
+
+            throw new InvalidOperationException("no inner wall");
+        }
+
+        [Test]
+        public void ClientState_SmashedWall_BreaksIntoFourPieces()
+        {
+            var state = JoinedState();
+            var (x, y) = FindInnerWall(state.Map);
+
+            state.Apply(new CellsChangedMessage { Cells = [new CellChange((ushort)x, (ushort)y, eGridDef.Food)] }, 0);
+
+            Assert.That(state.NewDebris.Count, Is.EqualTo(WallDebris.PIECES_PER_WALL));
+            Assert.That(state.NewDebris.All(p => p.CellX == x && p.CellY == y), Is.True);
+        }
+
+        [Test]
+        public void ClientState_CatchUpCells_MakeNoDebris()
+        {
+            var state = JoinedState();
+            var (x, y) = FindInnerWall(state.Map);
+
+            state.Apply(new CellsChangedMessage { IsCatchUp = true, Cells = [new CellChange((ushort)x, (ushort)y, eGridDef.Food)] }, 0);
+
+            Assert.That(state.Map[x, y], Is.EqualTo(eGridDef.Food));
+            Assert.That(state.NewDebris, Is.Empty);
+        }
+
+        [Test]
+        public void ClientState_LevelStart_ClearsDebris()
+        {
+            var state = JoinedState();
+            var (x, y) = FindInnerWall(state.Map);
+            state.Apply(new CellsChangedMessage { Cells = [new CellChange((ushort)x, (ushort)y, eGridDef.Food)] }, 0);
+
+            state.Apply(new LevelStartMessage { Level = 3 }, 0);
+
+            Assert.That(state.NewDebris, Is.Empty);
+        }
+
+        [Test]
+        public void IsSmashed_OnlyWallsThatGoAndNotTetrisBlocks()
+        {
+            Assert.That(ClientGameState.IsSmashed(eGridDef.Wall, eGridDef.Food), Is.True);
+            Assert.That(ClientGameState.IsSmashed(eGridDef.Wall | eGridDef.TetrisBlock, (eGridDef)0), Is.False);
+            Assert.That(ClientGameState.IsSmashed(eGridDef.Food, (eGridDef)0), Is.False);
+            Assert.That(ClientGameState.IsSmashed((eGridDef)0, eGridDef.Wall | eGridDef.TetrisBlock), Is.False);
+        }
+
         [Test]
         public void ClientState_PlayersJoinAndLeave()
         {

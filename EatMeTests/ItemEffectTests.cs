@@ -451,7 +451,83 @@ namespace EatMeTests
 
             Assert.That(MazeMovement.GetCell(red.Location), Is.EqualTo((x + 1, y)));
             Assert.That(server.Map[x + 1, y], Is.EqualTo(eGridDef.Food));
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Count(e => e.EventType == eGameEvent.WallSmash), Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void SuperSize_SmashesEveryWallItsBodyCovers()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            var (x, y) = FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Wall);
+            PutOn(red, (x, y));
+            server.ApplyPowerUp(red, ePowerUp.Mushroom);
+
+            // standing still in its own cell, its 4 cell wide body already reaches the wall next door
+            server.MovePacs(0f, 0);
+
+            var cells = new List<(int X, int Y)>();
+            WeaponRules.GetTouchedCells(red.Location, PacRules.GetRadius(red.Size), server.Map.GetLength(0), server.Map.GetLength(1), cells);
+            Assert.That(MazeMovement.GetCell(red.Location), Is.EqualTo((x, y)));
+            Assert.That(server.Map[x + 1, y], Is.EqualTo(eGridDef.Food));
+            Assert.That(cells.Where(c => !WeaponRules.IsOuterCell(c.X, c.Y, server.Map.GetLength(0), server.Map.GetLength(1)))
+                .All(c => !server.Map[c.X, c.Y].HasFlag(eGridDef.Wall) || server.Map[c.X, c.Y].HasFlag(eGridDef.TetrisBlock)), Is.True);
             Assert.That(connection.ReceivedOf<GameEventMessage>().Count(e => e.EventType == eGameEvent.WallSmash), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SuperSize_KillsAnyEnemyAndGhost_ButNotTheInvincible()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            server.ApplyPowerUp(red, ePowerUp.Mushroom);
+            Assert.That(red.KillsOnContact, Is.True);
+
+            // even an enemy as big as it is gets eaten
+            blue.Size = PowerUpEffects.SUPER_SIZE;
+            blue.Location = red.Location;
+            server.UpdatePacFights();
+            Assert.That(blue.Alive, Is.False);
+            Assert.That(red.PlayerKills, Is.EqualTo(1));
+
+            server.Ghosts[0].Location = red.Location;
+            server.UpdateGhosts(0f, 0);
+            Assert.That(server.Ghosts[0].Alive, Is.False);
+            Assert.That(red.Alive, Is.True);
+
+            var (star, _) = Join(server, 3, eTeamPreference.Blue);
+            server.StartPowerUpEffect(star, ePowerUpEffect.Invincible);
+            star.Location = red.Location;
+            server.UpdatePacFights();
+            Assert.That(red.Alive, Is.False);
+        }
+
+        [Test]
+        public void KillsOnContact_StarScrewAttackAndSuperSizeOnly()
+        {
+            var killers = Enum.GetValues<ePowerUpEffect>().Where(PowerUpEffects.KillsOnContact);
+            Assert.That(killers, Is.EquivalentTo(new[] { ePowerUpEffect.Invincible, ePowerUpEffect.ScrewAttack, ePowerUpEffect.SuperSize }));
+        }
+
+        [Test]
+        public void GetTouchedCells_MatchesTheBodysSize()
+        {
+            var cells = new List<(int X, int Y)>();
+
+            // size 0 is one cell wide: only its own cell
+            WeaponRules.GetTouchedCells(new Point2(5.5f, 5.5f), PacRules.GetRadius(0f), 20, 20, cells);
+            Assert.That(cells, Is.EquivalentTo(new[] { (5, 5) }));
+
+            // Super Size is four cells wide: two cells each way, cut off at the corners
+            WeaponRules.GetTouchedCells(new Point2(5.5f, 5.5f), PacRules.GetRadius(PowerUpEffects.SUPER_SIZE), 20, 20, cells);
+            Assert.That(cells, Does.Contain((3, 5)).And.Contain((7, 5)).And.Contain((5, 3)).And.Contain((5, 7)).And.Contain((4, 4)));
+            Assert.That(cells, Does.Not.Contain((3, 3)).And.Not.Contain((2, 5)));
+
+            // off the map is left out
+            WeaponRules.GetTouchedCells(new Point2(0.5f, 0.5f), PacRules.GetRadius(PowerUpEffects.SUPER_SIZE), 20, 20, cells);
+            Assert.That(cells.All(c => c.X >= 0 && c.Y >= 0), Is.True);
+            Assert.That(cells, Does.Contain((2, 0)));
         }
 
         [Test]

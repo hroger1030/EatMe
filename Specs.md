@@ -16,18 +16,15 @@ This is the feature manifest for the SRG client and server application. It will 
 - Retro-style arcade cabinet game with sprite-based graphics.
 
 ## Todo
-- make eaten ghosts turn into eyes and go back to pen. 
-- improve spawn points look
 - add logging for perf
 - run optimization checks
-- screw attack and ball rotate too fast
-- Rescale spawn points to use a single image
-- bold font on loading screen tip
-- ghosts appear on mini-map
-- anything touched in mushroom mode is destroyed
 - redo logo?
 - what is shit like this:         public void UpdatePowerUps(float deltaSeconds, int elapsedMs)
-- add a clear command to console
+- Rainbow shaders
+- sliding on ice level
+- alternate wall art
+- bots still jitter and get stuck
+
 
 ## Game Client 
 - Dumb game client; relies upon the server to process all packets and messages. The server decides everything that happens; the client only sends the direction the player is holding and draws what the server tells it.
@@ -44,8 +41,9 @@ This is the feature manifest for the SRG client and server application. It will 
 - tab will display the leader board, showing individual scores of players by team.
 - game displays team scores. (color coded) Blue on left, red on right.
 - A bar across the bottom of the game shows the player's own pac size on the left and, on the right, their counts of Flags (flag captures), Ghosts (ghosts eaten), Chomps (enemy pacs eaten), Rescues (own flag returned) and Power Ups (power ups eaten). The counts last for as long as the player stays connected.
-- A mini-map with a yellow border sits in the top right corner, just under the score bar. It shows the whole play area (but not the maze), with a red or blue outlined box around every red or blue spawn room, a yellow outlined box around the ghost generator, a red or blue dot for every living player (a small Pac-Man facing the way they're going for the player themselves), a purple X for every power up, a grey upside down U on every warp door, and a dot blinking between yellow and the flag's team color wherever each flag is, carried or not. A flag sealed in a force field (triforce) blinks gold instead.
+- A mini-map with a yellow border sits in the top right corner, just under the score bar. It shows the whole play area (but not the maze), with a red or blue outlined box with rounded corners around every red or blue spawn room, a yellow one around the ghost generator, a red or blue dot for every living player (a small Pac-Man facing the way they're going for the player themselves), a small white ghost (a dome on top, two eye holes and a notched skirt) for every living ghost, drawn under the players, a purple cherry for every power up, a grey upside down U on every warp door, and a dot blinking between yellow and the flag's team color wherever each flag is, carried or not. A flag sealed in a force field (triforce) blinks gold instead.
 - Every flag, on screen or off and carried or not (except one the player carries), always has a pointer in its team's color (blue for blue flags, red for red ones) on a circle around the player, pointing straight at it, one per flag. The circle reaches from the player to the mini-map's bottom left corner. The pointers float above everything on the board except the mini-map, which is drawn over them, and never cover the score bar or the stats bar.
+- The game screen is drawn in layers, bottom to top: background (the board's color and image, scenery that is not part of the game), maze (floors, walls, dots and power pills), items (loose flags, power ups and weapon effects), actors (pacs and ghosts), effects (death animations and wall debris), overhead (things that fly over the walls, such as ghost eyes), HUD (the score and stats bars and the flag pointers) and UI (the mini-map, the player state panel, the respawn countdown and the in-game menu). Nothing is drawn over the UI layer.
 - There are sprites in the content images folder for all the game elements except the walls.
 
 ## Player profile
@@ -74,9 +72,10 @@ This is the feature manifest for the SRG client and server application. It will 
 - Bots don't use the pear, banana, tetromino or BFG. A bot with the white sword or fire flower presses the action button when the nearest thing straight ahead of it, within 10 cells and before any wall, is an enemy pac that isn't invincible or a ghost (never with a teammate in the way). Bots steer clear of holy flames (other than their own) within 2 steps, and a bot passing through things (morph ball, super leaf) doesn't run from ghosts or enemies, nor chase enemies.
 - An invincible bot (starman) goes into chase mode: it runs from nothing, counts every enemy pac (except an invincible one) and every ghost as prey, and chases the nearest one it can find (30 steps), flag carriers first, before rescuing its flag or anything else except taking a flag home. It leaves power pills and power ups alone, since they would replace the effect.
 - Bots stick to a plan. A bot keeps the goal it picks (a dot, a pac to chase, the enemy flag and so on) for 2 to 4 seconds, a random time for each goal, before it thinks again, so bots blunder a little like humans and don't change their minds every step. It drops a goal sooner only when the goal is done or gone (the dot is eaten, the prey dies or gets away), or when something urgent comes up: it picks up a flag, loses the one it carries, or its own flag is dropped nearby.
-- Running away always comes first, the moment something that can kill it is close (5 steps). Once running, a bot keeps running for at least a second and until the danger is 8 steps away. After that it keeps out of the area where the danger was (2 cells around it) for 3 seconds, going another way round or after something else, so it doesn't walk straight back into a ghost standing still.
+- Running away always comes first once something that can kill it is close (5 steps). Like a human, a bot takes 150 ms to react to a danger it has just seen, carrying on with what it was doing until then; the same goes for turning back between cell centres. A danger that goes out of sight and comes back takes the full time again. Once running, a bot keeps running for at least a second and until the danger is 8 steps away. After that it keeps out of the area where the danger was (2 cells around it) for 3 seconds, going another way round or after something else, so it doesn't walk straight back into a ghost standing still.
+- While running away a bot takes the way furthest from the danger, keeping straight on when two ways are as good. It only turns back when it has no other way or turning back takes it at least 2 steps further from the danger than the best way on, so a bot and a ghost chasing it don't keep flipping each other back and forth.
 - Except when running away or chasing something that moves, a bot doesn't turn back while it keeps the same goal.
-- Between cell centres a bot turns back at once if it is heading straight at something that can kill it, but not again within half a second.
+- Between cell centres a bot turns back at once if it is heading straight at something that can kill it with no wall between them, but not again within half a second.
 - So bots don't all do the same thing, at each cell centre a bot with nothing to run from and no flag to carry home has a 15% chance of wandering instead of heading for its target.
 - Bots can't judge other pacs' sizes exactly: each bot sees each other pac as up to 10% of PacMaxSize bigger or smaller than it really is, by an amount that stays the same for the whole level and changes each level. A bot may run from a pac it could have eaten, or chase one it can't.
 - Game is capture-the-flag Pac-Man in a large, randomly generated maze.
@@ -98,7 +97,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: PacMaxSize (float) defaults to 100.0, the most dots can make a pac (power pills can take it past this).
 - Server setting: PacSpeed (float) defaults to 6.0, the speed in map cells per second of a size 0 pac.
 - Server setting: GhostSpeed (float) defaults to 5.0, ghost speed in map cells per second.
-- Server setting: PowerUpSpeed (float) defaults to 3.0, power up speed in map cells per second.
+- Server setting: PowerUpSpeed (float) defaults to 2.5, power up speed in map cells per second.
 - Server setting: PacShrinkPerSecond (float) defaults to 3.0, the size a starving pac loses each second.
 - Server setting: MsUntilStarvation (int) defaults to 1000, time in ms after a pac last ate a dot or power pill before it starts starving.
 - Server setting: DotSizeGain (float) defaults to 1.0, the size a pac gains for each dot it eats.
@@ -117,7 +116,7 @@ This is the feature manifest for the SRG client and server application. It will 
 | `help` | Lists the commands. |
 | `status` | The level, both team scores, and how many players and bots there are. |
 | `players` | Every player with their id, name, team, bot or human, level score, total score and lag. |
-| `next level` | Starts the next level now. |
+| `next level` | Starts the next level now (a random one with RandomLevels on). |
 | `level {n}` | Jumps to level n (1 or more). |
 | `restart` | Restarts the current level. |
 | `new game` | Goes back to the starting level. |
@@ -127,9 +126,10 @@ This is the feature manifest for the SRG client and server application. It will 
 | `autobalance [on\|off]` | Shows or sets AutoBalanceTeams. |
 | `motd [text]` | Shows or sets the message of the day for players who join from then on. |
 | `settings` | Lists every setting with the command that changes it and its value. |
+| `clear` | Clears the console. |
 | `quit` | Stops the server, as Ctrl+C does. |
 
-- Every other server.cfg setting has its own command, named after the setting in lower case (`servername`, `tickrate`, `targetfps`, `startinglevel`, `maxplayers`, and one for every GameConfig setting, e.g. `pacspeed`, `mazesize`, `ghostcount`). Typed alone it shows the setting's value; typed with a value it changes it. MinPlayers, AutoBalanceTeams and MessageOfTheDay are `bots`, `autobalance` and `motd`. Port and DiscoveryPort can't be changed, since they only count at startup.
+- Every other server.cfg setting has its own command, named after the setting in lower case (`servername`, `tickrate`, `targetfps`, `startinglevel`, `randomlevels`, `maxplayers`, and one for every GameConfig setting, e.g. `pacspeed`, `mazesize`, `ghostcount`). Typed alone it shows the setting's value; typed with a value it changes it. MinPlayers, AutoBalanceTeams and MessageOfTheDay are `bots`, `autobalance` and `motd`. Port and DiscoveryPort can't be changed, since they only count at startup.
 - A setting command checks a value like server.cfg is checked when it loads: a bad MazeSize is refused and the setting keeps its value, and out of range values are clamped. Game rule changes are sent to every player at once. The settings a map is built from (MazeSize, WarpTunnelCount, GhostCount, PowerPillCount, FlagCount, PlayerBaseCount, ServerSeed) count from the next level (or `restart`), so everyone keeps playing the same map until then; StartingLevel counts on the next `new game`; everything else counts at once.
 
 - Server setting: MessageOfTheDay (string) in server.cfg, sent to every player who joins and shown on the scroller at the bottom of their title screen. Empty or missing means the default, "Find Friends, Play Games. Visit https://GamrTable.com".
@@ -145,13 +145,15 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Each player also has a total score: every point they have won since connecting. It never resets between levels and is shown in the bottom bar.
 - At the end of each level, any human player whose total score is in the top 100 goes on the server's high score list (highscores.txt), one entry per player connection, updated as their total grows. Bots never go on the list.
 - Each client keeps its own top 100 high scores (its own highscores.txt), built from every list any server sends it, so scores from every server it has played on are kept. It keeps one entry per player name per date, raised when a higher score comes in; a kept score only drops off when 100 higher ones push it out. The High Scores screen shows the client's list, highest first, ranked 1), 2) and so on, in two columns side by side (left to right, then down) that scroll when they don't fit.
-- When a level is won, the game pauses for IntermissionTimeMs (10 seconds by default) and shows the results over the winning team's victory picture: which team won, both team scores, and each team's players ranked by their score for the level (blue on the left, red on the right, in as many columns as it takes to fit up to 128 players). Each team's score and player list sit on their own black panel fitted tightly around them. "Next Level in" and a countdown from 10 to 0 sit at the bottom. The level music stops and an 8-bit chiptune "Charge!" fanfare plays once if the player's team won, or a chiptune sad trumpet if it lost.
+- When a level is won, the game pauses for IntermissionTimeMs (10 seconds by default) and shows the results over the winning team's victory picture: which team won, both team scores, and each team's players ranked by their score for the level (blue on the left, red on the right, in as many columns as it takes to fit up to 128 players). Each team's score and player list sit on their own black panel fitted tightly around them. "Next Level in" and a countdown from 10 to 0 sit at the bottom, with a loading screen tip under it; both have a black drop shadow so they read over the picture. The level music stops and an 8-bit chiptune "Charge!" fanfare plays once if the player's team won, or a chiptune sad trumpet if it lost.
 - When the countdown reaches 0, the game loads the next level in the level list and team and player scores start again from 0.
+- Server setting: RandomLevels (bool) defaults to false. When on, the game still starts on StartingLevel, but every level after it (when a level is won, and the `next level` command) is picked at random from the whole level list, never the level just played.
 - Pacs (players) are either red or blue.
 - Ghost(s) roam the maze, killing any player they come into contact with. Each ghost has a personality (see Ghost personalities) that decides who it chases and how it moves.
 - The normal ghost (Norm): when it gets within N units of a pac, it chases it until it kills it, the pac dies, it dies, or another pac gets closer than the target. It picks flag carriers over all other targets.
 - Ghosts never chase a pac with a power pill working. When one is within N units, a ghost runs from it instead, taking the way through the maze that leads furthest from it.
 - Ghosts ignore each other and pass through each other.
+- When a ghost dies its eyes (the ghost sprite without its body) fly back in a straight line at three times the ghost speed, through walls, to the ghost pen, and circle around it until the ghost respawns, when they disappear. The eyes are only drawn: they don't touch or affect anything in the game.
 - Ghosts cannot use the warp tunnels (the holes in the outer wall); to them a tunnel is a wall. Only pacs can warp.
 - Ghosts cannot enter spawn tiles of either team; to them a spawn tile is a wall.
 - Spawn tiles are walls to the other team's pacs: a pac can only walk on its own team's spawn tiles.
@@ -162,8 +164,9 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Pacs start (and respawn) at size 0. A size 0 pac is one maze cell wide, and every 100 points of size make it one cell wider (a size 100 pac is two cells wide).
 - Pacs get bigger by DotSizeGain (1) for each dot they eat.
 - A pac that hasn't eaten a dot or power pill for MsUntilStarvation ms is starving, and shrinks by PacShrinkPerSecond (3) each second until it eats again. A pac never shrinks below its starting size (0).
+- A pac's own team's spawn room feeds it: while it stands on one of its own spawn tiles it grows at the same rate as eating dots (one DotSizeGain for every cell it would move in that time at its speed, both scaled by its power up effect as for dots), up to max size, and it doesn't get hungry there, even at max size. The enemy's spawn tiles don't feed it, and nor does its own while it has an effect that can't eat (Screw Attack). While the player's own pac is growing this way, the client loops a rising "charging" hum instead of the siren.
 - Bigger pacs are faster: a pac moves at PacSpeed at size 0, rising evenly to 120% of PacSpeed at max size.
-- Only dots and power pills change a pac's size; eating anything else (an enemy pac, a ghost) does not.
+- Only dots, power pills and its own spawn change a pac's size; eating anything else (an enemy pac, a ghost) does not.
 - Pacs keep moving in the direction they are going until they hit a wall. A held direction turns the pac at the next cell where that way is open; turning back happens at once.
 - Turning is forgiving for human players (bots and ghosts turn exactly):
   - A direction pressed and let go early is remembered for TurnBufferTimeMs (400 ms), so a quick tap still turns the pac at the next open junction.
@@ -192,10 +195,10 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Sounds from things happening in the maze (a pac or ghost being eaten) are loudest at the middle of the screen and fade towards its edge; anything off screen can't be heard. Flag captures, flags lost and returned, and a team about to win are heard by everyone at full volume.
 - The first time in a level a team's score passes 90% of MaxScore (without winning outright), the announcer tells everyone "Red is about to win" or "Blue is about to win". It is said once per team per level.
 - Eating a dot or power pill triggers a timer, after N ms, it will respawn again.
-- Power ups: every PowerUpSpawnTimerMs ms of play in a level (by default at 30, 60, 90 seconds and so on, until the level ends) a power up appears on one of the map's four power up spawn points, picked at random. It holds one of the level's bonus items, picked at random, and drifts at PowerUpSpeed (3 cells a second by default) by the shortest way to a warp hole, also picked at random. If it gets there without being eaten it leaves the level. It can't pass through walls, but it crosses spawn tiles of either team.
+- Power ups: every PowerUpSpawnTimerMs ms of play in a level (by default at 30, 60, 90 seconds and so on, until the level ends) a power up appears on one of the map's four power up spawn points, picked at random. It holds one of the level's bonus items, picked at random, and drifts at PowerUpSpeed (2.5 cells a second by default) by the shortest way to a warp hole, also picked at random. If it gets there without being eaten it leaves the level. It can't pass through walls, but it crosses spawn tiles of either team.
 - Any pac, of either team, eats a power up by touching it. Eating one plays a short "blorp" (heard like other sounds in the maze) and will give a special effect that depends on the item (see Power up effects). Ghosts ignore power ups.
 - Bots go after a power up when it is near (within 10 steps), unless they are running from something, rescuing their flag, chasing a flag carrier, going for a power pill, carrying a flag or invincible.
-- Power ups are drawn with their bonus item's sprite, bobbing gently up and down as they move.
+- Power ups are drawn with their bonus item's sprite, bobbing gently up and down over a shadow that stays at their position, so the bob shows whichever way they move.
 - Things effects put in the maze (shots, peels, blocks, the hammer and so on) are two frame animations, each frame showing for 0.25 seconds.
 - Power pills and power up items give power up effects (buffs):
   - A buff lasts PowerUpDurationMs (10 seconds). A pac only ever has one: a new buff replaces the one it has, and death removes it.
@@ -242,6 +245,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 ## Power up effects
 - Every item's effect is built.
 - Eating a power up gives its item's buff, following the buff rules above. Unless it says "instant" or "permanent", it is a normal 10 second buff.
+- A smashed wall breaks into its four quarters, which fly up and outward, each on its own arc, spinning, and fall off the bottom of the screen. The pieces are only shown on the client: they never touch anything. A player who joins part way through a level sees no debris from walls smashed before they joined.
 - "Stunned" means it can't move until the stun wears off, and spins in place so players can see it. Nothing else changes: a stunned ghost still kills a pac that runs into it, and a stunned pac can still be eaten. Unless an item says otherwise, a stun lasts 2 seconds; being stunned again starts the stun over.
 
 | Item | Effect | What it does |
@@ -257,19 +261,19 @@ This is basically a game of capture the flag. There are numerous notes about it 
 | Pretzel | Twister | Every pac (either team) and ghost within the effect radius, other than the pac itself, moves at half speed. Two pacs with it don't make anyone slower still. |
 | Pear | Warp | The action button teleports the pac to a random cell with a dot that no pac or ghost is in. |
 | Banana | Banana Peel | The action button drops a banana peel on the pac's cell, at most one peel per cell. A peel stays, even after the buff ends, until something touches it: any pac (the one that dropped it once it has stepped off) or ghost, which is stunned. Then the peel is gone. |
-| Mushroom | Super Size | The pac's size becomes 300 and it moves through walls, smashing each wall it moves into for good; the cell becomes an open cell with a dot. The outer wall is never smashed (the pac passes through it and wraps to the other side). Whenever walls are smashed every player hears the POW boom and sees their board shake. When the effect ends the pac's size goes back to 0, and if it is inside a wall it is put in the nearest open cell. It still meets pacs and ghosts as normal. |
+| Mushroom | Super Size | The pac's size becomes 300 and it moves through walls, smashing every wall its body covers for good (its reach matches its size, so a 4 cell wide pac wrecks walls up to 2 cells from its centre); each cell becomes an open cell with a dot. The outer wall is never smashed (the pac passes through it and wraps to the other side). Whenever walls are smashed every player hears the POW boom and sees their board shake. It kills any ghost or enemy pac it touches, whatever the sizes, and ghosts touching it don't kill it; an invincible enemy beats it, and it bounces off a screw attacker or another Super Size pac. Weapons still kill it. When the effect ends the pac's size goes back to 0, and if it is inside a wall it is put in the nearest open cell. |
 | 1-up mushroom | Extra Life | Permanent. The next time the pac dies (it still drops any flag it carries, and its killer still scores), it comes back 1 second later in the cell where it died, at the size it was, and the buff is used up. Lockdown doesn't stop it, and it wins over a teammate's Reinforcements. Another 1-up while it has one changes nothing. |
-| Fire flower | Fireball | The pac flashes white rapidly. The action button fires a fireball the way the pac faces, at most one every half second, as many in flight as you like. Fireballs fly straight on a little faster than a pac (1.25 times PacSpeed), stop at walls, and kill the first pac (either team, the shooter too once the fireball has left it) or ghost they hit unless it is invincible; either way the fireball is gone. |
+| Fire flower | Fireball | The pac flashes white rapidly. The action button fires a fireball the way the pac faces, at most one every half second, as many in flight as you like. Fireballs fly straight on much faster than a pac (3.75 times PacSpeed), stop at walls, and kill the first pac (either team, the shooter too once the fireball has left it) or ghost they hit unless it is invincible; either way the fireball is gone. |
 | Starman | Invincible | Moves 25% faster, can't be killed, and kills any ghost or enemy pac it touches, whatever its size (scoring as usual). Two invincible enemies bounce off each other. Ghosts run from it as from a power pill. It leaves a fading speed trail and blinks between its team color and yellow. |
 | POW block | POW | Instant: stuns every ghost and every pac of either team within the effect radius of the pac, except the pac itself, for 3 seconds. It goes off with a low boom (heard like other sounds in the maze), and every player whose pac is inside the radius, the one who set it off included, sees the board bounce for a moment, like a shockwave. |
 | Super leaf | Raccoon Tail | The pac passes through enemy pacs, ghosts and walls (no fights and no ghost contact, either way). Running off the edge of the map wraps to the other side like a warp tunnel. If the buff ends while it is inside a wall, the pac is put in the nearest open cell. |
 | Hammer | Hammer Time | A swinging hammer is drawn one cell in front of the pac, the way the player is pressing (or the way the pac faces). It kills any enemy pac or ghost it hits, whatever its size, unless it is invincible, and smashes any wall it hits for good into an open cell with a dot (never the outer wall). It doesn't protect the pac. |
-| Triforce | Force Field | When it is eaten, every flag of the pac's team that is away from its base goes home at once, taken off any enemy carrying it; each one is a flag rescue for the pac (FlagRescue points, the Rescues count and the "flag returned" announcement). While the buff works the team's flags are sealed in a force field, a pulsing gold bubble over the flag (its mini map triangle blinks gold): enemies can't pick a sealed flag up, and enemy bots leave it alone. The pac's own team still captures onto it as normal. The seal is only about flags; it changes nothing else. |
+| Triforce | Force Field | When it is eaten, every flag of the pac's team that is away from its base goes home at once, taken off any enemy carrying it; each one is a flag rescue for the pac (FlagRescue points, the Rescues count and the "flag returned" announcement). While the buff works the team's flags are sealed in a force field, a pulsing gold bubble over the flag (its mini map flag blinks gold): enemies can't pick a sealed flag up, and enemy bots leave it alone. The pac's own team still captures onto it as normal. The seal is only about flags; it changes nothing else. |
 | Heart container | Full Heal | Instant: size goes up to PacMaxSize (if smaller) and hunger resets. |
 | White sword | Sword Swing | The action button throws a sword the way the pac faces, at twice PacSpeed, in a straight line; walls stop it. It kills the first thing it hits (any pac, teammates and the thrower too once it has left it, or a ghost) unless that is invincible, and is gone either way. A pac can have at most two swords in flight. |
 | Energy tank | Energy Tank | Permanent. The pac's size becomes 150 and stays there: it never starves. Like every buff it lasts until the pac dies, the level ends or a new buff replaces it; when a new buff replaces it the pac's size drops to the normal max size (PacMaxSize, 100). |
-| Morph ball | Morph Ball | The pac rolls, spinning as it moves, and passes through enemy pacs and ghosts (no fights and no ghost contact, either way). |
-| Screw attack | Screw Attack | The pac flashes white and spins very fast as it moves. It kills any ghost or enemy pac it touches, whatever the sizes, and ghosts touching it don't kill it; an invincible enemy beats it, and two screw attackers bounce off each other. Weapons still kill it. It can't eat dots or power pills. |
+| Morph ball | Morph Ball | The pac rolls as it moves (a quarter turn per cell, clockwise moving right or down, counter clockwise moving left or up, still when it stops), and passes through enemy pacs and ghosts (no fights and no ghost contact, either way). |
+| Screw attack | Screw Attack | The pac flashes white and spins fast as it moves (half a turn per cell, clockwise moving right or down, counter clockwise moving left or up, still when it stops). It kills any ghost or enemy pac it touches, whatever the sizes, and ghosts touching it don't kill it; an invincible enemy beats it, and it bounces off another screw attacker or a Super Size pac. Weapons still kill it. It can't eat dots or power pills. |
 | Holy water | Holy Fire | The pac leaves a trail of blue holy flames, one in each cell it leaves. A flame kills anything that touches it unless it is invincible: enemies, teammates, ghosts, and the pac that laid it once it has moved off. All its flames go out when the buff ends, is replaced, or the pac dies. |
 | Spread gun | Spread Shot | Fires a shot up, down, left and right every half second, on its own. Shots fly straight on at 1.5 times PacSpeed; a wall destroys a shot, and the first pac (either team, the shooter too once the shot has left it) or ghost it hits is stunned and the shot is gone. |
 | Blue shell | Blue Shell | Instant: fires one very fast shell (3 times PacSpeed) that follows the maze to the enemy carrying a flag, or if nobody is, the enemy with the highest score, picking again as that changes. It ignores everything else, and touching its target kills it unless it is invincible; the shell is gone either way, or when there is no enemy alive. |
@@ -307,7 +311,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - There are two power up spawn points on each half, near the ghost pen: on the left half, the plain dot cells outside the pen nearest its centre above and below its middle, copied to the right half like everything else. They look like normal cells with a dot.
 - The ghost pen floor is drawn in yellow, and each spawn room's floor in its team's color (the pen uses GhostBase0.png, the spawn rooms Pacbase0.png).
 - Dots and power pills on blue's half of the map are drawn in a light blue, and on red's half in a light red.
-- About 28-30% of open cells are junctions (3 or 4 ways out). This is fixed in the shared code, not a server setting, so every client builds the same map as the server.
+- The ghost pen floor is drawn in yellow, and each spawn room's floor in its team's color, each as one image stretched over the whole room (the pen uses GhostBase0.png, the spawn rooms Pacbase0.png).
 
 ## Performance
 - Use multiplies over divides.

@@ -49,6 +49,20 @@ namespace EatMeClient
         }
 
         /// <summary>
+        /// The ghost sheet with its white body made transparent, leaving only the eyes, for dead ghosts (GhostEyes).
+        /// </summary>
+        public static Texture2D GenerateGhostEyesSheet(Texture2D whiteSheet)
+        {
+            var pixels = new uint[whiteSheet.Width * whiteSheet.Height];
+            whiteSheet.GetData(pixels);
+
+            var output = new Texture2D(whiteSheet.GraphicsDevice, whiteSheet.Width, whiteSheet.Height);
+            output.SetData(GhostPalette.ReplaceColor(pixels, GhostPalette.BODY_COLOR, FastColor.TRANSPARENT));
+
+            return output;
+        }
+
+        /// <summary>
         /// The ghost sheet with its white body filled with the rainbow gradient left to right across each frame,
         /// moved round by phase (0 to 1), for rainbow levels.
         /// </summary>

@@ -13,6 +13,7 @@ namespace EatMeServer
         Flag,
         PowerUp,
         Command,
+        Help,
         Warning,
         Error,
     }

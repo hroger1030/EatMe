@@ -5,78 +5,72 @@ namespace EatMeClient
 {
     public static class ClientColors
     {
-        // Colors
+        // Timing
+
+        /// <summary>
+        /// Flags flicker between yellow and their team's color, showing each for this long.
+        /// </summary>
+        public const float FLAG_FLICKER_SECONDS = 0.1f;
+
+        // Basic colors
+
+        public static readonly Color COLOR_PAC_WHITE = new(1f, 1f, 1f);
+        public static readonly Color COLOR_PAC_LIGHT_GREY = new(0.6f, 0.6f, 0.6f);
+        public static readonly Color COLOR_PAC_YELLOW = new(255, 255, 0);
+        public static readonly Color COLOR_PAC_MAZE_BLUE = new(33, 33, 222);
+
+        // Team colors
 
         public static readonly Color COLOR_PAC_RED = new(1f, 0f, 0f);
         public static readonly Color COLOR_PAC_BLUE = new(0f, 0.5f, 1f);
 
         // The player's own pac: lighter shades of the team colors so it stands out in a crowd.
 
-        public static readonly Color COLOR_PAC_RED_OWN = new(255, 110, 110);
+        public static readonly Color COLOR_PAC_RED_OWN = new(255, 145, 110);
         public static readonly Color COLOR_PAC_BLUE_OWN = new(110, 190, 255);
 
-        // Spawn floors: dark but clear of black, with matching luminance (about 0.047) so neither team's stands out more.
+        // Spawn floors: bright and equally bright, so neither team's stands out more on any background.
 
         public static readonly Color COLOR_SPAWN_RED = new(255, 80, 110);
         public static readonly Color COLOR_SPAWN_BLUE = new(80, 150, 255);
 
-        public static readonly Color COLOR_PAC_WHITE = new(1f, 1f, 1f);
-        public static readonly Color COLOR_PAC_LIGHT_GREY = new(0.6f, 0.6f, 0.6f);
+        // Dots: pale enough to read as dots but strong enough to tell the halves apart.
 
-        public static readonly Color COLOR_PAC_YELLOW = new(255, 255, 0);
-        public static readonly Color COLOR_PAC_MAZE_BLUE = new(33, 33, 222);
-        public static readonly Color COLOR_PAC_DOTS_BLUE = new(130, 180, 255);
         public static readonly Color COLOR_PAC_DOTS_RED = new(255, 140, 140);
+        public static readonly Color COLOR_PAC_DOTS_BLUE = new(130, 180, 255);
 
-        /// <summary>
-        /// The empty (greyed out) part of the player state panel's meter.
-        /// </summary>
+        // Ghosts: body colors are each personality's GhostPersonality.Color (library).
+
+        public static readonly Color COLOR_GHOST_SCARED = new(33, 33, 222);
+
+        // Effects: the Triforce's force field over a sealed flag, and its blink on the mini map.
+
+        public static readonly Color COLOR_FORCE_FIELD = new(255, 215, 0);
+
+        // Mini map markers: warp doors, power ups and ghosts.
+
+        public static readonly Color COLOR_MINI_MAP_WARP = new(0x77, 0x77, 0x77);
+        public static readonly Color COLOR_MINI_MAP_POWER_UP = new(188, 3, 255);
+        public static readonly Color COLOR_MINI_MAP_GHOST = Color.White;
+
+        // Player state panel: the meter's empty part, and the size bar (SizeBar) green up to 100, bright orange above it, bright red above 150.
+
         public static readonly Color COLOR_POWER_UP_BAR_EMPTY = new(70, 70, 70);
-
-        /// <summary>
-        /// The player state panel's size bar (SizeBar): green up to 100, bright orange above it, bright red above 150.
-        /// </summary>
         public static readonly Color COLOR_SIZE_BAR_NORMAL = new(40, 220, 60);
         public static readonly Color COLOR_SIZE_BAR_BIG = new(255, 150, 0);
         public static readonly Color COLOR_SIZE_BAR_HUGE = new(255, 30, 30);
 
-        /// <summary>
-        /// The size bar's color for a given level of size
-        /// </summary>
-        public static Color GetSizeBarColor(eSizeBarLevel level)
-        {
-            return level switch
-            {
-                eSizeBarLevel.Huge => COLOR_SIZE_BAR_HUGE,
-                eSizeBarLevel.Big => COLOR_SIZE_BAR_BIG,
-                _ => COLOR_SIZE_BAR_NORMAL,
-            };
-        }
+        // Panels: half-transparent black drawn behind text so it reads against the background image.
 
-        // Mini map markers: warp doors.
-        public static readonly Color COLOR_MINI_MAP_WARP = new(0x77, 0x77, 0x77);
-
-        // Mini map markers: power ups
-        public static readonly Color COLOR_MINI_MAP_POWER_UP = new(188, 3, 255);
-
-        // the Triforce's force field over a sealed flag, and its blink on the mini map
-        public static readonly Color COLOR_FORCE_FIELD = new(255, 215, 0);
-
-        // ghost body colors are each personality's GhostPersonality.Color (library)
-        public static readonly Color COLOR_GHOST_SCARED = new(33, 33, 222);
-
-        // Transparency
-        public static readonly Color COLOR_TRANSPARENT_BLUE10 = new(0.0f, 0.0f, 0.2f, 0.1f);
-
-        // Half-transparent black drawn behind text on menu screens so it reads against the background image.
         public static readonly Color COLOR_TEXT_PANEL = new(0f, 0f, 0f, 0.5f);
+        public static readonly Color COLOR_TRANSPARENT_BLUE10 = new(0.0f, 0.0f, 0.2f, 0.1f);
 
         // Dark menu: text drawn straight onto the bright title background (title menu and every menu screen).
 
+        public static readonly Color COLOR_DARK_TITLE_ITEM = new(8, 8, 24);
         public static readonly Color COLOR_DARK_MENU_ITEM = new(16, 16, 112);
         public static readonly Color COLOR_DARK_MENU_SELECTED = new(176, 0, 0);
         public static readonly Color COLOR_DARK_MENU_HEADING = new(16, 16, 112);
-        public static readonly Color COLOR_DARK_TITLE_ITEM = new(8, 8, 24);
         public static readonly Color COLOR_DARK_MENU_HINT = new(64, 64, 96);
         public static readonly Color COLOR_DARK_MENU_SLIDER_BACKGROUND = new(128, 128, 160);
         public static readonly Color COLOR_DARK_MENU_SLIDER_SELECTED_BACKGROUND = new(224, 144, 144);
@@ -88,11 +82,6 @@ namespace EatMeClient
         public static readonly Color COLOR_LIGHT_MENU_ITEM = new(255, 255, 255);
         public static readonly Color COLOR_LIGHT_MENU_SELECTED = new(255, 255, 0);
         public static readonly Color COLOR_LIGHT_MENU_PANEL = new(0f, 0f, 0f, 0.5f);
-
-        /// <summary>
-        /// Flags flicker between yellow and their team's color, showing each for this long.
-        /// </summary>
-        public const float FLAG_FLICKER_SECONDS = 0.1f;
 
         /// <summary>
         /// A library FastColor as a MonoGame color.
@@ -110,6 +99,9 @@ namespace EatMeClient
             return new FastColor(color.PackedValue);
         }
 
+        /// <summary>
+        /// A team's color.
+        /// </summary>
         public static Color GetTeamColor(eTeam team)
         {
             return team == eTeam.Blue ? COLOR_PAC_BLUE : COLOR_PAC_RED;
@@ -126,6 +118,9 @@ namespace EatMeClient
             return team == eTeam.Blue ? COLOR_PAC_BLUE_OWN : COLOR_PAC_RED_OWN;
         }
 
+        /// <summary>
+        /// A team's spawn floor color.
+        /// </summary>
         public static Color GetSpawnColor(eTeam team)
         {
             return team == eTeam.Blue ? COLOR_SPAWN_BLUE : COLOR_SPAWN_RED;
@@ -138,6 +133,19 @@ namespace EatMeClient
         {
             var showTeamColor = animationTime % (FLAG_FLICKER_SECONDS * 2f) < FLAG_FLICKER_SECONDS;
             return showTeamColor ? GetTeamColor(team) : COLOR_PAC_YELLOW;
+        }
+
+        /// <summary>
+        /// The Player state panel lookups size bar's color for a given level of size.
+        /// </summary>
+        public static Color GetSizeBarColor(eSizeBarLevel level)
+        {
+            return level switch
+            {
+                eSizeBarLevel.Huge => COLOR_SIZE_BAR_HUGE,
+                eSizeBarLevel.Big => COLOR_SIZE_BAR_BIG,
+                _ => COLOR_SIZE_BAR_NORMAL,
+            };
         }
     }
 }

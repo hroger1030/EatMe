@@ -236,8 +236,8 @@ namespace EatMeTests
             Assert.That(red.Alive && red.IsPowered, Is.True);
             Assert.That(server.BuildSnapshot().Pacs.Single().Powered, Is.True);
 
-            // back on a spawn cell (never any food); short ticks so it doesn't start starving
-            PutOn(red, FindCell(server, eGridDef.SpawnPointRed));
+            // onto the enemy spawn (never any food, and only the own spawn feeds); short ticks so it doesn't start starving
+            PutOn(red, FindCell(server, eGridDef.SpawnPointBlue));
             server.UpdateEating(Config.PowerUpDurationMs - 1);
             Assert.That(red.IsPowered, Is.True);
 
@@ -550,7 +550,8 @@ namespace EatMeTests
 
             red.Size = 50f;
 
-            // spawn cells never have food
+            // spawn cells never have food, and only the own spawn feeds
+            PutOn(red, FindCell(server, eGridDef.SpawnPointBlue));
             server.UpdateEating(Config.MsUntilStarvation - 1);
             Assert.That(red.Size, Is.EqualTo(50f));
 
@@ -928,6 +929,7 @@ namespace EatMeTests
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Size = 10f;
+            PutOn(red, FindCell(server, eGridDef.SpawnPointBlue));
 
             for (var i = 0; i < 100; i++)
                 server.UpdateEating(Config.MsUntilStarvation);

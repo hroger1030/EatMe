@@ -42,6 +42,11 @@
         public bool Eating { get; set; }
 
         /// <summary>
+        /// Whether the pac is growing from standing on its own team's spawn (below PacMaxSize). Clients play the charge loop while it's set.
+        /// </summary>
+        public bool SpawnFeeding { get; set; }
+
+        /// <summary>
         /// The cell the pac was in last tick, so Eating only changes when it enters a new one. -1 when it has none yet.
         /// </summary>
         public int LastCellX { get; set; } = -1;
@@ -78,6 +83,12 @@
         /// True while Morph Ball or Raccoon Tail is working: the pac passes through enemy pacs and ghosts.
         /// </summary>
         public bool PassesThrough => PowerUpEffects.PassesThrough(PowerUpEffect) && PowerUpMs > 0;
+
+        /// <summary>
+        /// True while an effect that destroys what it touches is working (PowerUpEffects.KillsOnContact: Invincible,
+        /// Screw Attack, Super Size): the pac kills any enemy pac or ghost it touches, and ghosts can't kill it.
+        /// </summary>
+        public bool KillsOnContact => PowerUpEffects.KillsOnContact(PowerUpEffect) && PowerUpMs > 0;
 
         /// <summary>
         /// True while Raccoon Tail or Super Size is working: the pac moves through walls.

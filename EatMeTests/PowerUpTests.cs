@@ -91,6 +91,15 @@ namespace EatMeTests
         }
 
         [Test]
+        public void GetShadowAlpha_DarkestAtCentre_ClearOutsideTheOval()
+        {
+            Assert.That(PowerUpRules.GetShadowAlpha(31, 11, 64, 24), Is.EqualTo(PowerUpRules.SHADOW_ALPHA).Within(0.01f));
+            Assert.That(PowerUpRules.GetShadowAlpha(0, 0, 64, 24), Is.EqualTo(0f));
+            Assert.That(PowerUpRules.GetShadowAlpha(63, 23, 64, 24), Is.EqualTo(0f));
+            Assert.That(PowerUpRules.GetShadowAlpha(48, 11, 64, 24), Is.LessThan(PowerUpRules.GetShadowAlpha(36, 11, 64, 24)));
+        }
+
+        [Test]
         public void GetHoverOffset_DifferentIds_BobOutOfStep()
         {
             Assert.That(PowerUpRules.GetHoverOffset(1.0, 1), Is.Not.EqualTo(PowerUpRules.GetHoverOffset(1.0, 2)).Within(0.001f));

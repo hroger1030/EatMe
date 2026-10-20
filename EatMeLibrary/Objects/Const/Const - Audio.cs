@@ -21,6 +21,8 @@ namespace EatMeLibrary
         public const string SFX_LEVEL_LOST = "Audio/SoundFX_LevelLost";
         public const string SFX_LEVEL_WON = "Audio/SoundFX_LevelWon";
         public const string SFX_POWER_PILL = "Audio/SoundFX_PowerPill";
+        // Loops while the own pac is growing from standing on its own team's spawn (a rising charge)
+        public const string SFX_SPAWN_CHARGE = "Audio/SoundFX_SpawnCharge";
         // A pac ate a power up
         public const string SFX_POWER_UP_EATEN = "Audio/SoundFX_PowerUpEaten";
         // A POW block went off (a low percussive boom)

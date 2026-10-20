@@ -60,6 +60,24 @@ namespace EatMeLibrary
         public GhostPersonality[] GhostLineup { get; private set; } = [];
 
         /// <summary>
+        /// Pieces of walls smashed since the client last took them (WallDebris.Break, four a wall). The client moves them
+        /// into its own list and clears this. Emptied by every LevelStart.
+        /// </summary>
+        public List<WallDebrisPiece> NewDebris { get; } = [];
+        private readonly Random _DebrisRandom = new();
+
+        /// <summary>
+        /// The eyes of dead ghosts (GhostEyes), one per ghost: added by each GhostKilled event, removed once a snapshot
+        /// shows the ghost alive again, and emptied by every LevelStart. UpdateGhostEyes moves them.
+        /// </summary>
+        public List<GhostEyes> Eyes { get; } = [];
+
+        /// <summary>
+        /// The middle of the level's ghost pen, which the eyes circle; null with no map or no pen.
+        /// </summary>
+        public (float X, float Y)? PenCentre { get; private set; }
+
+        /// <summary>
         /// The color every dot and power pill on blue's (left) half starts a level with.
         /// </summary>
         public FastColor BlueDotColor { get; set; }
@@ -184,6 +202,9 @@ namespace EatMeLibrary
                     var seed = Levels.GetSeed(config.ServerSeed, levelStart.Level);
                     Map = MapMaker.Generate(config, seed);
                     GhostLineup = MapMaker.PickGhostLineup(config, seed, levelStart.Level);
+                    NewDebris.Clear();
+                    Eyes.Clear();
+                    PenCentre = GhostEyes.FindPenCentre(Map);
                     DotColors = LevelInfo.IsRainbow
                         ? Rainbow.BuildDotColors(Map.GetLength(0), Map.GetLength(1))
                         : BuildDotColors(Map.GetLength(0), Map.GetLength(1), BlueDotColor, RedDotColor);
@@ -196,7 +217,15 @@ namespace EatMeLibrary
                 case SnapshotMessage snapshot:
                     // TCP keeps order, but a snapshot from before a level change is still stale
                     if (Snapshot == null || snapshot.Tick > Snapshot.Tick)
+                    {
                         Snapshot = snapshot;
+                        RemoveRespawnedEyes();
+                    }
+                    break;
+
+                case GameEventMessage gameEvent:
+                    if (gameEvent.EventType == eGameEvent.GhostKilled)
+                        AddGhostEyes(gameEvent.TargetId, gameEvent.X, gameEvent.Y);
                     break;
 
                 case CellsChangedMessage cellsChanged:
@@ -229,6 +258,50 @@ namespace EatMeLibrary
                     HighScores = highScores.Scores;
                     break;
             }
+        }
+
+        /// <summary>
+        /// Gives a dead ghost its eyes where it died, unless it already has some.
+        /// </summary>
+        public void AddGhostEyes(int ghostId, float x, float y)
+        {
+            foreach (var eyes in Eyes)
+            {
+                if (eyes.GhostId == ghostId)
+                    return;
+            }
+
+            Eyes.Add(new GhostEyes(ghostId, x, y));
+        }
+
+        /// <summary>
+        /// Removes the eyes of every ghost the newest snapshot shows alive: they vanish when it respawns.
+        /// </summary>
+        private void RemoveRespawnedEyes()
+        {
+            if (Eyes.Count == 0)
+                return;
+
+            foreach (var ghost in Snapshot.Ghosts)
+            {
+                if (ghost.Alive)
+                    Eyes.RemoveAll(eyes => eyes.GhostId == ghost.GhostId);
+            }
+        }
+
+        /// <summary>
+        /// Moves every ghost's eyes for seconds at GhostEyes.SPEED_SCALE times GhostSpeed, to and round the pen's centre.
+        /// </summary>
+        public void UpdateGhostEyes(float seconds)
+        {
+            if (Eyes.Count == 0 || !PenCentre.HasValue)
+                return;
+
+            var speed = (GameConfig ?? new GameConfiguration()).GhostSpeed * GhostEyes.SPEED_SCALE;
+            var (centreX, centreY) = PenCentre.Value;
+
+            foreach (var eyes in Eyes)
+                eyes.Update(seconds, centreX, centreY, speed);
         }
 
         /// <summary>
@@ -268,12 +341,21 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True while our own pac is alive and the last cell it entered had no dot or power pill.
+        /// True while our own pac is alive, the last cell it entered had no dot or power pill, and its spawn isn't feeding it.
         /// </summary>
         public bool IsOwnPacNotEating()
         {
             var ownPac = GetOwnPac();
-            return ownPac.HasValue && ownPac.Value.Alive && !ownPac.Value.Eating;
+            return ownPac.HasValue && ownPac.Value.Alive && !ownPac.Value.Eating && !ownPac.Value.SpawnFeeding;
+        }
+
+        /// <summary>
+        /// True while our own pac is alive and growing from standing on its own team's spawn.
+        /// </summary>
+        public bool IsOwnPacSpawnFeeding()
+        {
+            var ownPac = GetOwnPac();
+            return ownPac.HasValue && ownPac.Value.Alive && ownPac.Value.SpawnFeeding;
         }
 
         /// <summary>
@@ -384,9 +466,25 @@ namespace EatMeLibrary
             var width = Map.GetLength(0);
             var height = Map.GetLength(1);
 
+            // every wall broken here flies off in pieces; they are made from the map before any of it changes, so each
+            // piece looks as it did in the wall. Tetromino blocks taken away and the cells a late joiner catches up on aren't.
+            if (!cellsChanged.IsCatchUp)
+                foreach (var cell in cellsChanged.Cells)
+                    if (cell.X < width && cell.Y < height && IsSmashed(Map[cell.X, cell.Y], cell.Cell))
+                        NewDebris.AddRange(WallDebris.Break(Map, cell.X, cell.Y, _DebrisRandom));
+
             foreach (var cell in cellsChanged.Cells)
                 if (cell.X < width && cell.Y < height)
                     Map[cell.X, cell.Y] = cell.Cell;
+        }
+
+        /// <summary>
+        /// True when a cell going from <paramref name="before"/> to <paramref name="after"/> is a wall being destroyed:
+        /// it was a wall, not a Tetromino block, and now isn't.
+        /// </summary>
+        public static bool IsSmashed(eGridDef before, eGridDef after)
+        {
+            return before.HasFlag(eGridDef.Wall) && !before.HasFlag(eGridDef.TetrisBlock) && !after.HasFlag(eGridDef.Wall);
         }
     }
 }

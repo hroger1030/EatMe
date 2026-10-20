@@ -27,7 +27,7 @@ namespace EatMeTests
                 PowerUps = [new PowerUpState(0, ePowerUp.Cherry, 49.5f, 50.25f), new PowerUpState(7, ePowerUp.PokeBall, 1f, 2f)],
                 WeaponEffects = [new WeaponEffectState(3, eWeaponEffect.Sword, 12.25f, 4.5f, eFacing.Left), new WeaponEffectState(9, eWeaponEffect.HolyFlame, 1.5f, 2.5f, eFacing.Up)],
             };
-            yield return new CellsChangedMessage { Cells = [new CellChange(4, 5, eGridDef.Food), new CellChange(99, 0, eGridDef.PowerPill | eGridDef.SpawnPointRed)] };
+            yield return new CellsChangedMessage { IsCatchUp = true, Cells = [new CellChange(4, 5, eGridDef.Food), new CellChange(99, 0, eGridDef.PowerPill | eGridDef.SpawnPointRed)] };
             yield return new PlayerJoinedMessage { PlayerId = 5, Name = "Inky", Team = eTeam.Blue };
             yield return new PlayerLeftMessage { PlayerId = 5 };
             yield return new GameEventMessage { EventType = eGameEvent.FlagCaptured, ActorId = 3, TargetId = 8, X = 10.5f, Y = 20.25f, Team = eTeam.Blue };
@@ -201,7 +201,8 @@ namespace EatMeTests
         [Test]
         public void Deserialize_NegativeListCount_Throws()
         {
-            byte[] body = [(byte)eMessageType.CellsChanged, .. BitConverter.GetBytes(-1)];
+            // IsCatchUp, then the cell count
+            byte[] body = [(byte)eMessageType.CellsChanged, 0, .. BitConverter.GetBytes(-1)];
 
             Assert.Throws<InvalidDataException>(() => MessageSerializer.Deserialize(body));
         }

@@ -35,5 +35,26 @@ namespace EatMeTests
         {
             Assert.That(RoundedCorners.GetRowInset(0, 0), Is.EqualTo(0));
         }
+
+        [Test]
+        public void GetOutlineInnerInset_RowsInsideTheEdgeAreSolid()
+        {
+            Assert.That(RoundedCorners.GetOutlineInnerInset(5, 2, 0), Is.EqualTo(-1));
+            Assert.That(RoundedCorners.GetOutlineInnerInset(5, 2, 1), Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void GetOutlineInnerInset_HollowStartsPastTheOuterInset()
+        {
+            for (var row = 2; row < 5; row++)
+                Assert.That(RoundedCorners.GetOutlineInnerInset(5, 2, row), Is.GreaterThan(RoundedCorners.GetRowInset(5, row)));
+        }
+
+        [Test]
+        public void GetOutlineInnerInset_StraightSidesAreThicknessWide()
+        {
+            Assert.That(RoundedCorners.GetOutlineInnerInset(5, 2, 5), Is.EqualTo(2));
+            Assert.That(RoundedCorners.GetOutlineInnerInset(5, 2, 40), Is.EqualTo(2));
+        }
     }
 }

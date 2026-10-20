@@ -66,6 +66,26 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// A random level from 1 to Count other than currentLevel (the same level counts however many times the list
+        /// has started over), so the next map is always a different one. With only one level, that level.
+        /// </summary>
+        public static int PickRandomLevel(int currentLevel, Random random)
+        {
+            if (LEVELS.Length < 2)
+                return 1;
+
+            var current = currentLevel < 1 ? 0 : (currentLevel - 1) % LEVELS.Length + 1;
+
+            if (current == 0)
+                return random.Next(LEVELS.Length) + 1;
+
+            // pick from the other Count - 1 levels, skipping over the current one
+            var level = random.Next(LEVELS.Length - 1) + 1;
+
+            return level >= current ? level + 1 : level;
+        }
+
+        /// <summary>
         /// The seed a level's map is built from: the server's seed plus the level number.
         /// </summary>
         public static int GetSeed(int serverSeed, int level)

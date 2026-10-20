@@ -70,6 +70,12 @@ namespace EatMeClient
         private const int RESULTS_PANEL_RADIUS = 12;
 
         /// <summary>
+        /// The results screen's countdown and tip sit straight on the picture, so each gets a black drop shadow
+        /// this many pixels down and to the right to stay readable.
+        /// </summary>
+        private const float RESULTS_SHADOW_PIXELS = 2f;
+
+        /// <summary>
         /// A carried flag is drawn this fraction of its carrier's width, over the carrier's shoulder.
         /// </summary>
         private const float CARRIED_FLAG_SCALE = 0.75f;
@@ -101,6 +107,10 @@ namespace EatMeClient
         private Texture2D _PowerPillTexture;
         private Texture2D _PacBaseTexture;
         private Texture2D _GhostBaseTexture;
+        private eGridDef[,] _FloorBoxesMap;
+        private List<CellBox> _GhostPenBoxes = new List<CellBox>();
+        private List<CellBox> _RedSpawnBoxes = new List<CellBox>();
+        private List<CellBox> _BlueSpawnBoxes = new List<CellBox>();
         private Texture2D _FlagBaseTexture;
         private Texture2D _WinBlueTexture;
         private Texture2D _WinRedTexture;
@@ -111,10 +121,21 @@ namespace EatMeClient
         private const int FORCE_FIELD_TEXTURE_PIXELS = 96;
         private Texture2D _PacSheet;
         private Texture2D _PowerUpSheet;
+
+        // the oval shadow under each power up, built from PowerUpRules.GetShadowAlpha (black)
+        private Texture2D _PowerUpShadowTexture;
+        private const int POWER_UP_SHADOW_TEXTURE_WIDTH = 64;
+        private const int POWER_UP_SHADOW_TEXTURE_HEIGHT = 24;
         private Texture2D _WeaponEffectSheet;
         private Texture2D _PacDeathSheet;
         private Texture2D[] _GhostSheets;
         private Texture2D[] _RainbowGhostSheets;
+        private Texture2D _GhostEyesSheet;
+
+        /// <summary>
+        /// Every draw layer, bottom to top, in the order Draw draws them.
+        /// </summary>
+        private static readonly eDrawLayer[] DRAW_LAYERS = Enum.GetValues<eDrawLayer>();
         private Texture2D _WallTexture;
         private Texture2D _WallFillTexture;
         private Texture2D _PointerTexture;
@@ -123,6 +144,7 @@ namespace EatMeClient
         private SoundEffectInstance _EatLoop;
         private SoundEffectInstance _SirenLoop;
         private SoundEffectInstance _PowerPillLoop;
+        private SoundEffectInstance _SpawnChargeLoop;
 
         /// <summary>
         /// The power up sound, a global sound: one loop at full volume while any power up is in the level, however many.
@@ -179,6 +201,11 @@ namespace EatMeClient
 
         public List<AnimatedTexture> DeathAnimations { get; set; }
 
+        /// <summary>
+        /// Pieces of smashed walls flying off the board (WallDebris), taken from ClientGameState.NewDebris.
+        /// </summary>
+        private readonly List<WallDebrisPiece> _Debris = [];
+
         public MultiPlayerGameScreen(Action onQuit)
         {
             _OnQuit = onQuit;
@@ -214,6 +241,8 @@ namespace EatMeClient
             foreach (var personality in GhostPersonalities.ALL)
                 _GhostSheets[personality.Id] = ImageFactory.GenerateGhostSheet(whiteGhost, ClientColors.ToColor(personality.Color));
 
+            _GhostEyesSheet = ImageFactory.GenerateGhostEyesSheet(whiteGhost);
+
             _RainbowGhostSheets = new Texture2D[RAINBOW_GHOST_PHASES];
             for (var phase = 0; phase < RAINBOW_GHOST_PHASES; phase++)
                 _RainbowGhostSheets[phase] = ImageFactory.GenerateRainbowGhostSheet(whiteGhost, GHOST_FRAME_COUNT, phase * (1f / RAINBOW_GHOST_PHASES));
@@ -226,6 +255,9 @@ namespace EatMeClient
 
             _PowerPillLoop = AssetCache.GetSfx(Const.SFX_POWER_PILL).CreateInstance();
             _PowerPillLoop.IsLooped = true;
+
+            _SpawnChargeLoop = AssetCache.GetSfx(Const.SFX_SPAWN_CHARGE).CreateInstance();
+            _SpawnChargeLoop.IsLooped = true;
 
             _PowerUpLoop = AssetCache.GetSfx(Const.SFX_POWER_UP).CreateInstance();
             _PowerUpLoop.IsLooped = true;
@@ -246,6 +278,7 @@ namespace EatMeClient
             _LevelStartedWhilePaused = false;
 
             DeathAnimations = new List<AnimatedTexture>();
+            _Debris.Clear();
             _Trails.Clear();
             StopAnnouncements();
 
@@ -340,6 +373,8 @@ namespace EatMeClient
             // the server keeps going while the menu is open, so keep up with it
             ReceiveMessages();
             _Trails.Update(_State.Snapshot?.Pacs, deltaTime);
+            UpdateDebris(deltaTime);
+            _State.UpdateGhostEyes(deltaTime);
 
             // paused, the game is silent: only the menus' own sounds play
             if (ConfigManager.Settings.Paused)
@@ -378,6 +413,7 @@ namespace EatMeClient
             UpdateLoopSound(_EatLoop, !_State.IsIntermission && _State.IsOwnPacEating());
             UpdateLoopSound(_SirenLoop, !_State.IsIntermission && _State.IsOwnPacNotEating());
             UpdateLoopSound(_PowerPillLoop, !_State.IsIntermission && _State.IsOwnPacPowered());
+            UpdateLoopSound(_SpawnChargeLoop, !_State.IsIntermission && _State.IsOwnPacSpawnFeeding());
             UpdatePowerUpLoop();
 
             _PingTimer += deltaTime;
@@ -401,6 +437,26 @@ namespace EatMeClient
 
                 if (DeathAnimations[i].IsComplete)
                     DeathAnimations.RemoveAt(i);
+            }
+        }
+
+        /// <summary>
+        /// Takes the pieces of newly smashed walls, moves every piece along its arc and drops those that have fallen off
+        /// the bottom of the board.
+        /// </summary>
+        private void UpdateDebris(float deltaTime)
+        {
+            _Debris.AddRange(_State.NewDebris);
+            _State.NewDebris.Clear();
+
+            var bottomY = (_Camera.Position.Y + _BoardSize.Y * 0.5f) / CELL_PIXELS;
+
+            for (int i = _Debris.Count - 1; i > -1; i--)
+            {
+                _Debris[i].AgeSeconds += deltaTime;
+
+                if (WallDebris.IsGone(_Debris[i], bottomY))
+                    _Debris.RemoveAt(i);
             }
         }
 
@@ -444,6 +500,7 @@ namespace EatMeClient
             UpdateLoopSound(_EatLoop, false);
             UpdateLoopSound(_SirenLoop, false);
             UpdateLoopSound(_PowerPillLoop, false);
+            UpdateLoopSound(_SpawnChargeLoop, false);
             UpdateLoopSound(_PowerUpLoop, false);
         }
 
@@ -488,6 +545,8 @@ namespace EatMeClient
                 switch (message)
                 {
                     case LevelStartMessage:
+                        _Debris.Clear();
+
                         if (paused)
                             _LevelStartedWhilePaused = true;
                         else
@@ -516,6 +575,7 @@ namespace EatMeClient
                         MusicManager.Stop();
                         StopLoopSounds();
                         DeathAnimations.Clear();
+                        _Debris.Clear();
                         StopAnnouncements();
                         _LevelStartedWhilePaused = false;
 
@@ -676,73 +736,131 @@ namespace EatMeClient
                 return;
             }
 
-            if (_State.Map != null && !IsStopped)
-            {
-                // the board is drawn into its own viewport below the HUD bar, which also clips it
-                var board = GetBoardViewport(viewport);
-                spriteBatch.GraphicsDevice.Viewport = board;
-
-                // sharp bilinear, so the pixel art stays crisp but scaled, turned and moving sprites get smooth edges
-                spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
-                spriteBatch.Draw(_Pixel, new Rectangle(0, 0, board.Width, board.Height), ClientColors.ToColor(_State.BackgroundColor));
-                DrawBackgroundImage(spriteBatch, board);
-                DrawMaze(spriteBatch, board);
-                DrawLooseFlags(spriteBatch, board);
-                DrawPowerUps(spriteBatch, board);
-                DrawWeaponEffects(spriteBatch, board);
-                DrawPacs(spriteBatch, board);
-                DrawGhosts(spriteBatch, board);
-
-                // Draw deaths
-                foreach (var death in DeathAnimations)
-                {
-                    if (!_Camera.IsVisible(death.GetBoundingBox(), board))
-                        continue;
-
-                    var screenPosition = _Camera.ToScreenPosition(death.Location.ToXnaVector(), board);
-                    death.Draw(spriteBatch, screenPosition);
-                }
-
-                spriteBatch.End();
-                spriteBatch.GraphicsDevice.Viewport = viewport;
-            }
-
-            spriteBatch.Begin();
-
             var status = GetStatusText();
-            if (status != null)
-                DrawStatus(spriteBatch, viewport, status);
-            else
+
+            foreach (var layer in DRAW_LAYERS)
+                DrawLayer(spriteBatch, viewport, layer, status);
+        }
+
+        /// <summary>
+        /// Draws one layer of the game screen (eDrawLayer). The layers up to Overhead are the board, drawn into its own
+        /// viewport below the score bar, which also clips them; status is the connection text shown instead of the HUD,
+        /// or null.
+        /// </summary>
+        private void DrawLayer(SpriteBatch spriteBatch, Viewport viewport, eDrawLayer layer, string status)
+        {
+            var showBoard = _State.Map != null && !IsStopped;
+
+            switch (layer)
             {
-                DrawHud(spriteBatch, viewport);
-                DrawStatsBar(spriteBatch, viewport);
+                case eDrawLayer.Background:
+                case eDrawLayer.Maze:
+                case eDrawLayer.Items:
+                case eDrawLayer.Deaths:
+                case eDrawLayer.Actors:
+                case eDrawLayer.Effects:
+                case eDrawLayer.Overhead:
+                    if (!showBoard)
+                        return;
+
+                    var board = GetBoardViewport(viewport);
+                    spriteBatch.GraphicsDevice.Viewport = board;
+
+                    // sharp bilinear, so the pixel art stays crisp but scaled, turned and moving sprites get smooth edges
+                    spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
+                    DrawBoardLayer(spriteBatch, board, layer);
+                    spriteBatch.End();
+                    spriteBatch.GraphicsDevice.Viewport = viewport;
+                    break;
+
+                case eDrawLayer.Hud:
+                    spriteBatch.Begin();
+
+                    if (status != null)
+                        DrawStatus(spriteBatch, viewport, status);
+                    else
+                    {
+                        DrawHud(spriteBatch, viewport);
+                        DrawStatsBar(spriteBatch, viewport);
+                    }
+
+                    spriteBatch.End();
+
+                    // over the bars, under the mini-map; the board's viewport keeps them off the bars
+                    if (status == null && showBoard)
+                    {
+                        var pointerBoard = GetBoardViewport(viewport);
+                        spriteBatch.GraphicsDevice.Viewport = pointerBoard;
+                        spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
+                        DrawFlagPointers(spriteBatch, pointerBoard, GetMiniMapBounds(viewport));
+                        spriteBatch.End();
+                        spriteBatch.GraphicsDevice.Viewport = viewport;
+                    }
+                    break;
+
+                case eDrawLayer.Ui:
+                    if (status == null)
+                    {
+                        spriteBatch.Begin();
+                        _MiniMap.Draw(spriteBatch, GetMiniMapBounds(viewport), _State.Snapshot, _State.Map, _State.PlayerId, _AnimationTime);
+                        var ownPac = _State.GetOwnPac();
+                        var ownSize = ownPac.HasValue ? (int)Math.Round(ownPac.Value.Size) : 0;
+                        _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill());
+                        DrawRespawnCountdown(spriteBatch, viewport);
+                        spriteBatch.End();
+                    }
+
+                    _InGameMenu.Draw(spriteBatch, viewport);
+                    break;
             }
+        }
 
-            spriteBatch.End();
-
-            // over the HUD, under the mini-map; the board's viewport keeps them off the bars
-            if (status == null && _State.Map != null && !IsStopped)
+        /// <summary>
+        /// Draws one of the board's layers, inside the board's viewport.
+        /// </summary>
+        private void DrawBoardLayer(SpriteBatch spriteBatch, Viewport board, eDrawLayer layer)
+        {
+            switch (layer)
             {
-                var board = GetBoardViewport(viewport);
-                spriteBatch.GraphicsDevice.Viewport = board;
-                spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
-                DrawFlagPointers(spriteBatch, board, GetMiniMapBounds(viewport));
-                spriteBatch.End();
-                spriteBatch.GraphicsDevice.Viewport = viewport;
-            }
+                case eDrawLayer.Background:
+                    spriteBatch.Draw(_Pixel, new Rectangle(0, 0, board.Width, board.Height), ClientColors.ToColor(_State.BackgroundColor));
+                    DrawBackgroundImage(spriteBatch, board);
+                    break;
 
-            if (status == null)
-            {
-                spriteBatch.Begin();
-                _MiniMap.Draw(spriteBatch, GetMiniMapBounds(viewport), _State.Snapshot, _State.Map, _State.PlayerId, _AnimationTime);
-                var ownPac = _State.GetOwnPac();
-                var ownSize = ownPac.HasValue ? (int)Math.Round(ownPac.Value.Size) : 0;
-                _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill());
-                DrawRespawnCountdown(spriteBatch, viewport);
-                spriteBatch.End();
-            }
+                case eDrawLayer.Maze:
+                    DrawMaze(spriteBatch, board);
+                    break;
 
-            _InGameMenu.Draw(spriteBatch, viewport);
+                case eDrawLayer.Items:
+                    DrawLooseFlags(spriteBatch, board);
+                    DrawPowerUps(spriteBatch, board);
+                    DrawWeaponEffects(spriteBatch, board);
+                    break;
+
+                case eDrawLayer.Deaths:
+                    foreach (var death in DeathAnimations)
+                    {
+                        if (!_Camera.IsVisible(death.GetBoundingBox(), board))
+                            continue;
+
+                        var screenPosition = _Camera.ToScreenPosition(death.Location.ToXnaVector(), board);
+                        death.Draw(spriteBatch, screenPosition);
+                    }
+                    break;
+
+                case eDrawLayer.Actors:
+                    DrawPacs(spriteBatch, board);
+                    DrawGhosts(spriteBatch, board);
+                    break;
+
+                case eDrawLayer.Effects:
+                    DrawDebris(spriteBatch, board);
+                    break;
+
+                case eDrawLayer.Overhead:
+                    DrawGhostEyes(spriteBatch, board);
+                    break;
+            }
         }
 
         /// <summary>
@@ -899,12 +1017,15 @@ namespace EatMeClient
                 tip = $"\"{tip}\"";
                 var tipSize = _NameFont.MeasureString(tip);
                 var tipTop = viewport.Height - RESULTS_GAP - tipSize.Y;
-                spriteBatch.DrawString(_NameFont, tip, new Vector2((float)Math.Round(viewport.Width * 0.5f - tipSize.X * 0.5f), (float)Math.Round(tipTop)), ClientColors.COLOR_PAC_WHITE);
+                var tipPosition = new Vector2((float)Math.Round(viewport.Width * 0.5f - tipSize.X * 0.5f), (float)Math.Round(tipTop));
+                DrawShadowedString(spriteBatch, _NameFont, tip, tipPosition, 1f, ClientColors.COLOR_PAC_WHITE);
                 countdownBottom = tipTop - RESULTS_GAP;
             }
 
             var countdownTop = countdownBottom - countdownHeight;
-            DrawCentredString(spriteBatch, countdown, viewport.Width * 0.5f, countdownTop, RESULTS_COUNTDOWN_SCALE, ClientColors.COLOR_PAC_WHITE);
+            var countdownWidth = _Font.MeasureString(countdown).X * RESULTS_COUNTDOWN_SCALE;
+            var countdownPosition = new Vector2((float)Math.Round(viewport.Width * 0.5f - countdownWidth * 0.5f), (float)Math.Round(countdownTop));
+            DrawShadowedString(spriteBatch, _Font, countdown, countdownPosition, RESULTS_COUNTDOWN_SCALE, ClientColors.COLOR_PAC_WHITE);
 
             var halfWidth = viewport.Width * 0.5f;
             var blockTop = titleTop + titleHeight + RESULTS_GAP;
@@ -990,6 +1111,16 @@ namespace EatMeClient
                 spriteBatch.Draw(_Pixel, new Rectangle(x + inset, y + row, w - inset * 2, 1), Color.Black);
                 spriteBatch.Draw(_Pixel, new Rectangle(x + inset, y + h - 1 - row, w - inset * 2, 1), Color.Black);
             }
+        }
+
+        /// <summary>
+        /// Draws text with a black drop shadow RESULTS_SHADOW_PIXELS down and to the right, so it reads on any picture.
+        /// </summary>
+        private static void DrawShadowedString(SpriteBatch spriteBatch, SpriteFont font, string text, Vector2 position, float scale, Color color)
+        {
+            var shadow = position + new Vector2(RESULTS_SHADOW_PIXELS, RESULTS_SHADOW_PIXELS);
+            spriteBatch.DrawString(font, text, shadow, Color.Black, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(font, text, position, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
 
         /// <summary>
@@ -1080,6 +1211,8 @@ namespace EatMeClient
             var showPowerPills = _AnimationTime % (POWER_PILL_BLINK_SECONDS * 2f) < POWER_PILL_BLINK_SECONDS;
             var showBaseTeamColor = _AnimationTime % (FLAG_BASE_BLINK_SECONDS * 2f) < FLAG_BASE_BLINK_SECONDS;
 
+            DrawFloors(spriteBatch, viewport, map);
+
             for (var x = firstX; x <= lastX; x++)
             {
                 for (var y = firstY; y <= lastY; y++)
@@ -1098,13 +1231,6 @@ namespace EatMeClient
                         continue;
                     }
 
-                    if (cell.HasFlag(eGridDef.GhostGenerator))
-                        spriteBatch.Draw(_GhostBaseTexture, bounds, ClientColors.COLOR_PAC_YELLOW);
-                    else if (cell.HasFlag(eGridDef.SpawnPointRed))
-                        spriteBatch.Draw(_PacBaseTexture, bounds, ClientColors.GetSpawnColor(eTeam.Red));
-                    else if (cell.HasFlag(eGridDef.SpawnPointBlue))
-                        spriteBatch.Draw(_PacBaseTexture, bounds, ClientColors.GetSpawnColor(eTeam.Blue));
-
                     if (cell.HasFlag(eGridDef.FlagBaseRed))
                         spriteBatch.Draw(_FlagBaseTexture, bounds, showBaseTeamColor ? ClientColors.GetTeamColor(eTeam.Red) : ClientColors.COLOR_PAC_YELLOW);
                     else if (cell.HasFlag(eGridDef.FlagBaseBlue))
@@ -1116,6 +1242,41 @@ namespace EatMeClient
                         spriteBatch.Draw(_PowerPillTexture, bounds, ClientColors.ToColor(dotColors[x, y]));
                 }
             }
+        }
+
+        /// <summary>
+        /// Draws the ghost pen and spawn room floors, each texture stretched once over its whole room.
+        /// </summary>
+        private void DrawFloors(SpriteBatch spriteBatch, Viewport viewport, eGridDef[,] map)
+        {
+            // a new map instance means a new level, so find its rooms again
+            if (map != _FloorBoxesMap)
+            {
+                _GhostPenBoxes = MiniMapMath.GetCellBoxes(map, eGridDef.GhostGenerator);
+                _RedSpawnBoxes = MiniMapMath.GetCellBoxes(map, eGridDef.SpawnPointRed);
+                _BlueSpawnBoxes = MiniMapMath.GetCellBoxes(map, eGridDef.SpawnPointBlue);
+                _FloorBoxesMap = map;
+            }
+
+            foreach (var box in _GhostPenBoxes)
+                DrawFloor(spriteBatch, viewport, box, _GhostBaseTexture, ClientColors.COLOR_PAC_YELLOW);
+
+            foreach (var box in _RedSpawnBoxes)
+                DrawFloor(spriteBatch, viewport, box, _PacBaseTexture, ClientColors.GetSpawnColor(eTeam.Red));
+
+            foreach (var box in _BlueSpawnBoxes)
+                DrawFloor(spriteBatch, viewport, box, _PacBaseTexture, ClientColors.GetSpawnColor(eTeam.Blue));
+        }
+
+        private void DrawFloor(SpriteBatch spriteBatch, Viewport viewport, CellBox box, Texture2D texture, Color tint)
+        {
+            var screen = _Camera.ToScreenPosition(CellToWorld(box.X, box.Y), viewport);
+            var bounds = new Rectangle((int)screen.X, (int)screen.Y, box.Width * CELL_PIXELS, box.Height * CELL_PIXELS);
+
+            if (bounds.Right < 0 || bounds.Bottom < 0 || bounds.Left > viewport.Width || bounds.Top > viewport.Height)
+                return;
+
+            spriteBatch.Draw(texture, bounds, tint);
         }
 
         /// <summary>
@@ -1157,6 +1318,54 @@ namespace EatMeClient
 
                 var tint = isRainbow ? ClientColors.ToColor(Rainbow.GetWallColor(x, y, quarter)) : wallColor;
                 spriteBatch.Draw(_WallTexture, center, source, tint, rotation, origin, 1f, SpriteEffects.None, 0f);
+            }
+        }
+
+        /// <summary>
+        /// Every piece of smashed wall in flight, over everything else on the board: its quarter of the wall as it looked
+        /// (fill, then tube, as DrawWall), turned by its quarter turns plus its spin about its own centre. A solid quarter is
+        /// just the fill color, so it isn't drawn when the walls are hollow.
+        /// </summary>
+        private void DrawDebris(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            if (_Debris.Count == 0)
+                return;
+
+            var half = CELL_PIXELS / 2;
+            var quarterOrigin = new Vector2(half * 0.5f, half * 0.5f);
+            var wallColor = ClientColors.ToColor(_State.WallColor);
+            var wallFillColor = ClientColors.ToColor(_State.WallFillColor);
+            var isFilled = wallFillColor.A > 0;
+            var isRainbow = _State.LevelInfo != null && _State.LevelInfo.IsRainbow;
+
+            foreach (var piece in _Debris)
+            {
+                var center = _Camera.ToScreenPosition(CellToWorld(WallDebris.GetX(piece), WallDebris.GetY(piece)), viewport);
+
+                if (center.X < -CELL_PIXELS || center.Y < -CELL_PIXELS || center.X > viewport.Width + CELL_PIXELS || center.Y > viewport.Height + CELL_PIXELS)
+                    continue;
+
+                var spin = WallDebris.GetRotation(piece);
+
+                if (piece.IsSolid)
+                {
+                    if (isFilled)
+                        spriteBatch.Draw(_Pixel, center, null, wallFillColor, spin, new Vector2(0.5f, 0.5f), half, SpriteEffects.None, 0f);
+
+                    continue;
+                }
+
+                // quarters run clockwise from the top left
+                var sourceX = piece.SourceQuarter == 1 || piece.SourceQuarter == 2 ? half : 0;
+                var sourceY = piece.SourceQuarter >= 2 ? half : 0;
+                var source = new Rectangle(sourceX, sourceY, half, half);
+                var rotation = piece.QuarterTurns * MathHelper.PiOver2 + spin;
+
+                if (isFilled)
+                    spriteBatch.Draw(_WallFillTexture, center, source, wallFillColor, rotation, quarterOrigin, 1f, SpriteEffects.None, 0f);
+
+                var tint = isRainbow ? ClientColors.ToColor(Rainbow.GetWallColor(piece.CellX, piece.CellY, piece.Quarter)) : wallColor;
+                spriteBatch.Draw(_WallTexture, center, source, tint, rotation, quarterOrigin, 1f, SpriteEffects.None, 0f);
             }
         }
 
@@ -1392,14 +1601,20 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Draws each power up one cell wide from the power up sheet, bobbing up and down (PowerUpRules.GetHoverOffset).
+        /// Draws each power up one cell wide from the power up sheet, bobbing up and down (PowerUpRules.GetHoverOffset)
+        /// over an oval shadow that stays at its true position, so the bob shows whichever way it moves.
         /// </summary>
         private void DrawPowerUps(SpriteBatch spriteBatch, Viewport viewport)
         {
             if (_State.Snapshot == null)
                 return;
 
+            _PowerUpShadowTexture ??= CreatePowerUpShadowTexture(spriteBatch.GraphicsDevice);
+
             var halfSize = CELL_PIXELS * 0.5f;
+            var shadowWidth = (int)(PowerUpRules.SHADOW_WIDTH_CELLS * CELL_PIXELS);
+            var shadowHeight = (int)(PowerUpRules.SHADOW_HEIGHT_CELLS * CELL_PIXELS);
+            var shadowOffset = PowerUpRules.SHADOW_OFFSET_CELLS * CELL_PIXELS;
 
             foreach (var powerUp in _State.Snapshot.PowerUps)
             {
@@ -1407,10 +1622,31 @@ namespace EatMeClient
                     PowerUpSprites.CELL_PIXELS, PowerUpSprites.CELL_PIXELS);
                 var hover = PowerUpRules.GetHoverOffset(_AnimationTime, powerUp.PowerUpId) * CELL_PIXELS;
                 var center = _Camera.ToScreenPosition(CellToWorld(powerUp.X, powerUp.Y), viewport);
+                var shadow = new Rectangle((int)(center.X - shadowWidth * 0.5f), (int)(center.Y + shadowOffset - shadowHeight * 0.5f),
+                    shadowWidth, shadowHeight);
                 var bounds = new Rectangle((int)(center.X - halfSize), (int)(center.Y - halfSize + hover), CELL_PIXELS, CELL_PIXELS);
 
+                spriteBatch.Draw(_PowerUpShadowTexture, shadow, Color.White);
                 spriteBatch.Draw(_PowerUpSheet, bounds, source, Color.White);
             }
+        }
+
+        /// <summary>
+        /// Builds the power up shadow texture: a black oval whose opacity comes from PowerUpRules.GetShadowAlpha.
+        /// </summary>
+        private static Texture2D CreatePowerUpShadowTexture(GraphicsDevice graphicsDevice)
+        {
+            const int WIDTH = POWER_UP_SHADOW_TEXTURE_WIDTH;
+            const int HEIGHT = POWER_UP_SHADOW_TEXTURE_HEIGHT;
+            var data = new Color[WIDTH * HEIGHT];
+
+            for (var y = 0; y < HEIGHT; y++)
+                for (var x = 0; x < WIDTH; x++)
+                    data[y * WIDTH + x] = Color.Black * PowerUpRules.GetShadowAlpha(x, y, WIDTH, HEIGHT);
+
+            var texture = new Texture2D(graphicsDevice, WIDTH, HEIGHT);
+            texture.SetData(data);
+            return texture;
         }
 
         /// <summary>
@@ -1487,6 +1723,34 @@ namespace EatMeClient
                 }
 
                 DrawName(spriteBatch, personality.Name, center, size, isRainbow ? Color.White : ClientColors.ToColor(personality.Color));
+            }
+        }
+
+        /// <summary>
+        /// Draws the eyes of every dead ghost (ClientGameState.Eyes) as big as a ghost, looking the way they move, with no name.
+        /// Only eyes on the board are drawn.
+        /// </summary>
+        private void DrawGhostEyes(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            if (_State.Eyes.Count == 0)
+                return;
+
+            var isRainbow = _State.LevelInfo != null && _State.LevelInfo.IsRainbow;
+            var size = (int)(PacRules.GetGhostRadius(isRainbow) * 2f * CELL_PIXELS);
+            var halfSize = size * 0.5f;
+            var frameWidth = _GhostEyesSheet.Width / GHOST_FRAME_COUNT;
+            var onBoard = new Rectangle(0, 0, viewport.Width, viewport.Height);
+
+            foreach (var eyes in _State.Eyes)
+            {
+                var center = _Camera.ToScreenPosition(CellToWorld(eyes.X, eyes.Y), viewport);
+                var bounds = new Rectangle((int)(center.X - halfSize), (int)(center.Y - halfSize), size, size);
+
+                if (!onBoard.Intersects(bounds))
+                    continue;
+
+                var source = new Rectangle(GetGhostFrame(eyes.Facing) * frameWidth, 0, frameWidth, _GhostEyesSheet.Height);
+                spriteBatch.Draw(_GhostEyesSheet, bounds, source, Color.White);
             }
         }
 

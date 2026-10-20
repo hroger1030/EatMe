@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 
 namespace EatMeServer
 {
@@ -10,7 +12,22 @@ namespace EatMeServer
     /// </summary>
     public static class ServerLog
     {
+        /// <summary>
+        /// 24-bit ANSI color for help text (dark orange, RGB 204,85,0), which ConsoleColor has no match for.
+        /// </summary>
+        public const string ANSI_HELP_COLOR = "[38;2;204;85;0m";
+
+        /// <summary>
+        /// ANSI code that puts the text color back to the console's default.
+        /// </summary>
+        public const string ANSI_RESET_COLOR = "[39m";
+
+        private const int STD_OUTPUT_HANDLE = -11;
+        private const uint ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+
         private static readonly object LOCK = new();
+
+        private static bool _UseAnsi;
 
         private static Stopwatch _Uptime;
         private static bool _IsPromptShowing;
@@ -43,6 +60,10 @@ namespace EatMeServer
                 case eLogType.Command:
                     return ConsoleColor.White;
 
+                case eLogType.Help:
+                    // the closest console color, used when the console can't show ANSI_HELP_COLOR
+                    return ConsoleColor.DarkYellow;
+
                 case eLogType.Warning:
                     return ConsoleColor.Yellow;
 
@@ -53,6 +74,43 @@ namespace EatMeServer
                     return ConsoleColor.Gray;
             }
         }
+
+        /// <summary>
+        /// The 24-bit ANSI color code for a kind of line, or empty when GetColor's console color is used.
+        /// </summary>
+        public static string GetAnsiColor(eLogType type)
+        {
+            return type == eLogType.Help ? ANSI_HELP_COLOR : string.Empty;
+        }
+
+        /// <summary>
+        /// Lets Write use ANSI color codes when the console shows them: on Windows it turns on virtual terminal
+        /// processing for standard output; elsewhere terminals already show them. Returns whether they are on.
+        /// </summary>
+        public static bool EnableAnsiColors()
+        {
+            if (Console.IsOutputRedirected)
+                return _UseAnsi = false;
+
+            if (!OperatingSystem.IsWindows())
+                return _UseAnsi = true;
+
+            var handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+            _UseAnsi = GetConsoleMode(handle, out var mode)
+                && SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+            return _UseAnsi;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GetStdHandle(int handle);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetConsoleMode(IntPtr handle, out uint mode);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetConsoleMode(IntPtr handle, uint mode);
 
         /// <summary>
         /// The typing prompt for how long the server has been up: whole hours, then minutes as two digits.
@@ -107,6 +165,26 @@ namespace EatMeServer
                 _IsPromptShowing = false;
         }
 
+        /// <summary>
+        /// Clears the console. The prompt goes with it; ShowPrompt brings it back. Does nothing when the output
+        /// isn't a console (redirected, or under tests).
+        /// </summary>
+        public static void Clear()
+        {
+            lock (LOCK)
+            {
+                try
+                {
+                    Console.Clear();
+                }
+                catch (IOException)
+                {
+                }
+
+                _IsPromptShowing = false;
+            }
+        }
+
         public static void Write(eLogType type, string text)
         {
             lock (LOCK)
@@ -116,7 +194,11 @@ namespace EatMeServer
                 var old = Console.ForegroundColor;
                 Console.ForegroundColor = GetColor(type);
 
-                if (type == eLogType.Error)
+                var ansi = _UseAnsi ? GetAnsiColor(type) : string.Empty;
+
+                if (ansi.Length > 0)
+                    Console.WriteLine(ansi + text + ANSI_RESET_COLOR);
+                else if (type == eLogType.Error)
                     Console.Error.WriteLine(text);
                 else
                     Console.WriteLine(text);

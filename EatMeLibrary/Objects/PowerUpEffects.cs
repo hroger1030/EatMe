@@ -118,11 +118,11 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if a pac with this effect kills any enemy pac or ghost it touches, and a ghost touching it doesn't kill
-        /// it: Screw Attack. An invincible pac still beats it, and weapons still kill it.
+        /// it: Invincible, Screw Attack and Super Size. Invincible beats the other two, and weapons still kill them.
         /// </summary>
         public static bool KillsOnContact(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.ScrewAttack;
+            return effect == ePowerUpEffect.Invincible || effect == ePowerUpEffect.ScrewAttack || effect == ePowerUpEffect.SuperSize;
         }
 
         /// <summary>
@@ -167,11 +167,11 @@ namespace EatMeLibrary
         /// <summary>
         /// A rolling (Morph Ball) pac turns this many full turns for every cell it moves.
         /// </summary>
-        public const float ROLL_TURNS_PER_CELL = 0.75f;
+        public const float ROLL_TURNS_PER_CELL = 0.25f;
 
         /// <summary>
         /// The angle (radians, 0 to 2 pi) a rolling pac at (x, y) is turned to: it turns ROLL_TURNS_PER_CELL for each
-        /// cell it moves, so it only spins while moving.
+        /// cell it moves, so it only spins while moving, clockwise moving right or down and counter clockwise moving left or up.
         /// </summary>
         public static float GetRollAngle(float x, float y)
         {
@@ -193,12 +193,14 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// A Screw Attack pac turns this many full turns for every cell it moves, so it spins very fast, and only while moving.
+        /// A Screw Attack pac turns this many full turns for every cell it moves, so it spins fast, and only while moving.
+        /// Kept well under half a turn per snapshot, or the spin looks like it runs backwards.
         /// </summary>
-        public const float SCREW_TURNS_PER_CELL = 2f;
+        public const float SCREW_TURNS_PER_CELL = 0.5f;
 
         /// <summary>
-        /// The angle (radians, 0 to 2 pi) a Screw Attack pac at (x, y) is turned to.
+        /// The angle (radians, 0 to 2 pi) a Screw Attack pac at (x, y) is turned to: clockwise moving right or down and
+        /// counter clockwise moving left or up.
         /// </summary>
         public static float GetScrewAngle(float x, float y)
         {

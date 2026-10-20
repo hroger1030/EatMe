@@ -46,7 +46,7 @@ Commands are typed into the server's window while it runs. Command names ignore 
 | `help` (or `?`) | Lists the commands. |
 | `status` | Level, scores and player counts. |
 | `players` | Every player with their id, team, scores and lag. |
-| `next level` (or `next`) | Starts the next level now. |
+| `next level` (or `next`) | Starts the next level now (a random one with RandomLevels on). |
 | `level {n}` | Jumps to level n. |
 | `restart` | Restarts the current level. |
 | `new game` | Goes back to the starting level. |
@@ -57,6 +57,7 @@ Commands are typed into the server's window while it runs. Command names ignore 
 | `autobalance [on\|off]` | Shows or sets AutoBalanceTeams. |
 | `motd [text]` | Shows or sets the message of the day. |
 | `settings` | Lists every setting with the command that changes it and its value. |
+| `clear` (or `cls`) | Clears the console. |
 | `quit` (or `stop`, `exit`) | Stops the server. |
 
 Every other `server.cfg` setting has its own command, its name in lower case: typed alone it shows the value, typed with a value it changes it, e.g. `pacspeed 7.5`, `mazesize 60`, `tickrate 30`, `servername Friday Night Pac`. `MinPlayers`, `AutoBalanceTeams` and `MessageOfTheDay` are `bots`, `autobalance` and `motd` (`minplayers`, `autobalanceteams` and `messageoftheday` work too). `Port` and `DiscoveryPort` have none, since they only count at startup. `help` lists them all.
@@ -67,6 +68,7 @@ Every other `server.cfg` setting has its own command, its name in lower case: ty
 | `tickrate [n]` | TickRate |
 | `targetfps [n]` | TargetFps |
 | `startinglevel [n]` | StartingLevel |
+| `randomlevels [on\|off]` | RandomLevels |
 | `maxplayers [n]` | MaxPlayers |
 | `maxscore [n]` | MaxScore |
 | `flagscore [n]` | FlagScore |
@@ -100,7 +102,7 @@ Every other `server.cfg` setting has its own command, its name in lower case: ty
 | `lagcompensationmaxms [n]` | LagCompensationMaxMs |
 | `serverseed [n]` | ServerSeed |
 
-`[n]` is a whole number and `[x]` a number with a decimal point. A value is checked like the file is when it loads: an odd or too small `MazeSize` is refused and the setting keeps its value, and out of range values are clamped (for example `DotRegenPercent` to 0 to 100 and `TickRate` to 1 or more). Most changes count at once, and game rule changes are sent to every connected player. The settings the map is built from (`MazeSize`, `WarpTunnelCount`, `GhostCount`, `PowerPillCount`, `FlagCount`, `PlayerBaseCount` and `ServerSeed`) count from the next level, or at once with `restart`. `StartingLevel` counts on the next `new game`.
+`[n]` is a whole number and `[x]` a number with a decimal point. A value is checked like the file is when it loads: an odd or too small `MazeSize` is refused and the setting keeps its value, and out of range values are clamped (for example `DotRegenPercent` to 0 to 100 and `TickRate` to 1 or more). Most changes count at once, and game rule changes are sent to every connected player. The settings the map is built from (`MazeSize`, `WarpTunnelCount`, `GhostCount`, `PowerPillCount`, `FlagCount`, `PlayerBaseCount` and `ServerSeed`) count from the next level, or at once with `restart`. `StartingLevel` counts on the next `new game`. `RandomLevels` (`on` or `off`) counts from the next level change: with it on, every level after the starting one is picked at random, never the one just played.
 
 ### server.cfg
 
@@ -134,7 +136,7 @@ JSON, deserialized into `ServerSettings`. Edit `EatMeServer/server.cfg`; it is c
 | `GameConfig.PacMaxSize` | float | 100.0 | The most dots can make a pac (power pills can take it past this). A pac needs at least this size and a power pill working to eat ghosts. |
 | `GameConfig.PacSpeed` | float | 6.0 | Speed in map cells per second of a size 0 pac; a pac at max size is 20% faster. |
 | `GameConfig.GhostSpeed` | float | 5.0 | Ghost speed in map cells per second. |
-| `GameConfig.PowerUpSpeed` | float | 3.0 | Power up speed in map cells per second. |
+| `GameConfig.PowerUpSpeed` | float | 2.5 | Power up speed in map cells per second. |
 | `GameConfig.PacShrinkPerSecond` | float | 3.0 | Size a starving pac loses each second. |
 | `GameConfig.MsUntilStarvation` | int | 1000 | ms after a pac last ate a dot or power pill before it starts starving (shrinking). |
 | `GameConfig.DotSizeGain` | float | 1.0 | Size a pac gains for each dot it eats. |
@@ -251,3 +253,13 @@ The reverb is a Schroeder reverb: four damped comb filters in parallel (29.7, 37
 - six zaps at random times: square waves falling from 1800 Hz to 250 Hz over 70 ms, at 0.3, fading out as they fall
 
 It starts in 4 ms, dies away (`exp(-1.6 t)`) and fades to silence over the last 0.25 s.
+
+## Spawn charge
+
+`SoundFX_SpawnCharge.wav` (1.5 s) loops while the player's own pac is being fed by standing on its own team's spawn: a rising, pulsing "charging" hum. It is synthesised the same way (44,100 Hz, 16-bit stereo, the same sample in both channels, 0.9 peak), from a fixed random seed. The sound is the sum of three parts:
+
+- a Shepard tone at 0.55: seven partials an octave apart, starting at 55 Hz, each gliding up one octave every 1.5 s and wrapping back to the bottom, loud in the middle and silent at both ends (a Gaussian on the octave scale, centred near 622 Hz, one octave wide), so the pitch seems to rise for ever. Each partial is a sine plus its second (0.3) and third (0.15) harmonics, and the whole tone pulses at 10 Hz (its level dipping by 30%)
+- a whine at 0.18: two voices, half a sweep apart, each sweeping from 300 Hz to 1200 Hz (exponentially) every 0.5 s with a `sin²` swell, a sine squashed by `tanh(3 x)` so it buzzes
+- a soft hiss: white noise through a one-pole low pass filter (coefficient 0.05), at 0.6
+
+The loop is one octave of the Shepard glide (1.5 s), after which the tone sounds the same again, so nothing longer is needed; the whine (0.5 s) and the pulse also fit a whole number of times in it. To loop without a seam, 1.75 s is made and the last 0.25 s is crossfaded (equal power) into the start, so the end runs straight on into the beginning. The sum is soft clipped with `tanh(1.2 x)`.

@@ -53,6 +53,28 @@ namespace EatMeTests
         }
 
         [Test]
+        public void RandomLevels_ShowsAndSetsTheFlag()
+        {
+            var server = MakeServer();
+
+            Assert.That(Run(server, "randomlevels"), Is.EqualTo("RandomLevels = off"));
+            Assert.That(Run(server, "randomlevels on"), Is.EqualTo("RandomLevels = on"));
+            Assert.That(server.Settings.RandomLevels, Is.True);
+            Assert.That(Run(server, "RandomLevels false"), Is.EqualTo("RandomLevels = off"));
+            Assert.That(server.Settings.RandomLevels, Is.False);
+        }
+
+        [Test]
+        public void RandomLevels_BadValue_ShowsUsageAndKeepsTheFlag()
+        {
+            var server = MakeServer();
+            Run(server, "randomlevels on");
+
+            Assert.That(Run(server, "randomlevels maybe"), Does.StartWith("Usage:"));
+            Assert.That(server.Settings.RandomLevels, Is.True);
+        }
+
+        [Test]
         public void EveryListedCommand_IsACommand()
         {
             var rows = SettingCommands.GetSettingRows(MakeServer().Settings);
@@ -203,6 +225,23 @@ namespace EatMeTests
             Assert.That(ServerLog.GetColor(eLogType.Error), Is.EqualTo(ConsoleColor.Red));
             Assert.That(ServerLog.GetColor(eLogType.Warning), Is.EqualTo(ConsoleColor.Yellow));
             Assert.That(ServerLog.GetColor(eLogType.Info), Is.EqualTo(ConsoleColor.Gray));
+        }
+
+        [Test]
+        public void ServerLog_HelpIsDarkOrange()
+        {
+            Assert.That(ServerLog.GetAnsiColor(eLogType.Help), Is.EqualTo(ServerLog.ANSI_HELP_COLOR));
+            Assert.That(ServerLog.GetColor(eLogType.Help), Is.EqualTo(ConsoleColor.DarkYellow));
+            Assert.That(ServerLog.GetAnsiColor(eLogType.Command), Is.Empty);
+        }
+
+        [TestCase("help", eLogType.Help)]
+        [TestCase("  HELP  ", eLogType.Help)]
+        [TestCase("status", eLogType.Command)]
+        [TestCase("nonsense", eLogType.Command)]
+        public void ServerCommands_GetOutputType_HelpOnlyForHelp(string line, eLogType type)
+        {
+            Assert.That(ServerCommands.GetOutputType(line), Is.EqualTo(type));
         }
 
         [TestCase(0, 0, "[Up:0:00] ")]

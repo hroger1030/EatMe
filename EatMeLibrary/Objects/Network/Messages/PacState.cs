@@ -71,9 +71,14 @@ namespace EatMeLibrary
         /// </summary>
         public bool SpawnLocked { get; }
 
+        /// <summary>
+        /// Whether the pac is growing from standing on its own team's spawn; the client plays the charge loop for its own.
+        /// </summary>
+        public bool SpawnFeeding { get; }
+
         public PacState(int playerId, eTeam team, float x, float y, float size, eFacing facing, bool alive, bool hasFlag, bool eating,
             int flagCaps = 0, int ghostKills = 0, int playerKills = 0, int rescues = 0, ePowerUpEffect powerUpEffect = ePowerUpEffect.None, int powerUpMsLeft = 0, int totalScore = 0, int msSinceEaten = 0, bool stunned = false,
-            int respawnMsLeft = 0, bool spawnLocked = false, int powerUps = 0)
+            int respawnMsLeft = 0, bool spawnLocked = false, int powerUps = 0, bool spawnFeeding = false)
         {
             PlayerId = playerId;
             Team = team;
@@ -96,6 +101,7 @@ namespace EatMeLibrary
             RespawnMsLeft = respawnMsLeft;
             SpawnLocked = spawnLocked;
             PowerUps = powerUps;
+            SpawnFeeding = spawnFeeding;
         }
 
         public void Write(BinaryWriter writer)
@@ -121,6 +127,7 @@ namespace EatMeLibrary
             writer.Write(RespawnMsLeft);
             writer.Write(SpawnLocked);
             writer.Write(PowerUps);
+            writer.Write(SpawnFeeding);
         }
 
         public static PacState Read(BinaryReader reader)
@@ -146,7 +153,8 @@ namespace EatMeLibrary
                 reader.ReadBoolean(),
                 reader.ReadInt32(),
                 reader.ReadBoolean(),
-                reader.ReadInt32());
+                reader.ReadInt32(),
+                reader.ReadBoolean());
         }
     }
 }

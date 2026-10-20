@@ -65,6 +65,9 @@ namespace EatMeServer
         // kept apart from _Random so joining players don't change what the ghosts do
         private readonly Random _BotRandom = new();
 
+        // picks random levels; not _Random, which is reseeded from each level's seed
+        private readonly Random _LevelRandom = new();
+
         // scratch space for PacBrain, reused by every bot
         private readonly PathMap _BotPaths = new();
         private readonly PathMap _BotThreatPaths = new();
@@ -99,6 +102,11 @@ namespace EatMeServer
         /// joining part way through is sent them (BuildEatenCells).
         /// </summary>
         private readonly HashSet<(int X, int Y)> _ChangedWalls = [];
+
+        /// <summary>
+        /// Cells a Super Size pac covers this tick (WeaponRules.GetTouchedCells), reused so smashing allocates nothing.
+        /// </summary>
+        private readonly List<(int X, int Y)> _TouchedCells = [];
 
         // scratch for Warp: cells with a pac or ghost in them
         private readonly HashSet<(int X, int Y)> _Occupied = [];
@@ -388,7 +396,7 @@ namespace EatMeServer
 
                 snapshot.Pacs.Add(new PacState(player.Id, player.Team, player.Location.X, player.Location.Y, player.Size, player.Facing, player.Alive, player.HasFlag, player.Eating,
                     player.FlagCaps, player.GhostKills, player.PlayerKills, player.FlagRescues, player.PowerUpEffect, player.PowerUpMs, player.TotalScore, player.MsSinceEaten, player.IsStunned,
-                    respawnMsLeft, spawnLocked, player.PowerUpsEaten));
+                    respawnMsLeft, spawnLocked, player.PowerUpsEaten, player.SpawnFeeding));
             }
 
             foreach (var ghost in _Ghosts)
@@ -721,10 +729,16 @@ namespace EatMeServer
                     var (cx, cy) = MazeMovement.GetNextCentreCell(pac.Location, pac.Facing, width, height);
                     serverPlayer.Input = MazeMovement.ToDirection(PacBrain.ChooseDirection(world, pac, cx, cy, _BotPaths, _BotThreatPaths, _BotRandom, memory));
                 }
-                else if (memory.CanTurnBack && PacBrain.ShouldTurnBack(world, pac))
+                else if (PacBrain.ShouldTurnBack(world, pac))
                 {
-                    memory.TurnedBack();
-                    serverPlayer.Input = MazeMovement.ToDirection(MazeMovement.GetOpposite(pac.Facing));
+                    // a threat it has only just seen takes BotMemory.REACTION_MS to react to
+                    memory.NoticeThreat();
+
+                    if (memory.CanTurnBack && memory.HasReacted)
+                    {
+                        memory.TurnedBack();
+                        serverPlayer.Input = MazeMovement.ToDirection(MazeMovement.GetOpposite(pac.Facing));
+                    }
                 }
 
                 // bots with a sword or fireballs press the action button at an enemy or ghost straight ahead
@@ -788,13 +802,16 @@ namespace EatMeServer
                 if (pac.HasFlag && IsSpawnCell(MazeMovement.GetCell(pac.Location)))
                     DropFlag(pac, from.X + CELL_CENTER, from.Y + CELL_CENTER);
 
-                // Super Size smashes every wall it moves into (never the outer wall) into a dot cell
+                // Super Size smashes every wall its body covers (never the outer wall) into a dot cell
                 if (PowerUpEffects.SmashesWalls(pac.PowerUpEffect) && pac.PowerUpMs > 0)
                 {
-                    var (x, y) = MazeMovement.GetCell(pac.Location);
+                    WeaponRules.GetTouchedCells(pac.Location, PacRules.GetRadius(pac.Size), Map.GetLength(0), Map.GetLength(1), _TouchedCells);
 
-                    if (SmashWall(x, y))
-                        smasher = pac;
+                    foreach (var (x, y) in _TouchedCells)
+                    {
+                        if (SmashWall(x, y))
+                            smasher = pac;
+                    }
                 }
             }
 
@@ -879,9 +896,20 @@ namespace EatMeServer
         }
 
         /// <summary>
+        /// True if the cell is one of the player's own team's spawn tiles.
+        /// </summary>
+        public bool IsOwnSpawnCell(Player player, (int X, int Y) cell)
+        {
+            var spawn = player.Team == eTeam.Red ? eGridDef.SpawnPointRed : eGridDef.SpawnPointBlue;
+            return (Map[cell.X, cell.Y] & spawn) != 0;
+        }
+
+        /// <summary>
         /// Living pacs eat the dot or power pill in the cell they are in. A dot adds DotSizeGain (times the effect's
         /// PacRules.GetDotGainScale) to a pac's size, up to PacMaxSize. A power pill starts the PowerPill effect (StartPowerUpEffect); the effect's timer counts down here
         /// and EndPowerUpEffect runs when it is up, except for a permanent effect (PowerUpEffects.IsPermanent), whose timer stays full.
+        /// A pac on its own team's spawn tile with no dot to eat is fed: it grows at the rate it would running over dots
+        /// (PacRules.GetSpawnFeedGain, up to PacMaxSize, SpawnFeeding set while it grows) and doesn't get hungry, unless its effect can't eat.
         /// A pac with an effect that PowerUpEffects.PreventsStarving never gets hungry. Otherwise a pac that hasn't eaten for MsUntilStarvation shrinks by PacShrinkPerSecond each second.
         /// </summary>
         public void UpdateEating(int elapsedMs)
@@ -891,6 +919,8 @@ namespace EatMeServer
             foreach (var serverPlayer in _Players.Values)
             {
                 var player = serverPlayer.Player;
+
+                player.SpawnFeeding = false;
 
                 if (!player.Alive)
                     continue;
@@ -932,6 +962,16 @@ namespace EatMeServer
                     // grabbing a power pill lets go of the enemy flag
                     DropFlag(player);
                     StartPowerUpEffect(player, ePowerUpEffect.PowerPill);
+                    player.MsSinceEaten = 0;
+                }
+                else if (PowerUpEffects.CanEat(player.PowerUpEffect) && IsOwnSpawnCell(player, (x, y)))
+                {
+                    // the spawn feeds the pac as fast as a line of dots would
+                    var speed = PacRules.GetSpeed(config.PacSpeed, player.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(player.PowerUpEffect);
+                    var gain = PacRules.GetSpawnFeedGain(config.DotSizeGain * PacRules.GetDotGainScale(player.PowerUpEffect), speed, (float)elapsedMs / MS_PER_SECOND);
+
+                    player.SpawnFeeding = player.Size < config.PacMaxSize;
+                    player.Size = PacRules.GrowFromDot(player.Size, gain, config.PacMaxSize);
                     player.MsSinceEaten = 0;
                 }
                 else if (PowerUpEffects.PreventsStarving(player.PowerUpEffect))
@@ -1059,7 +1099,7 @@ namespace EatMeServer
         /// </summary>
         public CellsChangedMessage BuildEatenCells()
         {
-            var message = new CellsChangedMessage();
+            var message = new CellsChangedMessage { IsCatchUp = true };
 
             foreach (var regen in _Regens)
                 message.Cells.Add(new CellChange((ushort)regen.X, (ushort)regen.Y, Map[regen.X, regen.Y]));
@@ -1076,7 +1116,8 @@ namespace EatMeServer
         /// <summary>
         /// Enemy pacs that touch: the bigger one eats the smaller (PlayerKill points), and equal sizes bounce
         /// off each other. An invincible pac (Player.IsInvincible) eats any enemy whatever its size, and two
-        /// invincible pacs bounce. Screw Attack eats any enemy that isn't invincible, and two screw attackers bounce.
+        /// invincible pacs bounce. Any other pac that kills on contact (Player.KillsOnContact: Screw Attack, Super Size)
+        /// eats any enemy that isn't invincible, and two of them bounce.
         /// Friendly pacs pass through each other.
         /// </summary>
         public void UpdatePacFights()
@@ -1118,14 +1159,15 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// What decides a fight before size does: 2 for an invincible pac, 1 for Screw Attack, 0 for anything else.
+        /// What decides a fight before size does: 2 for an invincible pac, 1 for any other pac that kills on contact
+        /// (Screw Attack, Super Size), 0 for anything else.
         /// </summary>
         private static int GetContactRank(Player pac)
         {
             if (pac.IsInvincible)
                 return 2;
 
-            return PowerUpEffects.KillsOnContact(pac.PowerUpEffect) && pac.PowerUpMs > 0 ? 1 : 0;
+            return pac.KillsOnContact ? 1 : 0;
         }
 
         private void CollectLiving()
@@ -1573,8 +1615,8 @@ namespace EatMeServer
                 if (!player.Alive || player.PassesThrough || !PacRules.IsTouchingGhost(player.Location, player.Size, ghost.Location, ghostRadius))
                     continue;
 
-                // an invincible or Screw Attack pac kills any ghost it touches and can't be killed by one
-                if (player.IsInvincible || GetContactRank(player) > 0 || PacRules.CanKillGhost(player.Size, player.IsPowered, config.PacMaxSize))
+                // a pac that kills on contact (Invincible, Screw Attack, Super Size) kills any ghost it touches and can't be killed by one
+                if (player.KillsOnContact || PacRules.CanKillGhost(player.Size, player.IsPowered, config.PacMaxSize))
                 {
                     KillGhost(ghost, player);
                     return;
@@ -2557,7 +2599,7 @@ namespace EatMeServer
             if (intermissionTimeMs <= 0)
             {
                 Broadcast(BuildLevelWon(winner.Value, 0));
-                StartLevel(CurrentLevel.Level + 1);
+                StartLevel(GetNextLevel());
                 return true;
             }
 
@@ -2578,7 +2620,19 @@ namespace EatMeServer
             _IntermissionMs -= elapsedMs;
 
             if (_IntermissionMs <= 0)
-                StartLevel(CurrentLevel.Level + 1);
+                StartLevel(GetNextLevel());
+        }
+
+        /// <summary>
+        /// The level to play after this one: with RandomLevels on a random level other than this one
+        /// (Levels.PickRandomLevel), otherwise the next level in the list.
+        /// </summary>
+        public int GetNextLevel()
+        {
+            if (_Settings.RandomLevels)
+                return Levels.PickRandomLevel(CurrentLevel.Level, _LevelRandom);
+
+            return CurrentLevel.Level + 1;
         }
 
         /// <summary>

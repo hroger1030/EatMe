@@ -69,7 +69,7 @@ namespace EatMeTests
         private static eFacing? Choose(BotWorld world, Player me, Random random = null, int randomTurnPercent = 0)
         {
             var (x, y) = MazeMovement.GetCell(me.Location);
-            return PacBrain.ChooseDirection(world, me, x, y, new PathMap(), new PathMap(), random ?? new Random(1), randomTurnPercent: randomTurnPercent);
+            return PacBrain.ChooseDirection(world, me, x, y, new PathMap(), new PathMap(), random ?? new Random(1), randomTurnPercent: randomTurnPercent, reactionMs: 0);
         }
 
         [Test]
@@ -374,6 +374,49 @@ namespace EatMeTests
             Assert.That(PacBrain.ShouldTurnBack(MakeWorld(map, [me], [MakeGhost(6, 1)]), me), Is.False);
         }
 
+        [Test]
+        public void ShouldTurnBack_NotForAThreatBehindAWall()
+        {
+            var map = MakeMap(["#########", "#...#...#", "#########"]);
+            var me = MakePac(1, eTeam.Red, 2, 1);
+            me.Location = new Point2(2.7f, 1.5f);
+
+            Assert.That(PacBrain.ShouldTurnBack(MakeWorld(map, [me], [MakeGhost(6, 1)]), me), Is.False);
+            Assert.That(PacBrain.ShouldTurnBack(MakeWorld(map, [me], [MakeGhost(3, 1)]), me), Is.True);
+        }
+
+        /// <summary>
+        /// A loop of cells round a block, (1, 1) to (5, 3).
+        /// </summary>
+        private static readonly string[] LOOP =
+        [
+            "#######",
+            "#.....#",
+            "#.###.#",
+            "#.....#",
+            "#######",
+        ];
+
+        [Test]
+        public void ChooseFleeDirection_KeepsGoingWhenBothWaysAreAsGood()
+        {
+            var map = MakeMap(LOOP);
+
+            // the threat is straight across the loop, as far one way round as the other
+            Assert.That(PacBrain.ChooseFleeDirection(map, 3, 1, eFacing.Left, [(3, 3)], new PathMap()), Is.EqualTo(eFacing.Left));
+            Assert.That(PacBrain.ChooseFleeDirection(map, 3, 1, eFacing.Right, [(3, 3)], new PathMap()), Is.EqualTo(eFacing.Right));
+        }
+
+        [Test]
+        public void ChooseFleeDirection_TurnsBackWhenThatIsFarEnoughAway()
+        {
+            var map = MakeMap(LOOP);
+
+            // ahead is 4 steps from the threat, behind 6
+            Assert.That(PacBrain.ChooseFleeDirection(map, 3, 1, eFacing.Left, [(2, 3)], new PathMap()), Is.EqualTo(eFacing.Right));
+            Assert.That(PacBrain.ChooseFleeDirection(map, 3, 1, eFacing.Right, [(2, 3)], new PathMap()), Is.EqualTo(eFacing.Right));
+        }
+
         /// <summary>
         /// Moves me a cell at a time, picking at each centre with memory (a fresh one per step when null, so it
         /// remembers nothing), msPerStep apart. Returns how many times it turned back.
@@ -390,7 +433,7 @@ namespace EatMeTests
             for (var i = 0; i < steps; i++)
             {
                 var (x, y) = MazeMovement.GetCell(me.Location);
-                var choice = PacBrain.ChooseDirection(world, me, x, y, paths, threatPaths, random, memory, 0) ?? me.Facing;
+                var choice = PacBrain.ChooseDirection(world, me, x, y, paths, threatPaths, random, memory, 0, 0) ?? me.Facing;
 
                 if (!MazeMovement.CanMove(world.Map, x, y, choice, true, PacBrain.GetBlocked(me)))
                     continue;
@@ -410,7 +453,48 @@ namespace EatMeTests
         private static eFacing? ChooseWithMemory(BotWorld world, Player me, BotMemory memory)
         {
             var (x, y) = MazeMovement.GetCell(me.Location);
-            return PacBrain.ChooseDirection(world, me, x, y, new PathMap(), new PathMap(), new Random(1), memory, 0);
+            return PacBrain.ChooseDirection(world, me, x, y, new PathMap(), new PathMap(), new Random(1), memory, 0, 0);
+        }
+
+        [Test]
+        public void ChooseDirection_TakesReactionMsToStartFleeing()
+        {
+            var map = MakeMap(["#################", "#...............#", "#################"]);
+            var memory = new BotMemory();
+            var me = MakePac(1, eTeam.Red, 6, 1, facing: eFacing.Left);
+            var world = MakeWorld(map, [me], [MakeGhost(2, 1)]);
+            var (x, y) = MazeMovement.GetCell(me.Location);
+
+            eFacing? Pick() => PacBrain.ChooseDirection(world, me, x, y, new PathMap(), new PathMap(), new Random(1), memory, 0);
+
+            Assert.That(Pick(), Is.EqualTo(eFacing.Left), "carries on toward the ghost it has only just seen");
+            Assert.That(memory.IsFleeing, Is.False);
+
+            memory.Update(BotMemory.REACTION_MS - 1);
+            Assert.That(Pick(), Is.EqualTo(eFacing.Left));
+
+            memory.Update(1);
+            Assert.That(Pick(), Is.EqualTo(eFacing.Right), "runs once its reaction time is up");
+            Assert.That(memory.IsFleeing, Is.True);
+        }
+
+        [Test]
+        public void BotMemory_ForgettingAThreatRestartsTheReactionTime()
+        {
+            var memory = new BotMemory();
+
+            memory.NoticeThreat();
+            memory.Update(BotMemory.REACTION_MS);
+            Assert.That(memory.HasReacted, Is.True);
+
+            memory.ForgetThreat();
+            Assert.That(memory.HasReacted, Is.False);
+
+            memory.NoticeThreat();
+            Assert.That(memory.HasReacted, Is.False);
+            memory.NoticeThreat();
+            memory.Update(BotMemory.REACTION_MS);
+            Assert.That(memory.HasReacted, Is.True, "seeing it again doesn't restart the time");
         }
 
         [Test]

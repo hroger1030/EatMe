@@ -8,6 +8,9 @@ using System.Threading;
 // server uptime, shown in the console's typing prompt
 var uptime = Stopwatch.StartNew();
 
+// help text is drawn in a 24-bit color, which the Windows console only shows with virtual terminal processing on
+ServerLog.EnableAnsiColors();
+
 try
 {
     ConfigManager.Load();
@@ -30,6 +33,7 @@ ServerLog.Write(eLogType.Info, $"  DiscoveryPort: {settings.DiscoveryPort}");
 ServerLog.Write(eLogType.Info, $"  MaxPlayers:    {settings.GameConfig.MaxPlayers}");
 ServerLog.Write(eLogType.Info, $"  MinPlayers:    {settings.GameConfig.MinPlayers}");
 ServerLog.Write(eLogType.Info, $"  AutoBalance:   {settings.AutoBalanceTeams}");
+ServerLog.Write(eLogType.Info, $"  RandomLevels:  {settings.RandomLevels}");
 ServerLog.Write(eLogType.Info, $"  TickRate:      {settings.TickRate}");
 ServerLog.Write(eLogType.Info, $"  TargetFps:     {settings.TargetFps}");
 ServerLog.Write(eLogType.Info, $"  Tips:          {LoadingScreenTipsManager.Tips.Count}");
@@ -117,7 +121,7 @@ while (!shutdown.IsCancellationRequested)
         var output = ServerCommands.Execute(game, command, out var quit);
 
         if (output.Length > 0)
-            ServerLog.Write(eLogType.Command, output);
+            ServerLog.Write(ServerCommands.GetOutputType(command), output);
         else
             ServerLog.ShowPrompt();
 

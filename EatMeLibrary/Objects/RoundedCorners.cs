@@ -19,5 +19,18 @@ namespace EatMeLibrary
             var dy = radius - row - 0.5;
             return (int)Math.Round(radius - Math.Sqrt(radius * radius - dy * dy));
         }
+
+        /// <summary>
+        /// For the outline of a rounded rectangle thickness pixels wide, how many whole pixels in from each side the hollow
+        /// inside of a row starts, or -1 when the row is inside the top or bottom edge and so solid all the way across.
+        /// Row 0 is the outermost row; the inside's corners have radius minus thickness.
+        /// </summary>
+        public static int GetOutlineInnerInset(int radius, int thickness, int row)
+        {
+            if (row < thickness)
+                return -1;
+
+            return thickness + GetRowInset(radius - thickness, row - thickness);
+        }
     }
 }
