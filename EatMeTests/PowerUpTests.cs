@@ -7,6 +7,11 @@ namespace EatMeTests
     public class PowerUpTests
     {
         /// <summary>
+        /// Power ups move at GhostSpeed; the default.
+        /// </summary>
+        private static readonly float SPEED = new GameConfiguration().GhostSpeed;
+
+        /// <summary>
         /// A corridor whose open left end, (0, 1), is a warp exit, with a team spawn tile in the way at (3, 1).
         /// </summary>
         private static readonly string[] CORRIDOR =
@@ -63,7 +68,7 @@ namespace EatMeTests
 
             for (var tick = 1; tick <= maxTicks; tick++)
             {
-                if (PowerUpRules.Move(map, powerUp, paths, PowerUpRules.SPEED / 60f))
+                if (PowerUpRules.Move(map, powerUp, paths, SPEED / 60f))
                     return tick;
 
                 var (x, y) = MazeMovement.GetCell(powerUp.Location);
@@ -137,8 +142,8 @@ namespace EatMeTests
 
             var ticks = MoveToExit(map, powerUp);
 
-            // four cells at SPEED cells a second, 60 ticks a second
-            Assert.That(ticks, Is.EqualTo(80).Within(2));
+            // four cells at ghost speed, 60 ticks a second
+            Assert.That(ticks, Is.EqualTo(4f / SPEED * 60f).Within(2));
         }
 
         [Test]
@@ -149,8 +154,8 @@ namespace EatMeTests
 
             var ticks = MoveToExit(map, powerUp);
 
-            // ten cells at SPEED cells a second, 60 ticks a second
-            Assert.That(ticks, Is.EqualTo(200).Within(2));
+            // ten cells at ghost speed, 60 ticks a second
+            Assert.That(ticks, Is.EqualTo(10f / SPEED * 60f).Within(2));
         }
 
         [Test]
@@ -258,6 +263,19 @@ namespace EatMeTests
             var eaten = connection.Received.OfType<GameEventMessage>().Single(e => e.EventType == eGameEvent.PowerUpEaten);
             Assert.That(eaten.ActorId, Is.EqualTo(player.Id));
             Assert.That(eaten.TargetId, Is.EqualTo(powerUp.Id));
+        }
+
+        [Test]
+        public void UpdatePowerUps_EatingOne_CountsItOnThePlayer()
+        {
+            var server = MakeServer();
+            var (player, _) = Join(server, 1);
+            var powerUp = server.SpawnPowerUp();
+            player.Location = powerUp.Location;
+
+            server.UpdatePowerUps(0f, 0);
+
+            Assert.That(player.PowerUpsEaten, Is.EqualTo(1));
         }
 
         [Test]

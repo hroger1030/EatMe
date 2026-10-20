@@ -180,7 +180,7 @@ namespace EatMeTests
         [Test]
         public void PacState_RoundTripsTheRespawnFields()
         {
-            var pac = new PacState(1, eTeam.Red, 1f, 2f, 3f, eFacing.Up, false, false, false, respawnMsLeft: 1234, spawnLocked: true);
+            var pac = new PacState(1, eTeam.Red, 1f, 2f, 3f, eFacing.Up, false, false, false, respawnMsLeft: 1234, spawnLocked: true, powerUps: 7);
             using var stream = new MemoryStream();
             using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
                 pac.Write(writer);
@@ -191,6 +191,7 @@ namespace EatMeTests
 
             Assert.That(read.RespawnMsLeft, Is.EqualTo(1234));
             Assert.That(read.SpawnLocked, Is.True);
+            Assert.That(read.PowerUps, Is.EqualTo(7));
         }
 
         // Pear

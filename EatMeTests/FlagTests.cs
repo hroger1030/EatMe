@@ -316,6 +316,7 @@ namespace EatMeTests
             blue.GhostKills = 2;
             blue.PlayerKills = 3;
             blue.FlagRescues = 4;
+            blue.PowerUpsEaten = 5;
 
             var pac = server.BuildSnapshot().Pacs.Single();
 
@@ -323,6 +324,7 @@ namespace EatMeTests
             Assert.That(pac.GhostKills, Is.EqualTo(2));
             Assert.That(pac.PlayerKills, Is.EqualTo(3));
             Assert.That(pac.Rescues, Is.EqualTo(4));
+            Assert.That(pac.PowerUps, Is.EqualTo(5));
         }
 
         [Test]

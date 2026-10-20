@@ -10,7 +10,7 @@ namespace EatMeLibrary
     public static class PowerUpEffects
     {
         /// <summary>
-        /// The name shown on the player state panel for an effect, "None" when there isn't one.
+        /// The name shown on the player state panel for an effect, "No power up" when there isn't one.
         /// </summary>
         public static string GetName(ePowerUpEffect effect)
         {
@@ -379,11 +379,17 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// The player state panel's label for an effect: "Power Up: " and the effect's name, e.g. "Power Up: None".
+        /// The most characters a player state panel label may have, so it fits the panel at 1920x1080 (196 pixels of
+        /// text in JLS Space Gothic 30, about 16 pixels for an average letter).
+        /// </summary>
+        public const int MAX_LABEL_LENGTH = 12;
+
+        /// <summary>
+        /// The player state panel's label for an effect: just the effect's name, e.g. "Sugar Rush", or "No power up".
         /// </summary>
         public static string GetLabel(ePowerUpEffect effect)
         {
-            return $"{Const.STRING_POWER_UP} {GetName(effect)}";
+            return GetName(effect);
         }
 
         /// <summary>

@@ -24,8 +24,13 @@ namespace EatMeClient
             // a hand edited file could hold anything, so pull brightness and bloom back into range
             Settings.Brightness = DisplayAdjust.ClampBrightness(Settings.Brightness);
             Settings.Bloom = DisplayAdjust.ClampBloom(Settings.Bloom);
+        }
 
-            // todo: this is kinda a hack? It works for now.
+        /// <summary>
+        /// Sets the music and sound volumes from the loaded settings; call it after MusicManager and SoundManager are initialized.
+        /// </summary>
+        public static void ApplyVolumes()
+        {
             MusicManager.SetVolume(Settings.MusicVolume / 100f);
             SoundManager.SetVolume(Settings.SoundVolume / 100f);
         }

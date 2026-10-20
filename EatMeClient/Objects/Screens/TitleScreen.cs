@@ -64,10 +64,8 @@ namespace EatMeClient
         {
             _Graphics = new GraphicsDeviceManager(this);
 
-            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
-            _Graphics.PreferredBackBufferWidth = displayMode.Width;
-            _Graphics.PreferredBackBufferHeight = displayMode.Height;
-            _Graphics.IsFullScreen = true;
+            // Program.cs has loaded the settings, so the window is created in the saved mode
+            SetDisplayMode();
 
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
@@ -90,8 +88,7 @@ namespace EatMeClient
             MusicManager.Initialize();
             SoundManager.Initialize();
 
-            ConfigManager.Load();
-            ApplyDisplayMode();
+            ConfigManager.ApplyVolumes();
             HighScoreStore.Load();
             AssetCache.Initialize(Content);
 
@@ -299,6 +296,19 @@ namespace EatMeClient
         /// </summary>
         private void ApplyDisplayMode()
         {
+            SetDisplayMode();
+            _Graphics.ApplyChanges();
+
+            // SDL ignores a resizable change on a full screen window, so set it again now the window has left full screen
+            Window.AllowUserResizing = !_Graphics.IsFullScreen;
+        }
+
+        /// <summary>
+        /// Sets the size and mode ApplyDisplayMode applies, without applying them, so the constructor can use it before
+        /// the graphics device exists.
+        /// </summary>
+        private void SetDisplayMode()
+        {
             var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
             var fullScreen = ConfigManager.Settings.FullScreen;
             var (width, height) = fullScreen ? (displayMode.Width, displayMode.Height) : DisplayAdjust.GetWindowedSize(displayMode.Width, displayMode.Height);
@@ -309,7 +319,6 @@ namespace EatMeClient
 
             // a window can be maximized or dragged to any size; FollowWindowSize keeps the back buffer in step
             Window.AllowUserResizing = !fullScreen;
-            _Graphics.ApplyChanges();
         }
 
         /// <summary>

@@ -14,6 +14,11 @@
 
         public int FlagRescues { get; set; }
 
+        /// <summary>
+        /// Power ups this player has eaten since connecting. Never reset.
+        /// </summary>
+        public int PowerUpsEaten { get; set; }
+
         public int DotsEaten { get; set; }
 
         /// <summary>

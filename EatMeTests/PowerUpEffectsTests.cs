@@ -178,10 +178,17 @@ namespace EatMeTests
         }
 
         [Test]
-        public void GetLabel_IsPowerUpAndName()
+        public void GetLabel_IsTheName()
         {
-            Assert.That(PowerUpEffects.GetLabel(ePowerUpEffect.None), Is.EqualTo("Power Up: None"));
-            Assert.That(PowerUpEffects.GetLabel(ePowerUpEffect.PowerPill), Is.EqualTo("Power Up: Power Pill"));
+            Assert.That(PowerUpEffects.GetLabel(ePowerUpEffect.None), Is.EqualTo("No power up"));
+            Assert.That(PowerUpEffects.GetLabel(ePowerUpEffect.PowerPill), Is.EqualTo("Power Pill"));
+        }
+
+        [Test]
+        public void EveryLabel_FitsThePanel()
+        {
+            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
+                Assert.That(PowerUpEffects.GetLabel(effect).Length, Is.LessThanOrEqualTo(PowerUpEffects.MAX_LABEL_LENGTH), effect.ToString());
         }
 
         [Test]

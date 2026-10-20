@@ -7,9 +7,10 @@ using Microsoft.Xna.Framework.Graphics;
 namespace EatMeClient
 {
     /// <summary>
-    /// A square overview of the whole map: a grey arch on every warp door, a ring in its team's color on every flag base,
-    /// a dot in its team's color for every living pac (a star for the player's own; flickering like the flag while
-    /// carrying one), a purple X for every power up and a blinking triangle for every flag not being carried, inside a
+    /// A square overview of the whole map: an outlined box in its team's color around every spawn room and a yellow one
+    /// around the ghost generator, a grey arch on every warp door, a ring in its team's color on every flag base, a dot in
+    /// its team's color for every living pac (a Pac-Man facing its way for the player's own; flickering like the flag
+    /// while carrying one), a purple X for every power up and a blinking triangle for every flag not being carried, inside a
     /// yellow border with rounded corners. The maze itself isn't drawn.
     /// </summary>
     public class MiniMap
@@ -17,7 +18,7 @@ namespace EatMeClient
         public const int BORDER_PIXELS = 2;
         public const int CORNER_RADIUS = 12;
         private const int PLAYER_DOT_PIXELS = 10;
-        private const int OWN_STAR_PIXELS = 15;
+        private const int OWN_PAC_PIXELS = 15;
         private const int FLAG_TRIANGLE_PIXELS = 10;
         private const int POWER_UP_CROSS_PIXELS = 10;
         private const float POWER_UP_CROSS_THICKNESS = 2f;
@@ -25,20 +26,26 @@ namespace EatMeClient
         private const float WARP_ARCH_THICKNESS = 2f;
         private const int BASE_RING_PIXELS = 16;
         private const float BASE_RING_THICKNESS = 2f;
+        private const int SPAWN_BOX_THICKNESS = 2;
+        private const int SPAWN_BOX_MIN_PIXELS = 16;
+        private const float SPAWN_BOX_SCALE = 2f;
 
         private Texture2D _pixel;
         private Texture2D _ring;
         private Texture2D _dot;
-        private Texture2D _ownStar;
+        private Texture2D[] _ownPacs;
         private Texture2D _triangle;
         private Texture2D _cross;
         private Texture2D _arch;
         private eGridDef[,] _basesMap;
         private List<GameFlag> _bases = [];
         private List<FastG.Point2> _warpCells = [];
+        private List<CellBox> _redSpawns = [];
+        private List<CellBox> _blueSpawns = [];
+        private List<CellBox> _ghostSpawns = [];
 
         /// <summary>
-        /// Draws the mini-map filling bounds (border included). Warp arches and base rings go under everything, then pacs,
+        /// Draws the mini-map filling bounds (border included). Spawn boxes, warp arches and base rings go under everything, then pacs,
         /// power ups and flags.
         /// Carried flags aren't drawn.
         /// </summary>
@@ -54,8 +61,15 @@ namespace EatMeClient
             if (_dot == null)
                 _dot = CreateRing(spriteBatch.GraphicsDevice, PLAYER_DOT_PIXELS, PLAYER_DOT_PIXELS * 0.5f);
 
-            if (_ownStar == null)
-                _ownStar = CreateShape(spriteBatch.GraphicsDevice, OWN_STAR_PIXELS, (x, y) => MiniMapMath.IsOnStar(x, y, OWN_STAR_PIXELS));
+            // one Pac-Man per eFacing, indexed by it
+            if (_ownPacs == null)
+            {
+                var facings = Enum.GetValues<eFacing>();
+                _ownPacs = new Texture2D[facings.Length];
+
+                foreach (var facing in facings)
+                    _ownPacs[(int)facing] = CreateShape(spriteBatch.GraphicsDevice, OWN_PAC_PIXELS, (x, y) => MiniMapMath.IsOnPacMan(x, y, OWN_PAC_PIXELS, facing));
+            }
 
             if (_triangle == null)
                 _triangle = CreateShape(spriteBatch.GraphicsDevice, FLAG_TRIANGLE_PIXELS, (x, y) => MiniMapMath.IsOnTriangle(x, y, FLAG_TRIANGLE_PIXELS));
@@ -77,13 +91,25 @@ namespace EatMeClient
 
             var mapSize = map.GetLength(0);
 
-            // a new map instance means a new level, so find its bases and warp doors again
+            // a new map instance means a new level, so find its bases, spawns and warp doors again
             if (map != _basesMap)
             {
                 _bases = MiniMapMath.GetFlagBases(map);
                 _warpCells = MiniMapMath.GetWarpCells(map);
+                _redSpawns = MiniMapMath.GetCellBoxes(map, eGridDef.SpawnPointRed);
+                _blueSpawns = MiniMapMath.GetCellBoxes(map, eGridDef.SpawnPointBlue);
+                _ghostSpawns = MiniMapMath.GetCellBoxes(map, eGridDef.GhostGenerator);
                 _basesMap = map;
             }
+
+            foreach (var box in _redSpawns)
+                DrawBox(spriteBatch, _pixel, inner, mapSize, box, ClientColors.GetTeamColor(eTeam.Red));
+
+            foreach (var box in _blueSpawns)
+                DrawBox(spriteBatch, _pixel, inner, mapSize, box, ClientColors.GetTeamColor(eTeam.Blue));
+
+            foreach (var box in _ghostSpawns)
+                DrawBox(spriteBatch, _pixel, inner, mapSize, box, ClientColors.COLOR_PAC_YELLOW);
 
             foreach (var warp in _warpCells)
                 DrawCentred(spriteBatch, _arch, inner, mapSize, warp.X, warp.Y, WARP_ARCH_PIXELS, ClientColors.COLOR_MINI_MAP_WARP);
@@ -96,10 +122,10 @@ namespace EatMeClient
                 if (!pac.Alive)
                     continue;
 
-                // the player's own pac is a bigger star, so it's easy to find
+                // the player's own pac is a bigger Pac-Man facing its way, so it's easy to find
                 var isOwn = pac.PlayerId == ownPlayerId;
-                var dot = isOwn ? _ownStar : _dot;
-                var dotPixels = isOwn ? OWN_STAR_PIXELS : PLAYER_DOT_PIXELS;
+                var dot = isOwn ? _ownPacs[(int)pac.Facing] : _dot;
+                var dotPixels = isOwn ? OWN_PAC_PIXELS : PLAYER_DOT_PIXELS;
                 DrawCentred(spriteBatch, dot, inner, mapSize, pac.X, pac.Y, dotPixels, GetPacColor(pac, snapshot.Flags, isOwn, animationTime));
             }
 
@@ -144,6 +170,27 @@ namespace EatMeClient
             var y = MathHelper.Clamp((int)(centreY - size * 0.5f), inner.Top, inner.Bottom - size);
 
             spriteBatch.Draw(texture, new Rectangle(x, y, size, size), color);
+        }
+
+        /// <summary>
+        /// The outline of a box of cells, SPAWN_BOX_THICKNESS pixels wide, scaled to the panel and then SPAWN_BOX_SCALE times
+        /// bigger; grown around its centre to at least SPAWN_BOX_MIN_PIXELS a side so a small room still shows as a box.
+        /// </summary>
+        private static void DrawBox(SpriteBatch spriteBatch, Texture2D pixel, Rectangle inner, int mapSize, CellBox box, Color color)
+        {
+            var left = inner.X + MiniMapMath.CellToMiniMap(box.X, mapSize, inner.Width);
+            var right = inner.X + MiniMapMath.CellToMiniMap(box.X + box.Width, mapSize, inner.Width);
+            var top = inner.Y + MiniMapMath.CellToMiniMap(box.Y, mapSize, inner.Height);
+            var bottom = inner.Y + MiniMapMath.CellToMiniMap(box.Y + box.Height, mapSize, inner.Height);
+            var width = Math.Max(SPAWN_BOX_MIN_PIXELS, (int)MathF.Round((right - left) * SPAWN_BOX_SCALE));
+            var height = Math.Max(SPAWN_BOX_MIN_PIXELS, (int)MathF.Round((bottom - top) * SPAWN_BOX_SCALE));
+            var x = MathHelper.Clamp((int)MathF.Round(((left + right) * 0.5f) - (width * 0.5f)), inner.Left, inner.Right - width);
+            var y = MathHelper.Clamp((int)MathF.Round(((top + bottom) * 0.5f) - (height * 0.5f)), inner.Top, inner.Bottom - height);
+
+            spriteBatch.Draw(pixel, new Rectangle(x, y, width, SPAWN_BOX_THICKNESS), color);
+            spriteBatch.Draw(pixel, new Rectangle(x, y + height - SPAWN_BOX_THICKNESS, width, SPAWN_BOX_THICKNESS), color);
+            spriteBatch.Draw(pixel, new Rectangle(x, y, SPAWN_BOX_THICKNESS, height), color);
+            spriteBatch.Draw(pixel, new Rectangle(x + width - SPAWN_BOX_THICKNESS, y, SPAWN_BOX_THICKNESS, height), color);
         }
 
         /// <summary>

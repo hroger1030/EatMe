@@ -10,11 +10,6 @@ namespace EatMeLibrary
     public static class PowerUpRules
     {
         /// <summary>
-        /// Cells a second a power up drifts toward its exit: half the default pac speed.
-        /// </summary>
-        public const float SPEED = 3f;
-
-        /// <summary>
         /// Radius, in cells, a pac must touch to eat a power up.
         /// </summary>
         public const float RADIUS = 0.5f;

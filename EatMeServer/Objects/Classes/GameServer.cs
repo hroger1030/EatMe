@@ -388,7 +388,7 @@ namespace EatMeServer
 
                 snapshot.Pacs.Add(new PacState(player.Id, player.Team, player.Location.X, player.Location.Y, player.Size, player.Facing, player.Alive, player.HasFlag, player.Eating,
                     player.FlagCaps, player.GhostKills, player.PlayerKills, player.FlagRescues, player.PowerUpEffect, player.PowerUpMs, player.TotalScore, player.MsSinceEaten, player.IsStunned,
-                    respawnMsLeft, spawnLocked));
+                    respawnMsLeft, spawnLocked, player.PowerUpsEaten));
             }
 
             foreach (var ghost in _Ghosts)
@@ -1621,7 +1621,7 @@ namespace EatMeServer
 
         /// <summary>
         /// Runs the power ups: one appears each time the level's play time passes a multiple of PowerUpSpawnTimerMs, each
-        /// drifts toward its exit at PowerUpRules.SPEED and leaves on reaching it, and any living pac touching one eats it.
+        /// drifts toward its exit at GhostSpeed and leaves on reaching it, and any living pac touching one eats it.
         /// Ghosts ignore them.
         /// </summary>
         public void UpdatePowerUps(float deltaSeconds, int elapsedMs)
@@ -1633,7 +1633,7 @@ namespace EatMeServer
             for (var i = 0; i < due; i++)
                 SpawnPowerUp();
 
-            var distance = PowerUpRules.SPEED * deltaSeconds;
+            var distance = _Settings.GameConfig.GhostSpeed * deltaSeconds;
 
             for (var i = _PowerUps.Count - 1; i >= 0; i--)
             {
@@ -1698,6 +1698,8 @@ namespace EatMeServer
                 Y = powerUp.Location.Y,
                 Team = eTeam.Computer,
             });
+
+            player.PowerUpsEaten++;
 
             // grabbing a power up lets go of the enemy flag
             DropFlag(player);

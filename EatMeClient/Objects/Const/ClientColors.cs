@@ -41,7 +41,7 @@ namespace EatMeClient
         public static readonly Color COLOR_SIZE_BAR_HUGE = new(255, 30, 30);
 
         /// <summary>
-        /// The size bar's color for a level (SizeBar.GetLevel).
+        /// The size bar's color for a given level of size
         /// </summary>
         public static Color GetSizeBarColor(eSizeBarLevel level)
         {
@@ -53,10 +53,11 @@ namespace EatMeClient
             };
         }
 
-        // Mini map markers: warp doors (#777) and power ups (royal purple).
-
+        // Mini map markers: warp doors.
         public static readonly Color COLOR_MINI_MAP_WARP = new(0x77, 0x77, 0x77);
-        public static readonly Color COLOR_MINI_MAP_POWER_UP = new(120, 81, 169);
+
+        // Mini map markers: power ups
+        public static readonly Color COLOR_MINI_MAP_POWER_UP = new(188, 3, 255);
 
         // the Triforce's force field over a sealed flag, and its blink on the mini map
         public static readonly Color COLOR_FORCE_FIELD = new(255, 215, 0);
@@ -65,12 +66,9 @@ namespace EatMeClient
         public static readonly Color COLOR_GHOST_SCARED = new(33, 33, 222);
 
         // Transparency
-
         public static readonly Color COLOR_TRANSPARENT_BLUE10 = new(0.0f, 0.0f, 0.2f, 0.1f);
 
-        /// <summary>
-        /// Half-transparent black drawn behind text on menu screens so it reads against the background image.
-        /// </summary>
+        // Half-transparent black drawn behind text on menu screens so it reads against the background image.
         public static readonly Color COLOR_TEXT_PANEL = new(0f, 0f, 0f, 0.5f);
 
         // Dark menu: text drawn straight onto the bright title background (title menu and every menu screen).

@@ -1003,8 +1003,8 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// The bar across the bottom: our pac's running total score, flag captures, ghost kills, enemies eaten and flag rescues
-        /// on the left and its ping on the right.
+        /// The bar across the bottom: our pac's running total score, flag captures, ghost kills, enemies eaten, flag rescues
+        /// and power ups eaten on the left and its ping on the right.
         /// </summary>
         private void DrawStatsBar(SpriteBatch spriteBatch, Viewport viewport)
         {
@@ -1019,7 +1019,7 @@ namespace EatMeClient
             var pac = ownPac.Value;
             var textY = barTop + (float)Math.Round((barHeight - _Font.LineSpacing) * 0.5f);
             var size = $"{Const.STRING_SCORE} {pac.TotalScore}  ";
-            var stats = $"{Const.STRING_FLAGS} {pac.FlagCaps}  {Const.STRING_GHOSTS} {pac.GhostKills}  {Const.STRING_CHOMPS} {pac.PlayerKills}  {Const.STRING_RESCUES} {pac.Rescues}";
+            var stats = $"{Const.STRING_FLAGS} {pac.FlagCaps}  {Const.STRING_GHOSTS} {pac.GhostKills}  {Const.STRING_CHOMPS} {pac.PlayerKills}  {Const.STRING_RESCUES} {pac.Rescues}  {Const.STRING_POWER_UPS} {pac.PowerUps}";
 
             spriteBatch.DrawString(_Font, size + stats, new Vector2(HUD_MARGIN, textY), ClientColors.COLOR_PAC_WHITE);
 

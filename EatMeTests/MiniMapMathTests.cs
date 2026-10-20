@@ -116,24 +116,82 @@ namespace EatMeTests
             Assert.That(MiniMapMath.IsOnTriangle(x, y, 8), Is.EqualTo(expected));
         }
 
-        [TestCase(5, 5, true)]
-        [TestCase(5, 0, true)]
-        [TestCase(0, 0, false)]
-        [TestCase(9, 0, false)]
-        [TestCase(5, 9, false)]
-        [TestCase(0, 9, false)]
-        [TestCase(9, 9, false)]
-        public void IsOnStar_FilledCentreAndTopPoint_EmptyCorners(int x, int y, bool expected)
+        [TestCase(eFacing.Right, 9, 5, false)]
+        [TestCase(eFacing.Right, 0, 5, true)]
+        [TestCase(eFacing.Left, 0, 5, false)]
+        [TestCase(eFacing.Left, 9, 5, true)]
+        [TestCase(eFacing.Up, 5, 0, false)]
+        [TestCase(eFacing.Up, 5, 9, true)]
+        [TestCase(eFacing.Down, 5, 9, false)]
+        [TestCase(eFacing.Down, 5, 0, true)]
+        public void IsOnPacMan_MouthOpensTheWayItFaces(eFacing facing, int x, int y, bool expected)
         {
-            Assert.That(MiniMapMath.IsOnStar(x, y, 10), Is.EqualTo(expected));
+            Assert.That(MiniMapMath.IsOnPacMan(x, y, 10, facing), Is.EqualTo(expected));
+        }
+
+        [TestCase(0, 0)]
+        [TestCase(9, 0)]
+        [TestCase(0, 9)]
+        [TestCase(9, 9)]
+        public void IsOnPacMan_CornersAreOutsideTheCircle(int x, int y)
+        {
+            Assert.That(MiniMapMath.IsOnPacMan(x, y, 10, eFacing.Right), Is.False);
         }
 
         [Test]
-        public void IsOnStar_IsSymmetricLeftToRight()
+        public void IsOnPacMan_IsSymmetricAcrossItsMouth()
         {
             for (var y = 0; y < 10; y++)
                 for (var x = 0; x < 10; x++)
-                    Assert.That(MiniMapMath.IsOnStar(x, y, 10), Is.EqualTo(MiniMapMath.IsOnStar(9 - x, y, 10)), $"({x}, {y})");
+                    Assert.That(MiniMapMath.IsOnPacMan(x, y, 10, eFacing.Right), Is.EqualTo(MiniMapMath.IsOnPacMan(x, 9 - y, 10, eFacing.Right)), $"({x}, {y})");
+        }
+
+        [Test]
+        public void GetCellBoxes_OneBoxPerGroupOfTouchingCells()
+        {
+            var map = new eGridDef[10, 10];
+
+            for (var x = 1; x <= 3; x++)
+                for (var y = 2; y <= 4; y++)
+                    map[x, y] = eGridDef.SpawnPointRed;
+
+            map[7, 7] = eGridDef.SpawnPointRed;
+            map[7, 8] = eGridDef.SpawnPointRed | eGridDef.Food;
+            map[5, 5] = eGridDef.SpawnPointBlue;
+
+            var boxes = MiniMapMath.GetCellBoxes(map, eGridDef.SpawnPointRed);
+
+            Assert.That(boxes, Has.Count.EqualTo(2));
+            Assert.That(boxes.Any(b => b.X == 1 && b.Y == 2 && b.Width == 3 && b.Height == 3), Is.True);
+            Assert.That(boxes.Any(b => b.X == 7 && b.Y == 7 && b.Width == 1 && b.Height == 2), Is.True);
+        }
+
+        [Test]
+        public void GetCellBoxes_DiagonalCellsAreSeparateBoxes()
+        {
+            var map = new eGridDef[4, 4];
+            map[1, 1] = eGridDef.GhostGenerator;
+            map[2, 2] = eGridDef.GhostGenerator;
+
+            Assert.That(MiniMapMath.GetCellBoxes(map, eGridDef.GhostGenerator), Has.Count.EqualTo(2));
+        }
+
+        [Test]
+        public void GetCellBoxes_GeneratedMapHasEverySpawnRoomAndOneGhostGenerator()
+        {
+            var config = new GameConfiguration();
+            var map = MapMaker.Generate(config, 1234);
+
+            var red = MiniMapMath.GetCellBoxes(map, eGridDef.SpawnPointRed);
+            var blue = MiniMapMath.GetCellBoxes(map, eGridDef.SpawnPointBlue);
+            var ghosts = MiniMapMath.GetCellBoxes(map, eGridDef.GhostGenerator);
+
+            Assert.That(red, Has.Count.EqualTo(config.PlayerBaseCount));
+            Assert.That(blue, Has.Count.EqualTo(config.PlayerBaseCount));
+            Assert.That(red.All(b => b.Width == MapMaker.SPAWN_ROOM_SIZE && b.Height == MapMaker.SPAWN_ROOM_SIZE), Is.True);
+            Assert.That(ghosts, Has.Count.EqualTo(1));
+            Assert.That(ghosts[0].Width, Is.EqualTo(2));
+            Assert.That(ghosts[0].Height, Is.EqualTo(2));
         }
     }
 }

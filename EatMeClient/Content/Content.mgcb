@@ -192,6 +192,30 @@
 /processorParam:Quality=Best
 /build:Music/Track11b.mp3
 
+#begin Music/Track12.mp3
+/importer:Mp3Importer
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Music/Track12.mp3
+
+#begin Music/Track12b.mp3
+/importer:Mp3Importer
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Music/Track12b.mp3
+
+#begin Music/Track13.mp3
+/importer:Mp3Importer
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Music/Track13.mp3
+
+#begin Music/Track13b.mp3
+/importer:Mp3Importer
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Music/Track13b.mp3
+
 #begin Text/story.txt
 /copy:Text/story.txt
 

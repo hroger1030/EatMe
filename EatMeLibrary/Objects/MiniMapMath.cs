@@ -66,6 +66,68 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// The bounding box of every group of touching cells (side by side, not diagonally) that have flag, e.g. one box
+        /// per spawn room for SpawnPointRed, or one for the ghost generator. Boxes are listed in the order their first
+        /// cell is found, column by column.
+        /// </summary>
+        public static List<CellBox> GetCellBoxes(eGridDef[,] map, eGridDef flag)
+        {
+            var width = map.GetLength(0);
+            var height = map.GetLength(1);
+            var seen = new bool[width, height];
+            var boxes = new List<CellBox>();
+            var stack = new Stack<(int X, int Y)>();
+
+            for (var x = 0; x < width; x++)
+            {
+                for (var y = 0; y < height; y++)
+                {
+                    if (seen[x, y] || !map[x, y].HasFlag(flag))
+                        continue;
+
+                    var left = x;
+                    var right = x;
+                    var top = y;
+                    var bottom = y;
+
+                    seen[x, y] = true;
+                    stack.Push((x, y));
+
+                    while (stack.Count > 0)
+                    {
+                        var (cx, cy) = stack.Pop();
+
+                        left = Math.Min(left, cx);
+                        right = Math.Max(right, cx);
+                        top = Math.Min(top, cy);
+                        bottom = Math.Max(bottom, cy);
+
+                        PushIfMatch(map, flag, seen, stack, cx - 1, cy);
+                        PushIfMatch(map, flag, seen, stack, cx + 1, cy);
+                        PushIfMatch(map, flag, seen, stack, cx, cy - 1);
+                        PushIfMatch(map, flag, seen, stack, cx, cy + 1);
+                    }
+
+                    boxes.Add(new CellBox(left, top, right - left + 1, bottom - top + 1));
+                }
+            }
+
+            return boxes;
+        }
+
+        private static void PushIfMatch(eGridDef[,] map, eGridDef flag, bool[,] seen, Stack<(int X, int Y)> stack, int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= map.GetLength(0) || y >= map.GetLength(1))
+                return;
+
+            if (seen[x, y] || !map[x, y].HasFlag(flag))
+                return;
+
+            seen[x, y] = true;
+            stack.Push((x, y));
+        }
+
+        /// <summary>
         /// Whether pixel (x, y) of a square image size pixels wide is part of an arch (an upside down U) thickness pixels
         /// wide: a half ring across the top half of the image and two legs down its sides to the bottom row. Pixels are
         /// tested at their centres.
@@ -126,53 +188,36 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Inner corners of a star as a fraction of its outer points' radius. Fat enough to read at a few pixels across.
+        /// Half the angle of a Pac-Man's open mouth, in radians (40 degrees).
         /// </summary>
-        public const float STAR_INNER_RATIO = 0.5f;
+        public const float PAC_MOUTH_HALF_ANGLE = MathF.PI * 40f / 180f;
 
         /// <summary>
-        /// How much taller than size the star's outline is drawn, so the pixel centres in its points are inside it.
+        /// Whether pixel (x, y) of a square image size pixels wide is part of a Pac-Man: a filled circle touching the
+        /// image's edges with a wedge PAC_MOUTH_HALF_ANGLE either side of facing cut out from the centre. Pixels are tested
+        /// at their centres.
         /// </summary>
-        public const float STAR_GROW = 1.11f;
-
-        /// <summary>
-        /// How far up the star is moved, as a fraction of size.
-        /// </summary>
-        public const float STAR_LIFT = 0.1f;
-
-        /// <summary>
-        /// Whether pixel (x, y) of a square image size pixels wide is inside a five-pointed star pointing up, filling the
-        /// image top to bottom. Pixels are tested at their centres, so the star is drawn a little over size (STAR_GROW)
-        /// and nudged up (STAR_LIFT) for its top point to reach the top row.
-        /// </summary>
-        public static bool IsOnStar(int x, int y, int size)
+        public static bool IsOnPacMan(int x, int y, int size, eFacing facing)
         {
-            var radius = size * STAR_GROW / (1f + MathF.Cos(MathF.PI / 5f));
-            var centreX = size * 0.5f;
-            var centreY = radius - (size * STAR_LIFT);
-            var px = x + 0.5f;
-            var py = y + 0.5f;
-            var inside = false;
+            var radius = size * 0.5f;
+            var dx = x + 0.5f - radius;
+            var dy = y + 0.5f - radius;
 
-            // ten corners, outer and inner in turn, starting at the top point; even-odd test against each edge
-            for (int i = 0, j = 9; i < 10; j = i++)
+            if ((dx * dx) + (dy * dy) > radius * radius)
+                return false;
+
+            var (fx, fy) = facing switch
             {
-                var (ax, ay) = GetStarCorner(i, radius, centreX, centreY);
-                var (bx, by) = GetStarCorner(j, radius, centreX, centreY);
+                eFacing.Up => (0f, -1f),
+                eFacing.Down => (0f, 1f),
+                eFacing.Left => (-1f, 0f),
+                _ => (1f, 0f),
+            };
 
-                if ((ay > py) != (by > py) && px < ax + ((py - ay) * (bx - ax) / (by - ay)))
-                    inside = !inside;
-            }
+            // the angle between the pixel and the way the pac faces; inside the mouth is cut out
+            var angle = MathF.Abs(MathF.Atan2((fx * dy) - (fy * dx), (fx * dx) + (fy * dy)));
 
-            return inside;
-        }
-
-        private static (float X, float Y) GetStarCorner(int index, float radius, float centreX, float centreY)
-        {
-            var angle = (-MathF.PI * 0.5f) + (index * MathF.PI / 5f);
-            var r = index % 2 == 0 ? radius : radius * STAR_INNER_RATIO;
-
-            return (centreX + (r * MathF.Cos(angle)), centreY + (r * MathF.Sin(angle)));
+            return angle > PAC_MOUTH_HALF_ANGLE;
         }
     }
 }

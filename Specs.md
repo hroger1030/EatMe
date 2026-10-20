@@ -15,6 +15,20 @@ This is the feature manifest for the SRG client and server application. It will 
 - Supports up to 128 players.
 - Retro-style arcade cabinet game with sprite-based graphics.
 
+## Todo
+- make eaten ghosts turn into eyes and go back to pen. 
+- improve spawn points look
+- add logging for perf
+- run optimization checks
+- *nix buiilds?
+- screw attack and ball rotate too fast
+- power ups move too fast
+- Rescale spawn points to use a single image
+- bold font on loading screen tip
+- ghosts appear on mini-map
+- anything touched in mushroom mode is destroyed
+- red logo?
+
 ## Game Client 
 - Dumb game client; relies upon the server to process all packets and messages. The server decides everything that happens; the client only sends the direction the player is holding and draws what the server tells it.
 - Bright, colorful graphics.
@@ -29,8 +43,8 @@ This is the feature manifest for the SRG client and server application. It will 
 - Escape / gamepad home button displays the in-game options menu (Continue?/settings menu/quit), on a half-transparent panel with rounded corners.
 - tab will display the leader board, showing individual scores of players by team.
 - game displays team scores. (color coded) Blue on left, red on right.
-- A bar across the bottom of the game shows the player's own pac size on the left and, on the right, their counts of Flags (flag captures), Ghosts (ghosts eaten), Chomps (enemy pacs eaten) and Rescues (own flag returned). The counts last for as long as the player stays connected.
-- A mini-map with a yellow border sits in the top right corner, just under the score bar. It shows the whole play area (but not the maze), with a red or blue dot for every living player (a star for the player themselves), a purple X for every power up, a grey upside down U on every warp door, and a dot blinking between yellow and the flag's team color wherever each flag is, carried or not. A flag sealed in a force field (triforce) blinks gold instead.
+- A bar across the bottom of the game shows the player's own pac size on the left and, on the right, their counts of Flags (flag captures), Ghosts (ghosts eaten), Chomps (enemy pacs eaten), Rescues (own flag returned) and Power Ups (power ups eaten). The counts last for as long as the player stays connected.
+- A mini-map with a yellow border sits in the top right corner, just under the score bar. It shows the whole play area (but not the maze), with a red or blue outlined box around every red or blue spawn room, a yellow outlined box around the ghost generator, a red or blue dot for every living player (a small Pac-Man facing the way they're going for the player themselves), a purple X for every power up, a grey upside down U on every warp door, and a dot blinking between yellow and the flag's team color wherever each flag is, carried or not. A flag sealed in a force field (triforce) blinks gold instead.
 - Every flag, on screen or off and carried or not (except one the player carries), always has a pointer in its team's color (blue for blue flags, red for red ones) on a circle around the player, pointing straight at it, one per flag. The circle reaches from the player to the mini-map's bottom left corner. The pointers float above everything on the board except the mini-map, which is drawn over them, and never cover the score bar or the stats bar.
 - There are sprites in the content images folder for all the game elements except the walls.
 
@@ -177,7 +191,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Sounds from things happening in the maze (a pac or ghost being eaten) are loudest at the middle of the screen and fade towards its edge; anything off screen can't be heard. Flag captures, flags lost and returned, and a team about to win are heard by everyone at full volume.
 - The first time in a level a team's score passes 90% of MaxScore (without winning outright), the announcer tells everyone "Red is about to win" or "Blue is about to win". It is said once per team per level.
 - Eating a dot or power pill triggers a timer, after N ms, it will respawn again.
-- Power ups: every PowerUpSpawnTimerMs ms of play in a level (by default at 30, 60, 90 seconds and so on, until the level ends) a power up appears on one of the map's four power up spawn points, picked at random. It holds one of the level's bonus items, picked at random, and drifts slowly (3 cells a second) by the shortest way to a warp hole, also picked at random. If it gets there without being eaten it leaves the level. It can't pass through walls, but it crosses spawn tiles of either team.
+- Power ups: every PowerUpSpawnTimerMs ms of play in a level (by default at 30, 60, 90 seconds and so on, until the level ends) a power up appears on one of the map's four power up spawn points, picked at random. It holds one of the level's bonus items, picked at random, and drifts at ghost speed (GhostSpeed) by the shortest way to a warp hole, also picked at random. If it gets there without being eaten it leaves the level. It can't pass through walls, but it crosses spawn tiles of either team.
 - Any pac, of either team, eats a power up by touching it. Eating one plays a short "blorp" (heard like other sounds in the maze) and will give a special effect that depends on the item (see Power up effects). Ghosts ignore power ups.
 - Bots go after a power up when it is near (within 10 steps), unless they are running from something, rescuing their flag, chasing a flag carrier, going for a power pill, carrying a flag or invincible.
 - Power ups are drawn with their bonus item's sprite, bobbing gently up and down as they move.
@@ -190,7 +204,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
   - When two effects seem to conflict, the pac's own buff wins over an effect from someone else.
   - Enemy pacs and ghosts killed by an effect count as normal kills: the pac whose effect it was scores the usual points and kill counts. Killing a teammate or itself scores nothing.
 - The action button is space on the keyboard (A on a gamepad). Pressing it triggers whatever the pac's buff does on action; with a buff that does nothing on action, or none, it does nothing. After a press that does something, the button does nothing for half a second, whatever the buff, so it can't be spammed.
-- Under the mini map is the player state panel, with the same yellow outline. It shows "Power Up:" and the name of the player's power up effect, left aligned, above a greyed out meter, with a yellow bar that counts down the time left until the effect runs out. With no effect, the label says "Power Up: None" and the meter is empty. Under the meter it shows the player's own size ("Size n"), also left aligned, then a size bar that fills green from size 0 to 100, turns bright orange above 100 and bright red above 150, and under that a hunger meter that fills up red as the player gets closer to starving (MsUntilStarvation since they last ate). It is full while they shrink and empties whenever they eat a dot or power pill.
+- Under the mini map is the player state panel, with the same yellow outline. It shows the name of the player's power up effect (at most 12 characters, so it fits), left aligned, above a greyed out meter, with a yellow bar that counts down the time left until the effect runs out. With no effect, the label says "No power up" and the meter is empty. Under the meter it shows the player's own size ("Size n"), also left aligned, then a size bar that fills green from size 0 to 100, turns bright orange above 100 and bright red above 150, and under that a hunger meter that fills up red as the player gets closer to starving (MsUntilStarvation since they last ate). It is full while they shrink and empties whenever they eat a dot or power pill.
 - Each player's name is displayed below their pac.
 
 ## Ghost personalities

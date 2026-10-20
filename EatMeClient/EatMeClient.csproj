@@ -33,7 +33,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\FastG\FastG\FastG.csproj" />
-    <ProjectReference Include="..\..\SpatialTrees\SpatialTrees\SpatialTrees.csproj" />
     <ProjectReference Include="..\EatMeLibrary\EatMeLibrary.csproj" />
   </ItemGroup>
 </Project>

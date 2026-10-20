@@ -57,8 +57,7 @@
         public const string STRING_BLUE_WINS = "Blue team wins!";
         public const string STRING_NEXT_LEVEL_IN = "Next Level in";
         public const string STRING_LEVEL = "Level";
-        public const string STRING_POWER_UP = "Power Up:";
-        public const string STRING_POWER_UP_NONE = "None";
+        public const string STRING_POWER_UP_NONE = "No power up";
         public const string STRING_POWER_PILL = "Power Pill";
         public const string STRING_SUGAR_RUSH = "Sugar Rush";
         public const string STRING_SWEET_TOOTH = "Sweet Tooth";
@@ -100,6 +99,7 @@
         public const string STRING_GHOSTS = "Ghosts";
         public const string STRING_CHOMPS = "Chomps";
         public const string STRING_RESCUES = "Rescues";
+        public const string STRING_POWER_UPS = "Power Ups";
         public const string STRING_PING = "Ping";
         public const string STRING_PING_UNKNOWN = "--";
         public const string STRING_MS = "ms";

@@ -38,7 +38,7 @@ namespace EatMeLibrary
         /// <summary>
         /// The bounce dies down to about a third every this share of the duration.
         /// </summary>
-        public const float DECAY_SHARE = 0.25f;
+        public const float DECAY_SHARE = 0.5f;
 
         /// <summary>
         /// Height in pixels the running shake started at.

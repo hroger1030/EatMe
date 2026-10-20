@@ -40,7 +40,7 @@ namespace EatMeTests
                 previousPeak = MathF.Abs(y);
             }
 
-            Assert.That(previousPeak, Is.LessThan(AMPLITUDE * 0.1f));
+            Assert.That(previousPeak, Is.LessThan(AMPLITUDE * 0.2f));
         }
 
         [Test]

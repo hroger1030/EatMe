@@ -33,6 +33,10 @@ namespace EatMeLibrary
         /// </summary>
         public int Rescues { get; }
         /// <summary>
+        /// Power ups the player has eaten.
+        /// </summary>
+        public int PowerUps { get; }
+        /// <summary>
         /// The power up effect working on the pac, None when it has none.
         /// </summary>
         public ePowerUpEffect PowerUpEffect { get; }
@@ -69,7 +73,7 @@ namespace EatMeLibrary
 
         public PacState(int playerId, eTeam team, float x, float y, float size, eFacing facing, bool alive, bool hasFlag, bool eating,
             int flagCaps = 0, int ghostKills = 0, int playerKills = 0, int rescues = 0, ePowerUpEffect powerUpEffect = ePowerUpEffect.None, int powerUpMsLeft = 0, int totalScore = 0, int msSinceEaten = 0, bool stunned = false,
-            int respawnMsLeft = 0, bool spawnLocked = false)
+            int respawnMsLeft = 0, bool spawnLocked = false, int powerUps = 0)
         {
             PlayerId = playerId;
             Team = team;
@@ -91,6 +95,7 @@ namespace EatMeLibrary
             Stunned = stunned;
             RespawnMsLeft = respawnMsLeft;
             SpawnLocked = spawnLocked;
+            PowerUps = powerUps;
         }
 
         public void Write(BinaryWriter writer)
@@ -115,6 +120,7 @@ namespace EatMeLibrary
             writer.Write(Stunned);
             writer.Write(RespawnMsLeft);
             writer.Write(SpawnLocked);
+            writer.Write(PowerUps);
         }
 
         public static PacState Read(BinaryReader reader)
@@ -139,7 +145,8 @@ namespace EatMeLibrary
                 reader.ReadInt32(),
                 reader.ReadBoolean(),
                 reader.ReadInt32(),
-                reader.ReadBoolean());
+                reader.ReadBoolean(),
+                reader.ReadInt32());
         }
     }
 }

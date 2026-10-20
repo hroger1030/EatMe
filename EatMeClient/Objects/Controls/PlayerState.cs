@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace EatMeClient
 {
     /// <summary>
-    /// The player's power up effect, under the mini-map: "Power Up: " and the effect's name ("None" when there isn't one) above a meter,
+    /// The player's power up effect, under the mini-map: the effect's name ("No power up" when there isn't one) above a meter,
     /// greyed out, with a yellow bar over it counting down the time left, and the player's size under that, then a hunger meter filling red as the pac nears starving, inside a
     /// yellow border with rounded corners like the mini-map's. The text is left aligned.
     /// </summary>
