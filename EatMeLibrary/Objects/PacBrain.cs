@@ -352,7 +352,8 @@ namespace EatMeLibrary
         /// </summary>
         public static bool IsThreat(BotWorld world, Player me, Player other)
         {
-            if (!other.Alive || other.Team == me.Team || me.IsInvincible)
+            // pacs passing through each other (Morph Ball, Raccoon Tail) can't fight
+            if (!other.Alive || other.Team == me.Team || me.IsInvincible || me.PassesThrough || other.PassesThrough)
                 return false;
 
             return other.IsInvincible || GetPerceivedSize(world, me, other) > me.Size;
@@ -364,7 +365,7 @@ namespace EatMeLibrary
         /// </summary>
         public static bool IsPrey(BotWorld world, Player me, Player other)
         {
-            if (!other.Alive || other.Team == me.Team || other.IsInvincible)
+            if (!other.Alive || other.Team == me.Team || other.IsInvincible || me.PassesThrough || other.PassesThrough)
                 return false;
 
             return me.IsInvincible || me.Size > GetPerceivedSize(world, me, other) * PREY_SIZE_MARGIN;
@@ -429,7 +430,8 @@ namespace EatMeLibrary
         {
             var threats = new List<(int X, int Y)>();
 
-            if (!CanKillGhosts(world, me))
+            // a bot passing through ghosts (Morph Ball, Raccoon Tail) has nothing to fear from them
+            if (!CanKillGhosts(world, me) && !me.PassesThrough)
                 foreach (var ghost in world.Ghosts)
                     if (ghost.Alive)
                         AddIfClose(threats, paths, MazeMovement.GetCell(ghost.Location), maxDistance);
@@ -438,7 +440,49 @@ namespace EatMeLibrary
                 if (IsThreat(world, me, pac))
                     AddIfClose(threats, paths, MazeMovement.GetCell(pac.Location), maxDistance);
 
+            // other pacs' holy flames kill anything that isn't invincible; they don't move, so only the next steps matter
+            if (!me.IsInvincible)
+                foreach (var effect in world.WeaponEffects)
+                    if (effect.Kind == eWeaponEffect.HolyFlame && effect.OwnerId != me.Id)
+                        AddIfClose(threats, paths, MazeMovement.GetCell(effect.Location), Math.Min(maxDistance, FLAME_DANGER_DISTANCE));
+
             return threats;
+        }
+
+        /// <summary>
+        /// Steps away at which a bot steers clear of a holy flame.
+        /// </summary>
+        public const int FLAME_DANGER_DISTANCE = 2;
+
+        /// <summary>
+        /// True if a bot with a buff that fires on the action button (Sword Swing, Fireball) should fire now: the
+        /// nearest pac or ghost in line ahead of it, within WeaponRules.FIRE_DISTANCE and before any wall, is an enemy
+        /// pac that isn't invincible or a ghost. A teammate in the way holds its fire.
+        /// </summary>
+        public static bool ShouldFire(BotWorld world, Player me)
+        {
+            if (me.PowerUpEffect != ePowerUpEffect.SwordSwing && me.PowerUpEffect != ePowerUpEffect.FireFlower)
+                return false;
+
+            var width = world.Map.GetLength(0);
+            var height = world.Map.GetLength(1);
+            var (x, y) = MazeMovement.GetCell(me.Location);
+            var clear = WeaponRules.GetClearCells(world.Map, x, y, me.Facing, WeaponRules.FIRE_DISTANCE);
+
+            for (var cells = 1; cells <= clear; cells++)
+            {
+                foreach (var pac in world.Pacs)
+                    if (pac != me && pac.Alive && WeaponRules.IsInLineAhead(x, y, me.Facing, cells, pac.Location, width, height)
+                        && !WeaponRules.IsInLineAhead(x, y, me.Facing, cells - 1, pac.Location, width, height))
+                        return pac.Team != me.Team && !pac.IsInvincible;
+
+                foreach (var ghost in world.Ghosts)
+                    if (ghost.Alive && WeaponRules.IsInLineAhead(x, y, me.Facing, cells, ghost.Location, width, height)
+                        && !WeaponRules.IsInLineAhead(x, y, me.Facing, cells - 1, ghost.Location, width, height))
+                        return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -483,7 +527,7 @@ namespace EatMeLibrary
         /// </summary>
         public static bool ShouldTurnBack(BotWorld world, Player me)
         {
-            if (!CanKillGhosts(world, me))
+            if (!CanKillGhosts(world, me) && !me.PassesThrough)
                 foreach (var ghost in world.Ghosts)
                     if (ghost.Alive && IsAhead(me, ghost.Location))
                         return true;

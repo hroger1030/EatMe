@@ -68,5 +68,35 @@
         /// Doctor Away (apple) or Invincible (starman) is working. Doctor Away doesn't let it kill them.
         /// </summary>
         public bool RepelsGhosts => IsPowered || IsInvincible || (PowerUpEffect == ePowerUpEffect.DoctorAway && PowerUpMs > 0);
+
+        /// <summary>
+        /// True while Morph Ball or Raccoon Tail is working: the pac passes through enemy pacs and ghosts.
+        /// </summary>
+        public bool PassesThrough => PowerUpEffects.PassesThrough(PowerUpEffect) && PowerUpMs > 0;
+
+        /// <summary>
+        /// True while Raccoon Tail is working: the pac moves through walls too.
+        /// </summary>
+        public bool PassesThroughWalls => PowerUpEffects.PassesThroughWalls(PowerUpEffect) && PowerUpMs > 0;
+
+        /// <summary>
+        /// True while the pac is dead and its Extra Life (1-up) will bring it back at ExtraLifeLocation and
+        /// ExtraLifeSize when its RespawnTimer runs out.
+        /// </summary>
+        public bool ExtraLifePending { get; set; }
+
+        public FastG.Point2 ExtraLifeLocation { get; set; }
+
+        public float ExtraLifeSize { get; set; }
+
+        /// <summary>
+        /// ms before the Fireball effect's next shot is ready (WeaponRules.FIREBALL_COOLDOWN_MS).
+        /// </summary>
+        public int FireCooldownMs { get; set; }
+
+        /// <summary>
+        /// The cell a pac with Holy Fire was in last tick, so a flame goes down in each cell it leaves.
+        /// </summary>
+        public (int X, int Y)? HolyFireCell { get; set; }
     }
 }

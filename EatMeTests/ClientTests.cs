@@ -252,23 +252,29 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsOwnPacHitByPow_OnlyWhenAliveInRangeAndNotTheEater()
+        public void IsOwnPacInEffectRange_EveryoneInsideTheSquare()
         {
             var state = JoinedState(playerId: 3);
             var pow = new GameEventMessage { EventType = eGameEvent.Pow, ActorId = 7, X = 10.5f, Y = 10.5f };
 
-            Assert.That(state.IsOwnPacHitByPow(pow), Is.False, "no snapshot yet");
+            Assert.That(state.IsOwnPacInEffectRange(pow), Is.False, "no snapshot yet");
 
-            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false)] }, 0);
-            Assert.That(state.IsOwnPacHitByPow(pow), Is.True, "10 cells away");
-            Assert.That(state.IsOwnPacHitByPow(new GameEventMessage { EventType = eGameEvent.Pow, ActorId = 3, X = 10.5f, Y = 10.5f }), Is.False, "the eater isn't hit");
-            Assert.That(state.IsOwnPacHitByPow(new GameEventMessage { EventType = eGameEvent.PowerUpEaten, ActorId = 7, X = 10.5f, Y = 10.5f }), Is.False, "other events");
+            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f + PowerUpEffects.EFFECT_RADIUS, 10.5f + PowerUpEffects.EFFECT_RADIUS, 50f, eFacing.Left, true, false, false)] }, 0);
+            Assert.That(state.IsOwnPacInEffectRange(pow), Is.True, "the square's corner");
+            Assert.That(state.IsOwnPacInEffectRange(new GameEventMessage { EventType = eGameEvent.Pow, ActorId = 3, X = 10.5f, Y = 10.5f }), Is.True, "the pac that set it off too");
 
             state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 10.5f + PowerUpEffects.EFFECT_RADIUS + 1f, 50f, eFacing.Left, true, false, false)] }, 0);
-            Assert.That(state.IsOwnPacHitByPow(pow), Is.False, "out of range");
+            Assert.That(state.IsOwnPacInEffectRange(pow), Is.False, "out of range");
 
             state.Apply(new SnapshotMessage { Tick = 3, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 12.5f, 50f, eFacing.Left, false, false, false)] }, 0);
-            Assert.That(state.IsOwnPacHitByPow(pow), Is.False, "dead");
+            Assert.That(state.IsOwnPacInEffectRange(pow), Is.True, "dead pacs too, the camera is still there");
+        }
+
+        [Test]
+        public void ShakesScreen_OnlyPow()
+        {
+            foreach (var eventType in Enum.GetValues<eGameEvent>())
+                Assert.That(PowerUpEffects.ShakesScreen(eventType), Is.EqualTo(eventType == eGameEvent.Pow), eventType.ToString());
         }
 
         [Test]

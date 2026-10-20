@@ -31,7 +31,7 @@ namespace EatMeServer
                 connection =>
                 {
                     if (connection.CloseReason != null)
-                        Console.WriteLine($"Client {Id} ({RemoteAddress}): {connection.CloseReason}");
+                        ServerLog.Write(eLogType.Leave, $"Client {Id} ({RemoteAddress}): {connection.CloseReason}");
 
                     onClosed(this);
                 });

@@ -165,6 +165,11 @@ namespace EatMeLibrary
                     GameConfig = welcome.GameConfig;
                     break;
 
+                // the rules changed on the server; settings that shape the map count from the next LevelStart
+                case GameConfigMessage gameConfig:
+                    GameConfig = gameConfig.GameConfig;
+                    break;
+
                 case RejectMessage reject:
                     RejectReason = reject.Reason;
                     break;
@@ -242,16 +247,14 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if a POW block event stuns our own pac: it is alive, isn't the pac that set it off, and is within
-        /// PowerUpEffects.EFFECT_RADIUS of where it went off. False for any other event.
+        /// True if our own pac is inside the standard radius (PowerUpEffects.IsInEffectRange) of an event at its X, Y:
+        /// the pac that set it off, pacs it doesn't hurt and dead pacs (where the camera still is) all count. Area
+        /// effects that shake the screen (PowerUpEffects.ShakesScreen) shake it for everyone this is true for.
         /// </summary>
-        public bool IsOwnPacHitByPow(GameEventMessage gameEvent)
+        public bool IsOwnPacInEffectRange(GameEventMessage gameEvent)
         {
-            if (gameEvent == null || gameEvent.EventType != eGameEvent.Pow || gameEvent.ActorId == PlayerId)
-                return false;
-
             var ownPac = GetOwnPac();
-            return ownPac.HasValue && ownPac.Value.Alive
+            return gameEvent != null && ownPac.HasValue
                 && PowerUpEffects.IsInEffectRange(new FastG.Point2(gameEvent.X, gameEvent.Y), new FastG.Point2(ownPac.Value.X, ownPac.Value.Y));
         }
 

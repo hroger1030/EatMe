@@ -5,13 +5,16 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 
+// server uptime, shown in the console's typing prompt
+var uptime = Stopwatch.StartNew();
+
 try
 {
     ConfigManager.Load();
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"Failed to load config: {ex.Message}");
+    ServerLog.Write(eLogType.Error, $"Failed to load config: {ex.Message}");
     return 1;
 }
 
@@ -21,18 +24,18 @@ HighScoreManager.Load();
 
 var settings = ConfigManager.Settings;
 
-Console.WriteLine($"{settings.ServerName} starting");
-Console.WriteLine($"  Port:          {settings.Port}");
-Console.WriteLine($"  DiscoveryPort: {settings.DiscoveryPort}");
-Console.WriteLine($"  MaxPlayers:    {settings.GameConfig.MaxPlayers}");
-Console.WriteLine($"  MinPlayers:    {settings.GameConfig.MinPlayers}");
-Console.WriteLine($"  AutoBalance:   {settings.AutoBalanceTeams}");
-Console.WriteLine($"  TickRate:      {settings.TickRate}");
-Console.WriteLine($"  TargetFps:     {settings.TargetFps}");
-Console.WriteLine($"  Tips:          {LoadingScreenTipsManager.Tips.Count}");
-Console.WriteLine($"  MOTD:          {settings.MessageOfTheDay}");
-Console.WriteLine($"  Bot names:     {BotNameManager.Names.Count}");
-Console.WriteLine($"  High scores:   {HighScoreManager.Scores.Count}");
+ServerLog.Write(eLogType.Level, $"{settings.ServerName} starting");
+ServerLog.Write(eLogType.Info, $"  Port:          {settings.Port}");
+ServerLog.Write(eLogType.Info, $"  DiscoveryPort: {settings.DiscoveryPort}");
+ServerLog.Write(eLogType.Info, $"  MaxPlayers:    {settings.GameConfig.MaxPlayers}");
+ServerLog.Write(eLogType.Info, $"  MinPlayers:    {settings.GameConfig.MinPlayers}");
+ServerLog.Write(eLogType.Info, $"  AutoBalance:   {settings.AutoBalanceTeams}");
+ServerLog.Write(eLogType.Info, $"  TickRate:      {settings.TickRate}");
+ServerLog.Write(eLogType.Info, $"  TargetFps:     {settings.TargetFps}");
+ServerLog.Write(eLogType.Info, $"  Tips:          {LoadingScreenTipsManager.Tips.Count}");
+ServerLog.Write(eLogType.Info, $"  MOTD:          {settings.MessageOfTheDay}");
+ServerLog.Write(eLogType.Info, $"  Bot names:     {BotNameManager.Names.Count}");
+ServerLog.Write(eLogType.Info, $"  High scores:   {HighScoreManager.Scores.Count}");
 
 using var shutdown = new CancellationTokenSource();
 
@@ -53,7 +56,7 @@ try
 }
 catch (SocketException ex)
 {
-    Console.Error.WriteLine($"Can't listen on port {settings.Port}: {ex.Message}");
+    ServerLog.Write(eLogType.Error, $"Can't listen on port {settings.Port}: {ex.Message}");
     return 1;
 }
 
@@ -64,11 +67,11 @@ try
 catch (SocketException ex)
 {
     // the game still works by IP address without discovery
-    Console.WriteLine($"LAN discovery off, can't listen on port {settings.DiscoveryPort}: {ex.Message}");
+    ServerLog.Write(eLogType.Warning, $"LAN discovery off, can't listen on port {settings.DiscoveryPort}: {ex.Message}");
 }
 
-Console.WriteLine("Game paused until a player joins");
-Console.WriteLine("Type help for commands, quit or Ctrl+C to stop.");
+ServerLog.Write(eLogType.Info, "Game paused until a player joins");
+ServerLog.Write(eLogType.Info, "Type help for commands, quit or Ctrl+C to stop.");
 
 // typed lines are read on their own thread and run on the main loop, so commands touch the game on one thread only
 var commands = new ConcurrentQueue<string>();
@@ -80,17 +83,20 @@ var commandReader = new Thread(() =>
 
         // null once input is closed, e.g. with no console
         while ((line = Console.ReadLine()) != null)
+        {
+            ServerLog.OnLineTyped();
             commands.Enqueue(line);
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Console commands off: {ex.Message}");
+        ServerLog.Write(eLogType.Warning, $"Console commands off: {ex.Message}");
     }
 })
 { IsBackground = true, Name = "Console commands" };
 commandReader.Start();
+ServerLog.EnablePrompt(uptime);
 
-var tickInterval = TimeSpan.FromSeconds(1.0 / Math.Max(1, settings.TickRate));
 var stopwatch = Stopwatch.StartNew();
 var lastTickMs = stopwatch.ElapsedMilliseconds;
 
@@ -111,7 +117,9 @@ while (!shutdown.IsCancellationRequested)
         var output = ServerCommands.Execute(game, command, out var quit);
 
         if (output.Length > 0)
-            Console.WriteLine(output);
+            ServerLog.Write(eLogType.Command, output);
+        else
+            ServerLog.ShowPrompt();
 
         if (quit)
             shutdown.Cancel();
@@ -119,6 +127,8 @@ while (!shutdown.IsCancellationRequested)
 
     game.Update(elapsedMs);
 
+    // read each tick, so the console's set TickRate takes effect at once
+    var tickInterval = TimeSpan.FromSeconds(1.0 / Math.Max(1, settings.TickRate));
     var sleepTime = tickInterval - (stopwatch.Elapsed - now);
 
     if (sleepTime > TimeSpan.Zero)
@@ -128,5 +138,6 @@ while (!shutdown.IsCancellationRequested)
 discovery.Stop();
 network.Stop();
 
-Console.WriteLine("Server stopped.");
+ServerLog.DisablePrompt();
+ServerLog.Write(eLogType.Level, "Server stopped.");
 return 0;

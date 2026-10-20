@@ -30,13 +30,28 @@ namespace EatMeServer
             Settings = JsonConvert.DeserializeObject<ServerSettings>(File.ReadAllText(path))
                 ?? throw new InvalidDataException($"Config file is empty: {path}");
 
-            MapMaker.ValidateMazeSize(Settings.GameConfig.MazeSize);
-            Settings.GameConfig.DotRegenPercent = Math.Clamp(Settings.GameConfig.DotRegenPercent, DotRegenQueue.MIN_PERCENT, DotRegenQueue.MAX_PERCENT);
-            Settings.GameConfig.TurnBufferTimeMs = Math.Max(0, Settings.GameConfig.TurnBufferTimeMs);
-            Settings.GameConfig.TurnGraceDistance = Math.Clamp(Settings.GameConfig.TurnGraceDistance, 0f, TurnAssist.MAX_GRACE_CELLS);
-            Settings.GameConfig.LagCompensationMaxMs = Math.Max(0, Settings.GameConfig.LagCompensationMaxMs);
-            Settings.MessageOfTheDay = GetMessageOfTheDay(Settings.MessageOfTheDay);
-            Settings.StartingLevel = ClampStartingLevel(Settings.StartingLevel);
+            Normalize(Settings);
+        }
+
+        /// <summary>
+        /// Checks and tidies settings, as loaded from server.cfg or changed with the console's set command: throws
+        /// ArgumentOutOfRangeException if GameConfig.MazeSize is odd or too small, and otherwise clamps what is out of
+        /// range (see Load), TickRate to 1 or more and MinPlayers to 0 to MaxPlayers.
+        /// </summary>
+        public static void Normalize(ServerSettings settings)
+        {
+            var config = settings.GameConfig;
+
+            MapMaker.ValidateMazeSize(config.MazeSize);
+            config.DotRegenPercent = Math.Clamp(config.DotRegenPercent, DotRegenQueue.MIN_PERCENT, DotRegenQueue.MAX_PERCENT);
+            config.TurnBufferTimeMs = Math.Max(0, config.TurnBufferTimeMs);
+            config.TurnGraceDistance = Math.Clamp(config.TurnGraceDistance, 0f, TurnAssist.MAX_GRACE_CELLS);
+            config.LagCompensationMaxMs = Math.Max(0, config.LagCompensationMaxMs);
+            config.MaxPlayers = Math.Max(1, config.MaxPlayers);
+            config.MinPlayers = Math.Clamp(config.MinPlayers, 0, config.MaxPlayers);
+            settings.TickRate = Math.Max(1, settings.TickRate);
+            settings.MessageOfTheDay = GetMessageOfTheDay(settings.MessageOfTheDay);
+            settings.StartingLevel = ClampStartingLevel(settings.StartingLevel);
         }
 
         /// <summary>

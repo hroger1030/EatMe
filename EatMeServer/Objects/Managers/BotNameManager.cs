@@ -23,7 +23,7 @@ namespace EatMeServer
 
             if (!File.Exists(path))
             {
-                Console.WriteLine($"No {BOT_NAMES_FILE_NAME} found; bots are named {FALLBACK_NAME_PREFIX}1, {FALLBACK_NAME_PREFIX}2...");
+                ServerLog.Write(eLogType.Warning, $"No {BOT_NAMES_FILE_NAME} found; bots are named {FALLBACK_NAME_PREFIX}1, {FALLBACK_NAME_PREFIX}2...");
                 Names = [];
                 return;
             }

@@ -165,5 +165,34 @@ namespace EatMeLibrary
         /// Picks the mazes. Each level's map is built from Levels.GetSeed(ServerSeed, level), so the same ServerSeed always gives the same mazes.
         /// </summary>
         public int ServerSeed { get; set; } = 0;
+
+        /// <summary>
+        /// The settings a level's map and ghost lineup are built from. Changing one mid-level only counts from the
+        /// next level, so clients joining before then still build the map the server is playing.
+        /// </summary>
+        public static readonly string[] MAP_SETTINGS =
+        [
+            nameof(MazeSize), nameof(WarpTunnelCount), nameof(GhostCount), nameof(PowerPillCount),
+            nameof(FlagCount), nameof(PlayerBaseCount), nameof(ServerSeed),
+        ];
+
+        public GameConfiguration Clone()
+        {
+            return (GameConfiguration)MemberwiseClone();
+        }
+
+        /// <summary>
+        /// Copies the map settings (MAP_SETTINGS) from other, leaving the rest alone.
+        /// </summary>
+        public void CopyMapSettingsFrom(GameConfiguration other)
+        {
+            MazeSize = other.MazeSize;
+            WarpTunnelCount = other.WarpTunnelCount;
+            GhostCount = other.GhostCount;
+            PowerPillCount = other.PowerPillCount;
+            FlagCount = other.FlagCount;
+            PlayerBaseCount = other.PlayerBaseCount;
+            ServerSeed = other.ServerSeed;
+        }
     }
 }

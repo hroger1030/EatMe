@@ -24,6 +24,7 @@ namespace EatMeServer
         public const string BOTS = "bots";
         public const string AUTO_BALANCE = "autobalance";
         public const string MOTD = "motd";
+        public const string SETTINGS = "settings";
         public const string QUIT = "quit";
 
         /// <summary>
@@ -44,6 +45,7 @@ namespace EatMeServer
             { BOTS, "bots [n]", "Show or set MinPlayers, the players (humans plus bots) the server keeps" },
             { AUTO_BALANCE, "autobalance [on|off]", "Show or set whether bots keep the teams the same size" },
             { MOTD, "motd [text]", "Show or set the message of the day for players who join from now on" },
+            { SETTINGS, "settings", "Every server.cfg setting with its command and value" },
             { QUIT, "quit", "Stop the server" },
         };
 
@@ -59,6 +61,8 @@ namespace EatMeServer
             { "addbot", ADD_BOT },
             { "removebot", REMOVE_BOT },
             { "minplayers", BOTS },
+            { "autobalanceteams", AUTO_BALANCE },
+            { "messageoftheday", MOTD },
             { "stop", QUIT },
             { "exit", QUIT },
         };
@@ -67,7 +71,7 @@ namespace EatMeServer
 
         /// <summary>
         /// Splits a line into its command (the canonical name, lower case, from COMMANDS or ALIASES; a two word
-        /// command wins over a one word one) and the rest of the line, trimmed and with its case kept. Null for a
+        /// command wins over a one word one), or a setting command from SettingCommands, and the rest of the line, trimmed and with its case kept. Null for a
         /// blank line or one that starts with no known command.
         /// </summary>
         public static string Parse(string line, out string argument)
@@ -173,12 +177,15 @@ namespace EatMeServer
 
                     return $"MOTD: {ConfigManager.GetMessageOfTheDay(game.Settings.MessageOfTheDay)}";
 
+                case SETTINGS:
+                    return FormatTable(SettingCommands.GetSettingRows(game.Settings), [false, false, false]);
+
                 case QUIT:
                     quit = true;
                     return "Stopping";
 
                 default:
-                    return UNKNOWN;
+                    return SettingCommands.Execute(game, command, argument) ?? UNKNOWN;
             }
         }
 
@@ -216,10 +223,18 @@ namespace EatMeServer
             for (var i = 0; i < COMMANDS.GetLength(0); i++)
                 width = Math.Max(width, COMMANDS[i, 1].Length);
 
+            for (var i = 0; i < SettingCommands.COMMANDS.GetLength(0); i++)
+                width = Math.Max(width, SettingCommands.COMMANDS[i, 1].Length);
+
             var text = new StringBuilder("Commands:");
 
             for (var i = 0; i < COMMANDS.GetLength(0); i++)
                 text.Append($"\n  {COMMANDS[i, 1].PadRight(width)}  {COMMANDS[i, 2]}");
+
+            text.Append("\nSettings (alone to show, with a value to change; not saved to server.cfg):");
+
+            for (var i = 0; i < SettingCommands.COMMANDS.GetLength(0); i++)
+                text.Append($"\n  {SettingCommands.COMMANDS[i, 1].PadRight(width)}  {SettingCommands.COMMANDS[i, 2]}");
 
             return text.ToString();
         }
@@ -349,7 +364,10 @@ namespace EatMeServer
                 if (COMMANDS[i, 0] == key)
                     return key;
 
-            return ALIASES.TryGetValue(key, out var command) ? command : null;
+            if (ALIASES.TryGetValue(key, out var command))
+                return command;
+
+            return SettingCommands.Find(key);
         }
 
         /// <summary>

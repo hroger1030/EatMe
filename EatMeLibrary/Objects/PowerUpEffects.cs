@@ -22,13 +22,70 @@ namespace EatMeLibrary
                 ePowerUpEffect.VitaminC => Const.STRING_VITAMIN_C,
                 ePowerUpEffect.DoctorAway => Const.STRING_DOCTOR_AWAY,
                 ePowerUpEffect.MelonBelly => Const.STRING_MELON_BELLY,
-                ePowerUpEffect.RocketScience => Const.STRING_ROCKET_SCIENCE,
+                ePowerUpEffect.RocketScience => Const.STRING_SCIENCE,
                 ePowerUpEffect.DinnerBell => Const.STRING_DINNER_BELL,
                 ePowerUpEffect.Lockdown => Const.STRING_LOCKDOWN,
                 ePowerUpEffect.Twister => Const.STRING_TWISTER,
                 ePowerUpEffect.Invincible => Const.STRING_INVINCIBLE,
+                ePowerUpEffect.ExtraLife => Const.STRING_EXTRA_LIFE,
+                ePowerUpEffect.Reinforcements => Const.STRING_REINFORCEMENTS,
+                ePowerUpEffect.MorphBall => Const.STRING_MORPH_BALL,
+                ePowerUpEffect.RaccoonTail => Const.STRING_RACCOON_TAIL,
+                ePowerUpEffect.SwordSwing => Const.STRING_SWORD_SWING,
+                ePowerUpEffect.HolyFire => Const.STRING_HOLY_FIRE,
+                ePowerUpEffect.FireFlower => Const.STRING_FIREBALL,
                 _ => Const.STRING_POWER_UP_NONE,
             };
+        }
+
+        /// <summary>
+        /// A pac with Extra Life (1-up) that dies comes back this long after, where it died.
+        /// </summary>
+        public const int EXTRA_LIFE_RESPAWN_MS = 1000;
+
+        /// <summary>
+        /// True if a pac with this effect passes through enemy pacs and ghosts (no fights, no ghost contact either
+        /// way): Morph Ball and Raccoon Tail.
+        /// </summary>
+        public static bool PassesThrough(ePowerUpEffect effect)
+        {
+            return effect == ePowerUpEffect.MorphBall || effect == ePowerUpEffect.RaccoonTail;
+        }
+
+        /// <summary>
+        /// True if a pac with this effect moves through walls too: Raccoon Tail.
+        /// </summary>
+        public static bool PassesThroughWalls(ePowerUpEffect effect)
+        {
+            return effect == ePowerUpEffect.RaccoonTail;
+        }
+
+        /// <summary>
+        /// A rolling (Morph Ball) pac turns this many full turns for every cell it moves.
+        /// </summary>
+        public const float ROLL_TURNS_PER_CELL = 0.75f;
+
+        /// <summary>
+        /// The angle (radians, 0 to 2 pi) a rolling pac at (x, y) is turned to: it turns ROLL_TURNS_PER_CELL for each
+        /// cell it moves, so it only spins while moving.
+        /// </summary>
+        public static float GetRollAngle(float x, float y)
+        {
+            var turns = (x + y) * ROLL_TURNS_PER_CELL;
+            return (turns - MathF.Floor(turns)) * MathF.PI * 2f;
+        }
+
+        /// <summary>
+        /// A pac with Fireball (fire flower) flashes white this often.
+        /// </summary>
+        public const float FIRE_FLASH_SECONDS = 0.05f;
+
+        /// <summary>
+        /// True if a pac with Fireball is drawn white at a time in seconds (otherwise its normal color).
+        /// </summary>
+        public static bool IsFireFlashWhite(float seconds)
+        {
+            return seconds % (FIRE_FLASH_SECONDS * 2f) < FIRE_FLASH_SECONDS;
         }
 
         /// <summary>
@@ -37,8 +94,8 @@ namespace EatMeLibrary
         public const float DINNER_BELL_GHOST_SPEED_SCALE = 2f;
 
         /// <summary>
-        /// The standard reach in cells (straight line, through walls) of every power up effect that works on others
-        /// around the pac (IsInEffectRange): the POW block's stun, Twister's slow.
+        /// The standard radius in cells of every power up effect that works on an area around the pac (IsInEffectRange):
+        /// a square reaching this far horizontally and vertically from it. The POW block's stun, Twister's slow.
         /// </summary>
         public const float EFFECT_RADIUS = 15f;
 
@@ -58,13 +115,21 @@ namespace EatMeLibrary
         public const float STUN_SPIN_TURNS_PER_SECOND = 2f;
 
         /// <summary>
-        /// True if a position is within EFFECT_RADIUS of an effect's centre (straight line, so walls don't block it).
+        /// True for area effect events that shake the screen of everyone inside the standard radius, whether or not
+        /// the effect does anything else to them: the POW block.
+        /// </summary>
+        public static bool ShakesScreen(eGameEvent eventType)
+        {
+            return eventType == eGameEvent.Pow;
+        }
+
+        /// <summary>
+        /// True if a position is inside the standard radius of an effect's centre: no more than EFFECT_RADIUS cells
+        /// away horizontally and no more than EFFECT_RADIUS vertically (a square area).
         /// </summary>
         public static bool IsInEffectRange(Point2 from, Point2 to)
         {
-            var dx = to.X - from.X;
-            var dy = to.Y - from.Y;
-            return dx * dx + dy * dy <= EFFECT_RADIUS * EFFECT_RADIUS;
+            return MathF.Abs(to.X - from.X) <= EFFECT_RADIUS && MathF.Abs(to.Y - from.Y) <= EFFECT_RADIUS;
         }
 
         /// <summary>
@@ -131,11 +196,11 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if an effect never runs out: its timer stays full and it lasts until the pac dies or another effect
-        /// replaces it. Vitamin C and Doctor Away.
+        /// replaces it. Vitamin C, Doctor Away and Extra Life.
         /// </summary>
         public static bool IsPermanent(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway;
+            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.ExtraLife;
         }
 
         /// <summary>

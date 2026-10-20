@@ -25,11 +25,11 @@ namespace EatMeClient
 
         /// <summary>
         /// Height of the whole control, border included: padding, the label, padding, the meter, padding, the size, padding,
-        /// the hunger meter and padding.
+        /// the size bar, padding, the hunger meter and padding.
         /// </summary>
         public int GetHeight()
         {
-            return MiniMap.BORDER_PIXELS * 2 + PADDING_PIXELS * 5 + _font.LineSpacing * 2 + METER_HEIGHT_PIXELS * 2;
+            return MiniMap.BORDER_PIXELS * 2 + PADDING_PIXELS * 6 + _font.LineSpacing * 2 + METER_HEIGHT_PIXELS * 3;
         }
 
         /// <summary>
@@ -65,8 +65,17 @@ namespace EatMeClient
             var sizeY = meter.Bottom + PADDING_PIXELS;
             spriteBatch.DrawString(_font, sizeText, new Vector2(textX, sizeY), ClientColors.COLOR_PAC_WHITE);
 
+            // the size bar fills green up to 100, then turns orange above 100 and red above 150
+            var sizeBar = new Rectangle(meter.X, sizeY + _font.LineSpacing + PADDING_PIXELS, meter.Width, METER_HEIGHT_PIXELS);
+            spriteBatch.Draw(_pixel, sizeBar, ClientColors.COLOR_POWER_UP_BAR_EMPTY);
+
+            var sizeWidth = (int)Math.Round(sizeBar.Width * SizeBar.GetFill(size));
+
+            if (sizeWidth > 0)
+                spriteBatch.Draw(_pixel, new Rectangle(sizeBar.X, sizeBar.Y, sizeWidth, sizeBar.Height), ClientColors.GetSizeBarColor(SizeBar.GetLevel(size)));
+
             // the red part grows towards the right as the pac gets hungrier, and empties when it eats
-            var hungerMeter = new Rectangle(meter.X, sizeY + _font.LineSpacing + PADDING_PIXELS, meter.Width, METER_HEIGHT_PIXELS);
+            var hungerMeter = new Rectangle(meter.X, sizeBar.Bottom + PADDING_PIXELS, meter.Width, METER_HEIGHT_PIXELS);
             spriteBatch.Draw(_pixel, hungerMeter, ClientColors.COLOR_POWER_UP_BAR_EMPTY);
 
             var hungerWidth = (int)Math.Round(hungerMeter.Width * Math.Clamp(hunger, 0f, 1f));

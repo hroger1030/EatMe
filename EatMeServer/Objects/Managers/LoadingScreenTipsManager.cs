@@ -22,7 +22,7 @@ namespace EatMeServer
 
             if (!File.Exists(path))
             {
-                Console.WriteLine($"No {TIPS_FILE_NAME} found; players get no loading screen tips.");
+                ServerLog.Write(eLogType.Warning, $"No {TIPS_FILE_NAME} found; players get no loading screen tips.");
                 Tips = [];
                 return;
             }

@@ -35,7 +35,71 @@ dotnet build EatMe.sln
 dotnet run --project EatMeServer
 ```
 
-The server loads `server.cfg` from its output directory, prints the loaded settings, then runs its tick loop until Ctrl+C or `quit`. Type `help` in its window for the other console commands (next level, kick, add bot and so on). If `server.cfg` is missing or invalid, it prints an error and exits with code 1.
+The server loads `server.cfg` from its output directory, prints the loaded settings, then runs its tick loop until Ctrl+C or `quit`. Type `help` in its window for the console commands; the prompt shows how long the server has been up, as `[Uptime: h:mm]`. If `server.cfg` is missing or invalid, it prints an error and exits with code 1.
+
+### Console commands
+
+Commands are typed into the server's window while it runs. Command names ignore case. Nothing a command changes is written back to `server.cfg`, so a restart goes back to the file's values.
+
+| Command | What it does |
+|---|---|
+| `help` (or `?`) | Lists the commands. |
+| `status` | Level, scores and player counts. |
+| `players` | Every player with their id, team, scores and lag. |
+| `next level` (or `next`) | Starts the next level now. |
+| `level {n}` | Jumps to level n. |
+| `restart` | Restarts the current level. |
+| `new game` | Goes back to the starting level. |
+| `kick {name or id}` | Removes a player from the server. |
+| `add bot [n]` | Keeps n more players (default 1; per team with autobalance on). |
+| `remove bot [n]` | Keeps n fewer players (default 1; per team with autobalance on). |
+| `bots [n]` | Shows or sets MinPlayers. |
+| `autobalance [on\|off]` | Shows or sets AutoBalanceTeams. |
+| `motd [text]` | Shows or sets the message of the day. |
+| `settings` | Lists every setting with the command that changes it and its value. |
+| `quit` (or `stop`, `exit`) | Stops the server. |
+
+Every other `server.cfg` setting has its own command, its name in lower case: typed alone it shows the value, typed with a value it changes it, e.g. `pacspeed 7.5`, `mazesize 60`, `tickrate 30`, `servername Friday Night Pac`. `MinPlayers`, `AutoBalanceTeams` and `MessageOfTheDay` are `bots`, `autobalance` and `motd` (`minplayers`, `autobalanceteams` and `messageoftheday` work too). `Port` and `DiscoveryPort` have none, since they only count at startup. `help` lists them all.
+
+| Setting command | Setting |
+|---|---|
+| `servername [text]` | ServerName |
+| `tickrate [n]` | TickRate |
+| `targetfps [n]` | TargetFps |
+| `startinglevel [n]` | StartingLevel |
+| `maxplayers [n]` | MaxPlayers |
+| `maxscore [n]` | MaxScore |
+| `flagscore [n]` | FlagScore |
+| `flagrescue [n]` | FlagRescue |
+| `playerkill [n]` | PlayerKill |
+| `ghostkill [n]` | GhostKill |
+| `mazesize [n]` | MazeSize |
+| `warptunnelcount [n]` | WarpTunnelCount |
+| `ghostcount [n]` | GhostCount |
+| `powerpillcount [n]` | PowerPillCount |
+| `flagcount [n]` | FlagCount |
+| `playerbasecount [n]` | PlayerBaseCount |
+| `ghostvisiondistance [n]` | GhostVisionDistance |
+| `ghostregentimems [n]` | GhostRegenTimeMs |
+| `dotregenpercent [n]` | DotRegenPercent |
+| `powerpillregentimems [n]` | PowerPillRegenTimeMs |
+| `playerrespawntimems [n]` | PlayerRespawnTimeMs |
+| `pacmaxsize [x]` | PacMaxSize |
+| `pacspeed [x]` | PacSpeed |
+| `ghostspeed [x]` | GhostSpeed |
+| `pacshrinkpersecond [x]` | PacShrinkPerSecond |
+| `msuntilstarvation [n]` | MsUntilStarvation |
+| `dotsizegain [x]` | DotSizeGain |
+| `powerpillsizegain [x]` | PowerPillSizeGain |
+| `powerupdurationms [n]` | PowerUpDurationMs |
+| `intermissiontimems [n]` | IntermissionTimeMs |
+| `powerupspawntimerms [n]` | PowerUpSpawnTimerMs |
+| `turnbuffertimems [n]` | TurnBufferTimeMs |
+| `turngracedistance [x]` | TurnGraceDistance |
+| `lagcompensationmaxms [n]` | LagCompensationMaxMs |
+| `serverseed [n]` | ServerSeed |
+
+`[n]` is a whole number and `[x]` a number with a decimal point. A value is checked like the file is when it loads: an odd or too small `MazeSize` is refused and the setting keeps its value, and out of range values are clamped (for example `DotRegenPercent` to 0 to 100 and `TickRate` to 1 or more). Most changes count at once, and game rule changes are sent to every connected player. The settings the map is built from (`MazeSize`, `WarpTunnelCount`, `GhostCount`, `PowerPillCount`, `FlagCount`, `PlayerBaseCount` and `ServerSeed`) count from the next level, or at once with `restart`. `StartingLevel` counts on the next `new game`.
 
 ### server.cfg
 
@@ -161,3 +225,16 @@ A new clip also needs an entry in `Content.mgcb` (`WavImporter`, `SoundEffectPro
 - a 180 Hz click decaying over 2 ms, at half level, so the front punches through
 
 The reverb is a Schroeder reverb: four damped comb filters in parallel (29.7, 37.1, 41.1 and 43.7 ms, feedback 0.78, damping 0.35, averaged), then two all pass filters in series (5 ms and 1.7 ms, gain 0.7). It is mixed in at 0.3 under the dry sound, the sum is soft clipped with `tanh(1.8 x)` for weight, and the last 150 ms fade out.
+
+## Poke ball bloop
+
+`SoundFX_Bloop.wav` (0.32 s) plays when a poke ball catches a ghost and when the ghost gets out. It is synthesised as 44,100 Hz, 16-bit stereo PCM (the same sample in both channels), normalized to a 0.9 peak: a sine (plus its octave at a quarter level) whose pitch rises from 220 Hz to 880 Hz (exponential, 50 ms time constant) with a 28 Hz, 40 Hz deep bubble wobble that fades in over 80 ms, an 8 ms attack and a 90 ms decay, through the same Schroeder reverb as the POW boom (comb feedback 0.6) mixed in at 0.15.
+
+## Angelic chorus
+
+`SoundFX_AngelicChorus.wav` (3 s) plays to a pac that respawns at once thanks to a teammate's Reinforcements. It is synthesised the same way (44,100 Hz, 16-bit stereo, the same sample in both channels, 0.9 peak):
+
+- A choir on a C major chord: C3, C4, E4, G4, C5, E5 and G5, three voices on each note, each detuned at random by up to 0.4% and given its own vibrato (0.6% deep, 4.5 to 6 Hz, fading in over 0.6 s). Each voice is a sawtooth, the buzz of a voice before the mouth shapes it.
+- The sum goes through three resonant band pass filters for the "ah" vowel's formants: 800 Hz (80 Hz wide), 1150 Hz (90 Hz wide, at 0.6) and 2900 Hz (120 Hz wide, at 0.25).
+- It swells in over 0.7 s (squared, so it starts softly) and fades out over the last second.
+- The same Schroeder reverb as the POW boom, with comb feedback 0.82 for a big hall, mixed in at 0.5.

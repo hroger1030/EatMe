@@ -104,6 +104,7 @@ namespace EatMeClient
         private Texture2D _FlagTexture;
         private Texture2D _PacSheet;
         private Texture2D _PowerUpSheet;
+        private Texture2D _WeaponEffectSheet;
         private Texture2D _PacDeathSheet;
         private Texture2D[] _GhostSheets;
         private Texture2D[] _RainbowGhostSheets;
@@ -192,6 +193,7 @@ namespace EatMeClient
             _PacSheet = AssetCache.GetTexture(Const.IMAGE_PAC_SHEET);
             _PacDeathSheet = AssetCache.GetTexture(Const.IMAGE_PAC_DEATH_SHEET);
             _PowerUpSheet = AssetCache.GetTexture(Const.IMAGE_POWER_UP_SHEET);
+            _WeaponEffectSheet = AssetCache.GetTexture(Const.IMAGE_WEAPON_EFFECTS);
 
             _WallTexture = AssetCache.GetTexture(Const.IMAGE_WALL);
             _WallFillTexture = AssetCache.GetTexture(Const.IMAGE_WALL_FILL);
@@ -361,6 +363,11 @@ namespace EatMeClient
                 PauseGame();
 
             SendInput();
+
+            // the action button triggers whatever the player's power up effect does on action
+            if (InputManager.KeyPressed(Keys.Space) || InputManager.GamePadButtonPressed(Buttons.A))
+                _Client.Send(new ActionMessage());
+
             UpdateLoopSound(_EatLoop, !_State.IsIntermission && _State.IsOwnPacEating());
             UpdateLoopSound(_SirenLoop, !_State.IsIntermission && _State.IsOwnPacNotEating());
             UpdateLoopSound(_PowerPillLoop, !_State.IsIntermission && _State.IsOwnPacPowered());
@@ -485,8 +492,8 @@ namespace EatMeClient
                         {
                             PlayEventSound(gameEvent);
 
-                            // the POW block's shockwave shakes the board for everyone it stuns
-                            if (_State.IsOwnPacHitByPow(gameEvent))
+                            // an area effect's shockwave shakes the board for everyone inside its radius, the pac that set it off included
+                            if (PowerUpEffects.ShakesScreen(gameEvent.EventType) && _State.IsOwnPacInEffectRange(gameEvent))
                                 ShakeScreen(ScreenShake.POW_AMPLITUDE_PIXELS, ScreenShake.POW_DURATION_SECONDS);
                         }
 
@@ -536,8 +543,13 @@ namespace EatMeClient
                 eGameEvent.GhostKilled => Const.SFX_EAT_GHOST,
                 eGameEvent.PowerUpEaten => Const.SFX_POWER_UP_EATEN,
                 eGameEvent.Pow => Const.SFX_POW,
+                eGameEvent.PokeBallCapture or eGameEvent.PokeBallRelease => Const.SFX_BLOOP,
                 _ => null,
             };
+
+            // the server only sends this to the pac that respawned thanks to a teammate's Reinforcements: heard at full volume
+            if (gameEvent.EventType == eGameEvent.AngelicRespawn)
+                SoundManager.PlaySound(Const.SFX_ANGELIC_CHORUS);
 
             if (sound != null)
             {
@@ -661,6 +673,7 @@ namespace EatMeClient
                 DrawMaze(spriteBatch, board);
                 DrawLooseFlags(spriteBatch, board);
                 DrawPowerUps(spriteBatch, board);
+                DrawWeaponEffects(spriteBatch, board);
                 DrawPacs(spriteBatch, board);
                 DrawGhosts(spriteBatch, board);
 
@@ -1243,11 +1256,19 @@ namespace EatMeClient
                 if (pac.PowerUpEffect == ePowerUpEffect.Invincible && PowerUpEffects.IsStarBlinkYellow(_AnimationTime))
                     tint = ClientColors.COLOR_PAC_YELLOW;
 
+                // a pac with Fireball flashes white
+                if (pac.PowerUpEffect == ePowerUpEffect.FireFlower && PowerUpEffects.IsFireFlashWhite(_AnimationTime))
+                    tint = Color.White;
+
                 var (rotation, effects) = GetFacingTransform(pac.Facing);
 
                 // a stunned pac spins in place (and the flag it carries with it)
                 if (pac.Stunned)
                     rotation += PowerUpEffects.GetStunSpinAngle(_AnimationTime);
+
+                // a Morph Ball pac rolls as it moves
+                if (pac.PowerUpEffect == ePowerUpEffect.MorphBall)
+                    rotation += PowerUpEffects.GetRollAngle(pac.X, pac.Y);
 
                 // speed trail behind a pac with Sugar Rush, oldest copy first so the newer ones sit on top
                 var trail = _Trails.GetTrail(pac.PlayerId);
@@ -1310,6 +1331,36 @@ namespace EatMeClient
                 var bounds = new Rectangle((int)(center.X - halfSize), (int)(center.Y - halfSize + hover), CELL_PIXELS, CELL_PIXELS);
 
                 spriteBatch.Draw(_PowerUpSheet, bounds, source, Color.White);
+            }
+        }
+
+        /// <summary>
+        /// Draws every weapon effect one cell wide from the weapon effects sheet in its own colors, flipping between
+        /// its two frames (WeaponEffectSprites.GetFrame, offset by id so they don't all flip together). Holy flames go
+        /// first so the rest sit on top; a thrown sword is turned to point the way it flies.
+        /// </summary>
+        private void DrawWeaponEffects(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            if (_State.Snapshot == null)
+                return;
+
+            for (var pass = 0; pass < 2; pass++)
+            {
+                foreach (var effect in _State.Snapshot.WeaponEffects)
+                {
+                    if ((effect.Kind == eWeaponEffect.HolyFlame) != (pass == 0))
+                        continue;
+
+                    var frame = WeaponEffectSprites.GetFrame(_AnimationTime + effect.Id * WeaponEffectSprites.FRAME_SECONDS);
+                    var source = new Rectangle(WeaponEffectSprites.GetCellX(frame), WeaponEffectSprites.GetCellY(effect.Kind),
+                        WeaponEffectSprites.CELL_PIXELS, WeaponEffectSprites.CELL_PIXELS);
+                    var center = _Camera.ToScreenPosition(CellToWorld(effect.X, effect.Y), viewport);
+                    var origin = new Vector2(WeaponEffectSprites.CELL_PIXELS * 0.5f);
+                    var scale = (float)CELL_PIXELS / WeaponEffectSprites.CELL_PIXELS;
+                    var rotation = effect.Kind == eWeaponEffect.Sword ? WeaponEffectSprites.GetRotation(effect.Facing) : 0f;
+
+                    spriteBatch.Draw(_WeaponEffectSheet, center, source, Color.White, rotation, origin, scale, SpriteEffects.None, 0f);
+                }
             }
         }
 

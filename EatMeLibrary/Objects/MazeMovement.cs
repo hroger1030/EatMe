@@ -188,6 +188,42 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// The nearest cell to (x, y), counting steps through anything (walls too) and wrapping round the edges, that
+        /// has none of the blocked flags: (x, y) itself when it is open. Null if the whole map is blocked.
+        /// </summary>
+        public static (int X, int Y)? FindNearestOpenCell(eGridDef[,] map, int x, int y, eGridDef blocked = eGridDef.Wall)
+        {
+            var width = map.GetLength(0);
+            var height = map.GetLength(1);
+            var seen = new bool[width, height];
+            var queue = new System.Collections.Generic.Queue<(int X, int Y)>();
+
+            queue.Enqueue((x, y));
+            seen[x, y] = true;
+
+            while (queue.Count > 0)
+            {
+                var cell = queue.Dequeue();
+
+                if ((map[cell.X, cell.Y] & blocked) == 0)
+                    return cell;
+
+                foreach (var facing in Enum.GetValues<eFacing>())
+                {
+                    var (nx, ny) = GetNeighbor(cell.X, cell.Y, facing, width, height);
+
+                    if (!seen[nx, ny])
+                    {
+                        seen[nx, ny] = true;
+                        queue.Enqueue((nx, ny));
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// True if something at from, going this way, is getting closer to to.
         /// </summary>
         public static bool IsHeadingToward(Point2 from, eFacing facing, Point2 to)

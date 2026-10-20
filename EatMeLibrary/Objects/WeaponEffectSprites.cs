@@ -41,6 +41,20 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// How far (radians, clockwise) to turn a sprite drawn pointing right, such as the sword, to point facing.
+        /// </summary>
+        public static float GetRotation(eFacing facing)
+        {
+            return facing switch
+            {
+                eFacing.Down => MathF.PI * 0.5f,
+                eFacing.Left => MathF.PI,
+                eFacing.Up => -MathF.PI * 0.5f,
+                _ => 0f,
+            };
+        }
+
+        /// <summary>
         /// Top edge of an effect's row on the sheet, in pixels.
         /// </summary>
         public static int GetCellY(eWeaponEffect effect)

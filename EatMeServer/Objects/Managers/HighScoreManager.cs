@@ -26,7 +26,7 @@ namespace EatMeServer
 
             if (!File.Exists(path))
             {
-                Console.WriteLine($"No {HIGH_SCORES_FILE_NAME} found; there are no high scores.");
+                ServerLog.Write(eLogType.Warning, $"No {HIGH_SCORES_FILE_NAME} found; there are no high scores.");
                 Scores = [];
                 return;
             }
@@ -35,7 +35,7 @@ namespace EatMeServer
             Scores = HighScoreRules.Parse(File.ReadAllText(path), badLines);
 
             foreach (var line in badLines)
-                Console.WriteLine($"Skipped bad line in {HIGH_SCORES_FILE_NAME}: {line}");
+                ServerLog.Write(eLogType.Warning, $"Skipped bad line in {HIGH_SCORES_FILE_NAME}: {line}");
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace EatMeServer
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
-                Console.Error.WriteLine($"Couldn't save {HIGH_SCORES_FILE_NAME}: {ex.Message}");
+                ServerLog.Write(eLogType.Error, $"Couldn't save {HIGH_SCORES_FILE_NAME}: {ex.Message}");
             }
         }
     }

@@ -59,5 +59,41 @@ namespace EatMeLibrary
         /// touches (Player.IsInvincible). Ghosts run from it. Leaves a speed trail and blinks yellow.
         /// </summary>
         Invincible = 11,
+
+        /// <summary>
+        /// 1-up mushroom (permanent): the next time the pac dies it comes back PowerUpEffects.EXTRA_LIFE_RESPAWN_MS
+        /// later where it died, at the size it was.
+        /// </summary>
+        ExtraLife = 12,
+
+        /// <summary>
+        /// Mega Man 1-up: while the pac lives, its team's dead pacs respawn at once (no respawn timer).
+        /// </summary>
+        Reinforcements = 13,
+
+        /// <summary>
+        /// Morph ball: the pac rolls as it moves and passes through enemy pacs and ghosts (Player.PassesThrough).
+        /// </summary>
+        MorphBall = 14,
+
+        /// <summary>
+        /// Super leaf: the pac passes through enemy pacs, ghosts and walls (Player.PassesThroughWalls).
+        /// </summary>
+        RaccoonTail = 15,
+
+        /// <summary>
+        /// White sword: the action button throws a sword the way the pac faces (WeaponRules.MAX_SWORDS in flight).
+        /// </summary>
+        SwordSwing = 16,
+
+        /// <summary>
+        /// Holy water: the pac leaves a trail of holy flames that kill anything that isn't invincible.
+        /// </summary>
+        HolyFire = 17,
+
+        /// <summary>
+        /// Fire flower: the pac flashes white and the action button fires fireballs (one per WeaponRules.FIREBALL_COOLDOWN_MS).
+        /// </summary>
+        FireFlower = 18,
     }
 }

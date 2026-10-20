@@ -296,6 +296,18 @@
 /processorParam:Quality=Best
 /build:Audio/SoundFX_Pow.wav
 
+#begin Audio/SoundFX_AngelicChorus.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/SoundFX_AngelicChorus.wav
+
+#begin Audio/SoundFX_Bloop.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/SoundFX_Bloop.wav
+
 #begin Audio/SoundFX_PowerUp.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor

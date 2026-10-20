@@ -32,6 +32,11 @@ namespace EatMeLibrary
         public IReadOnlyList<PowerUp> PowerUps { get; set; } = [];
 
         /// <summary>
+        /// Weapon effects in the maze; bots run from holy flames (all but their own) like any other threat.
+        /// </summary>
+        public IReadOnlyList<WeaponEffect> WeaponEffects { get; set; } = [];
+
+        /// <summary>
         /// A full PathMap from each flag base cell, so bots can head for a base from anywhere without searching the
         /// whole map. Made once per level, filled with the bot's own blocked cells (PacBrain.GetBlocked).
         /// </summary>

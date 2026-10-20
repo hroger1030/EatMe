@@ -148,7 +148,7 @@ namespace EatMeClient
             // sound effects
             AssetCache.LoadSfx([
                 Const.SFX_TICK, Const.SFX_EAT, Const.SFX_SIREN, Const.SFX_DEATH,
-                Const.SFX_EAT_GHOST, Const.SFX_FLAG_CAP, Const.SFX_LEVEL_LOST, Const.SFX_LEVEL_WON, Const.SFX_POWER_PILL, Const.SFX_POWER_UP_EATEN, Const.SFX_POWER_UP, Const.SFX_POW,
+                Const.SFX_EAT_GHOST, Const.SFX_FLAG_CAP, Const.SFX_LEVEL_LOST, Const.SFX_LEVEL_WON, Const.SFX_POWER_PILL, Const.SFX_POWER_UP_EATEN, Const.SFX_POWER_UP, Const.SFX_POW, Const.SFX_ANGELIC_CHORUS, Const.SFX_BLOOP,
                 Const.SFX_MSG_RED_FLAG_DROPPED, Const.SFX_MSG_BLUE_FLAG_DROPPED, Const.SFX_MSG_RED_FLAG_RETURNED, Const.SFX_MSG_BLUE_FLAG_RETURNED,
                 Const.SFX_MSG_RED_FLAG_CAPTURED, Const.SFX_MSG_BLUE_FLAG_CAPTURED, Const.SFX_MSG_RED_ABOUT_TO_WIN, Const.SFX_MSG_BLUE_ABOUT_TO_WIN]);
 

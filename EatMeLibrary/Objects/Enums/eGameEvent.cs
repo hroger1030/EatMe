@@ -33,5 +33,21 @@ namespace EatMeLibrary
         /// A pac (ActorId) set off a POW block at X, Y, stunning everything within PowerUpEffects.EFFECT_RADIUS but itself.
         /// </summary>
         Pow,
+
+        /// <summary>
+        /// Sent only to the pac (TargetId) that just respawned at once thanks to a teammate's Reinforcements; it hears
+        /// the angelic chorus.
+        /// </summary>
+        AngelicRespawn,
+
+        /// <summary>
+        /// A poke ball caught a ghost (TargetId) at X, Y.
+        /// </summary>
+        PokeBallCapture,
+
+        /// <summary>
+        /// Something touched a poke ball holding a ghost (TargetId), which got out at X, Y.
+        /// </summary>
+        PokeBallRelease,
     }
 }

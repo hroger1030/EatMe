@@ -20,6 +20,7 @@ namespace EatMeLibrary
         public List<GhostState> Ghosts { get; set; } = [];
         public List<FlagState> Flags { get; set; } = [];
         public List<PowerUpState> PowerUps { get; set; } = [];
+        public List<WeaponEffectState> WeaponEffects { get; set; } = [];
 
         public void Write(BinaryWriter writer)
         {
@@ -42,6 +43,10 @@ namespace EatMeLibrary
             writer.Write(PowerUps.Count);
             foreach (var powerUp in PowerUps)
                 powerUp.Write(writer);
+
+            writer.Write(WeaponEffects.Count);
+            foreach (var weaponEffect in WeaponEffects)
+                weaponEffect.Write(writer);
         }
 
         public void Read(BinaryReader reader)
@@ -69,6 +74,11 @@ namespace EatMeLibrary
             PowerUps = [];
             for (var i = 0; i < powerUpCount; i++)
                 PowerUps.Add(PowerUpState.Read(reader));
+
+            var weaponEffectCount = NetworkHelper.ReadCount(reader);
+            WeaponEffects = [];
+            for (var i = 0; i < weaponEffectCount; i++)
+                WeaponEffects.Add(WeaponEffectState.Read(reader));
         }
     }
 }

@@ -62,11 +62,18 @@
         public const string STRING_VITAMIN_C = "Vitamin C";
         public const string STRING_DOCTOR_AWAY = "Doctor Away";
         public const string STRING_MELON_BELLY = "Melon Belly";
-        public const string STRING_ROCKET_SCIENCE = "Rocket Science";
+        public const string STRING_SCIENCE = "Science";
         public const string STRING_DINNER_BELL = "Dinner Bell";
         public const string STRING_LOCKDOWN = "Lockdown";
         public const string STRING_TWISTER = "Twister";
         public const string STRING_INVINCIBLE = "Invincible";
+        public const string STRING_EXTRA_LIFE = "Extra Life";
+        public const string STRING_REINFORCEMENTS = "Reinforcements";
+        public const string STRING_MORPH_BALL = "Morph Ball";
+        public const string STRING_RACCOON_TAIL = "Raccoon Tail";
+        public const string STRING_SWORD_SWING = "Sword Swing";
+        public const string STRING_HOLY_FIRE = "Holy Fire";
+        public const string STRING_FIREBALL = "Fireball";
 
         // Game screen stats bar
         public const string STRING_SIZE = "Size";

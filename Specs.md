@@ -57,6 +57,7 @@ This is the feature manifest for the SRG client and server application. It will 
   - Half the bots are attackers and go for the enemy flag; the rest stay to eat and hunt.
   - Eat the nearest dot, unless it is already at max size.
   - Otherwise wander, never turning back unless it has to.
+- A bot with the white sword or fire flower presses the action button when the nearest thing straight ahead of it, within 10 cells and before any wall, is an enemy pac that isn't invincible or a ghost (never with a teammate in the way). Bots steer clear of holy flames (other than their own) within 2 steps, and a bot passing through things (morph ball, super leaf) doesn't run from ghosts or enemies, nor chase enemies.
 - An invincible bot (starman) goes into chase mode: it runs from nothing, counts every enemy pac (except an invincible one) and every ghost as prey, and chases the nearest one it can find (30 steps), flag carriers first, before rescuing its flag or anything else except taking a flag home. It leaves power pills and power ups alone, since they would replace the effect.
 - Bots stick to a plan. A bot keeps the goal it picks (a dot, a pac to chase, the enemy flag and so on) for 2 to 4 seconds, a random time for each goal, before it thinks again, so bots blunder a little like humans and don't change their minds every step. It drops a goal sooner only when the goal is done or gone (the dot is eaten, the prey dies or gets away), or when something urgent comes up: it picks up a flag, loses the one it carries, or its own flag is dropped nearby.
 - Running away always comes first, the moment something that can kill it is close (5 steps). Once running, a bot keeps running for at least a second and until the danger is 8 steps away. After that it keeps out of the area where the danger was (2 cells around it) for 3 seconds, going another way round or after something else, so it doesn't walk straight back into a ghost standing still.
@@ -110,7 +111,11 @@ This is the feature manifest for the SRG client and server application. It will 
 | `bots [n]` | Shows or sets MinPlayers. |
 | `autobalance [on\|off]` | Shows or sets AutoBalanceTeams. |
 | `motd [text]` | Shows or sets the message of the day for players who join from then on. |
+| `settings` | Lists every setting with the command that changes it and its value. |
 | `quit` | Stops the server, as Ctrl+C does. |
+
+- Every other server.cfg setting has its own command, named after the setting in lower case (`servername`, `tickrate`, `targetfps`, `startinglevel`, `maxplayers`, and one for every GameConfig setting, e.g. `pacspeed`, `mazesize`, `ghostcount`). Typed alone it shows the setting's value; typed with a value it changes it. MinPlayers, AutoBalanceTeams and MessageOfTheDay are `bots`, `autobalance` and `motd`. Port and DiscoveryPort can't be changed, since they only count at startup.
+- A setting command checks a value like server.cfg is checked when it loads: a bad MazeSize is refused and the setting keeps its value, and out of range values are clamped. Game rule changes are sent to every player at once. The settings a map is built from (MazeSize, WarpTunnelCount, GhostCount, PowerPillCount, FlagCount, PlayerBaseCount, ServerSeed) count from the next level (or `restart`), so everyone keeps playing the same map until then; StartingLevel counts on the next `new game`; everything else counts at once.
 
 - Server setting: MessageOfTheDay (string) in server.cfg, sent to every player who joins and shown on the scroller at the bottom of their title screen. Empty or missing means the default, "Find Friends, Play Games. Visit https://GamrTable.com".
 - Loading screen tips are in the LoadingScreenTips.txt file, one tip per line, any number of tips. Blank lines are skipped. When a player joins, the tips are sent to them, and the intermission screen shows one picked at random at its bottom centre.
@@ -174,9 +179,14 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Any pac, of either team, eats a power up by touching it. Eating one plays a short "blorp" (heard like other sounds in the maze) and will give a special effect that depends on the item (see Power up effects). Ghosts ignore power ups.
 - Bots go after a power up when it is near (within 10 steps), unless they are running from something, rescuing their flag, chasing a flag carrier, going for a power pill, carrying a flag or invincible.
 - Power ups are drawn with their bonus item's sprite, bobbing gently up and down as they move.
-- Power pills and power up items give power up effects. A pac has only one effect at a time: a new one replaces the one it has and restarts the timer. An effect normally lasts PowerUpDurationMs (10 seconds) and is lost when it runs out or the pac dies. A permanent effect never runs out (its meter stays full) and is lost only when the pac dies, a new level starts, or another effect replaces it.
-- Effects that work on others around the pac reach the standard effect radius: 15 cells in a straight line from the pac, through walls. Like the 10 second duration, new effects use it wherever they can.
-- Under the mini map is the player state panel, with the same yellow outline. It shows "Power Up:" and the name of the player's power up effect, left aligned, above a greyed out meter, with a yellow bar that counts down the time left until the effect runs out. With no effect, the label says "Power Up: None" and the meter is empty. Under the meter it shows the player's own size ("Size n"), also left aligned, and under that a hunger meter that fills up red as the player gets closer to starving (MsUntilStarvation since they last ate). It is full while they shrink and empties whenever they eat a dot or power pill.
+- Power pills and power up items give power up effects (buffs):
+  - A buff lasts PowerUpDurationMs (10 seconds). A pac only ever has one: a new buff replaces the one it has, and death removes it.
+  - A permanent buff never runs out (its meter stays full); it is lost only when the pac dies, a new level starts, or a new buff replaces it.
+  - An instant buff has no duration: it does its one thing when the item is eaten and leaves the pac's current buff alone.
+  - The standard radius is a square area reaching 15 cells horizontally and vertically from the pac (walls don't block it). Area effects use it, and like the 10 second duration, new effects use it wherever they can.
+  - When two effects seem to conflict, the pac's own buff wins over an effect from someone else.
+- The action button is space on the keyboard (A on a gamepad). Pressing it triggers whatever the pac's buff does on action; with a buff that does nothing on action, or none, it does nothing.
+- Under the mini map is the player state panel, with the same yellow outline. It shows "Power Up:" and the name of the player's power up effect, left aligned, above a greyed out meter, with a yellow bar that counts down the time left until the effect runs out. With no effect, the label says "Power Up: None" and the meter is empty. Under the meter it shows the player's own size ("Size n"), also left aligned, then a size bar that fills green from size 0 to 100, turns bright orange above 100 and bright red above 150, and under that a hunger meter that fills up red as the player gets closer to starving (MsUntilStarvation since they last ate). It is full while they shrink and empties whenever they eat a dot or power pill.
 - Each player's name is displayed below their pac.
 
 ## Ghost personalities
@@ -211,8 +221,8 @@ This is basically a game of capture the flag. There are numerous notes about it 
 | Tagalong | Plum | The Sidekick | Follows the nearest other ghost, and joins in when that ghost chases. |
 
 ## Power up effects
-- Draft: only the effects of the cherry, strawberry, orange, apple, melon, galaxian, bell, key, pretzel, starman and POW block are built; the rest are placeholders.
-- Eating a power up gives its item's effect. Unless it says "instant" or "permanent", an effect lasts PowerUpDurationMs (10 seconds), is lost on death, and follows the power up effect rules above (one at a time, a new one replaces the old). An instant effect happens once, when the item is eaten, and leaves the pac's current effect alone.
+- Draft: only the effects of the cherry, strawberry, orange, apple, melon, galaxian, bell, key, pretzel, starman, POW block, 1-up mushroom, Mega Man 1-up, morph ball, super leaf, white sword, fire flower, holy water, blue shell and poke ball are built; the rest are placeholders.
+- Eating a power up gives its item's buff, following the buff rules above. Unless it says "instant" or "permanent", it is a normal 10 second buff.
 - "Stunned" means it can't move until the stun wears off, and spins in place so players can see it. Nothing else changes: a stunned ghost still kills a pac that runs into it, and a stunned pac can still be eaten. Unless an item says otherwise, a stun lasts 2 seconds; being stunned again starts the stun over.
 
 | Item | Effect | What it does |
@@ -229,26 +239,26 @@ This is basically a game of capture the flag. There are numerous notes about it 
 | Pear | Shield | The first ghost to touch the pac doesn't kill it; the ghost is sent back to its spawn and the effect ends. |
 | Banana | Banana Peel | Instant: drops a peel on the pac's cell. The first enemy pac or ghost to cross it is stunned. |
 | Mushroom | Super Size | Sets size = 300, and lets the pac move through walls. sets size back to starting value when effect is over. |
-| 1-up mushroom | Extra Life | The next time the pac would die it doesn't; it drops any flag it carries, and the effect ends. |
-| Fire flower | Fireball | Throws a fireball straight ahead every 2 seconds; it kills the first ghost or player it hits and stops at walls. |
+| 1-up mushroom | Extra Life | Permanent. The next time the pac dies (it still drops any flag it carries, and its killer still scores), it comes back 1 second later in the cell where it died, at the size it was, and the buff is used up. Lockdown doesn't stop it, and it wins over a teammate's Reinforcements. Another 1-up while it has one changes nothing. |
+| Fire flower | Fireball | The pac flashes white rapidly. The action button fires a fireball the way the pac faces, at most one every half second, as many in flight as you like. Fireballs fly straight on a little faster than a pac (1.25 times PacSpeed), stop at walls, and kill the first pac (either team, the shooter too once the fireball has left it) or ghost they hit unless it is invincible; either way the fireball is gone. |
 | Starman | Invincible | Moves 25% faster, can't be killed, and kills any ghost or enemy pac it touches, whatever its size (scoring as usual). Two invincible enemies bounce off each other. Ghosts run from it as from a power pill. It leaves a fading speed trail and blinks between its team color and yellow. |
-| POW block | POW | Instant: stuns every ghost and every pac of either team within the effect radius of the pac, except the pac itself, for 3 seconds. It goes off with a low boom (heard like other sounds in the maze), and a player whose pac it stuns sees the board bounce for a moment, like a shockwave. |
-| Super leaf | Raccoon Tail | Passes through ghosts unharmed. |
+| POW block | POW | Instant: stuns every ghost and every pac of either team within the effect radius of the pac, except the pac itself, for 3 seconds. It goes off with a low boom (heard like other sounds in the maze), and every player whose pac is inside the radius, the one who set it off included, sees the board bounce for a moment, like a shockwave. |
+| Super leaf | Raccoon Tail | The pac passes through enemy pacs, ghosts and walls (no fights and no ghost contact, either way). Running off the edge of the map wraps to the other side like a warp tunnel. If the buff ends while it is inside a wall, the pac is put in the nearest open cell. |
 | Hammer | Hammer Time | Kills anything it touches at any size. Hammer animation is played. |
 | Triforce | Triforce | Works as a power pill, and the pac moves 20% faster. |
 | Heart container | Full Heal | Instant: size goes up to PacMaxSize (if smaller) and hunger resets. |
-| White sword | Sword Swing | Space bar throws a white sword straight ahead and it kills anything it hits. |
+| White sword | Sword Swing | The action button throws a sword the way the pac faces, at twice PacSpeed, in a straight line; walls stop it. It kills the first thing it hits (any pac, teammates and the thrower too once it has left it, or a ghost) unless that is invincible, and is gone either way. A pac can have at most two swords in flight. |
 | Energy tank | Energy Tank | Max size is now 150 until killed. |
-| Morph ball | Morph Ball | Shrinks to size 0 and moves 50% faster; ghosts cannot see it. Its size comes back when the effect ends. |
+| Morph ball | Morph Ball | The pac rolls, spinning as it moves, and passes through enemy pacs and ghosts (no fights and no ghost contact, either way). |
 | Screw attack | Screw Attack | Kills any ghost or enemy pac it touches, but can't eat dots or pick up flags. |
-| Holy water | Holy Fire | Leaves a trail of flames, each lasting 10 seconds, that kill anything it touches. |
+| Holy water | Holy Fire | The pac leaves a trail of blue holy flames, one in each cell it leaves. A flame kills anything that touches it unless it is invincible: enemies, teammates, ghosts, and the pac that laid it once it has moved off. All its flames go out when the buff ends, is replaced, or the pac dies. |
 | Spread gun | Spread Shot | Fires three shots ahead, straight and to each side, every second; each stuns the first ghost or enemy pac it hits. |
-| Blue shell | Blue Shell | Instant: flies after and kills the enemy flag carrier, or if there is none, the enemy pac with the highest score. |
+| Blue shell | Blue Shell | Instant: fires one very fast shell (3 times PacSpeed) that follows the maze to the enemy carrying a flag, or if nobody is, the enemy with the highest score, picking again as that changes. It ignores everything else, and touching its target kills it unless it is invincible; the shell is gone either way, or when there is no enemy alive. |
 | Tetromino | Block Drop | Instant: fills the cell behind the pac with a wall for 5 seconds. |
 | BFG 9000 | BFG 9000 | Instant: kills every enemy on the player's screen. |
-| Mega Man 1-up | Reinforcements | Instant: every dead pac on the pac's team respawns at once. |
+| Mega Man 1-up | Reinforcements | While the pac lives, its team has no respawn timer: dead teammates come back at their base at once, Lockdown or not, and each one hears an angelic chorus. |
 | Pepper shaker | Pepper | Ghosts that touch the pac are stunned instead of killing it. |
-| Poke Ball | Gotcha | All ghosts follow the pac, until the effect ends. |
+| Poke Ball | Gotcha | Instant: fires a poke ball (as fast as the blue shell) that follows the maze to the nearest ghost; with no ghost about it wanders the corridors at random. The first ghost it touches is caught: the ghost is gone and the ball sits still where it was. When anything (any pac or ghost) touches the ball, the ghost comes back out right there and the ball is gone. A "bloop" plays (heard like other sounds in the maze) when it catches a ghost and when the ghost gets out. |
 
 ## Levels
 - Levels come from a fixed list. Each level has a name, a wall color, a wall fill color, a background color, and a set of bonus items, and may have a background image.

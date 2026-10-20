@@ -33,6 +33,26 @@ namespace EatMeClient
         /// </summary>
         public static readonly Color COLOR_POWER_UP_BAR_EMPTY = new(70, 70, 70);
 
+        /// <summary>
+        /// The player state panel's size bar (SizeBar): green up to 100, bright orange above it, bright red above 150.
+        /// </summary>
+        public static readonly Color COLOR_SIZE_BAR_NORMAL = new(40, 220, 60);
+        public static readonly Color COLOR_SIZE_BAR_BIG = new(255, 150, 0);
+        public static readonly Color COLOR_SIZE_BAR_HUGE = new(255, 30, 30);
+
+        /// <summary>
+        /// The size bar's color for a level (SizeBar.GetLevel).
+        /// </summary>
+        public static Color GetSizeBarColor(eSizeBarLevel level)
+        {
+            return level switch
+            {
+                eSizeBarLevel.Huge => COLOR_SIZE_BAR_HUGE,
+                eSizeBarLevel.Big => COLOR_SIZE_BAR_BIG,
+                _ => COLOR_SIZE_BAR_NORMAL,
+            };
+        }
+
         // Mini map markers: warp doors (#777) and power ups (royal purple).
 
         public static readonly Color COLOR_MINI_MAP_WARP = new(0x77, 0x77, 0x77);

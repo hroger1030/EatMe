@@ -64,13 +64,13 @@ namespace EatMeServer
                 }
                 catch (SocketException ex)
                 {
-                    Console.WriteLine($"Accept failed: {ex.Message}");
+                    ServerLog.Write(eLogType.Warning, $"Accept failed: {ex.Message}");
                     continue;
                 }
 
                 var connection = new ClientConnection(Interlocked.Increment(ref _LastConnectionId), client);
                 _Connections[connection.Id] = connection;
-                Console.WriteLine($"Client {connection.Id} connected from {connection.RemoteAddress}");
+                ServerLog.Write(eLogType.Join, $"Client {connection.Id} connected from {connection.RemoteAddress}");
 
                 // queued before Start so it always comes ahead of the connection's messages
                 _Events.Enqueue(new NetworkEvent(eNetworkEventType.Connected, connection));
@@ -86,7 +86,7 @@ namespace EatMeServer
         private void OnClosed(IClientConnection connection)
         {
             _Connections.TryRemove(connection.Id, out _);
-            Console.WriteLine($"Client {connection.Id} disconnected");
+            ServerLog.Write(eLogType.Leave, $"Client {connection.Id} disconnected");
             _Events.Enqueue(new NetworkEvent(eNetworkEventType.Disconnected, connection));
         }
     }

@@ -41,7 +41,7 @@ namespace EatMeTests
             Assert.That(PowerUpEffects.GetName(ePowerUpEffect.VitaminC), Is.EqualTo(Const.STRING_VITAMIN_C));
             Assert.That(PowerUpEffects.GetName(ePowerUpEffect.DoctorAway), Is.EqualTo(Const.STRING_DOCTOR_AWAY));
             Assert.That(PowerUpEffects.GetName(ePowerUpEffect.MelonBelly), Is.EqualTo(Const.STRING_MELON_BELLY));
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.RocketScience), Is.EqualTo(Const.STRING_ROCKET_SCIENCE));
+            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.RocketScience), Is.EqualTo(Const.STRING_SCIENCE));
         }
 
         private static Player MakePac(eTeam team, ePowerUpEffect effect, bool alive = true)
@@ -78,14 +78,16 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsInEffectRange_UpToEffectRadius()
+        public void IsInEffectRange_IsASquareOfEffectRadius()
         {
             var from = new FastG.Point2(10f, 10f);
+            var radius = PowerUpEffects.EFFECT_RADIUS;
 
             Assert.That(PowerUpEffects.IsInEffectRange(from, from), Is.True);
-            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f + PowerUpEffects.EFFECT_RADIUS, 10f)), Is.True);
-            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(19f, 22f)), Is.True, "9, 12 is 15 cells away");
-            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(20f, 22f)), Is.False);
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f + radius, 10f)), Is.True);
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f - radius, 10f + radius)), Is.True, "the corners are inside");
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f + radius + 0.5f, 10f)), Is.False);
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f, 10f - radius - 0.5f)), Is.False);
         }
 
         [Test]
@@ -137,11 +139,11 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsPermanent_VitaminCAndDoctorAway()
+        public void IsPermanent_VitaminCDoctorAwayAndExtraLife()
         {
             foreach (var effect in Enum.GetValues<ePowerUpEffect>())
             {
-                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway;
+                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.ExtraLife;
                 Assert.That(PowerUpEffects.IsPermanent(effect), Is.EqualTo(expected), effect.ToString());
             }
         }

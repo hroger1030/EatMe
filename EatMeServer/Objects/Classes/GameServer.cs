@@ -81,6 +81,25 @@ namespace EatMeServer
         private int _DotCount;
         private int _LevelSeed;
 
+        /// <summary>
+        /// The game rules as they were when the current level started; its map settings are the ones the map was built
+        /// with (BuildClientConfig).
+        /// </summary>
+        private GameConfiguration _LevelConfig;
+
+        /// <summary>
+        /// Swords, fireballs, holy flames, blue shells and poke balls in the maze (UpdateWeaponEffects).
+        /// </summary>
+        private readonly List<WeaponEffect> _WeaponEffects = [];
+        private int _NextWeaponEffectId;
+
+        /// <summary>
+        /// Scratch path map for the seekers (blue shell, poke ball), reused between ticks.
+        /// </summary>
+        private readonly PathMap _SeekerPaths = new();
+
+        public IReadOnlyList<WeaponEffect> WeaponEffects => _WeaponEffects;
+
         // the results of the level just won, kept to send to players joining while they're shown
         private LevelWonMessage _LevelWon;
         private int _IntermissionMs;
@@ -182,6 +201,14 @@ namespace EatMeServer
         public void StartLevel(int level)
         {
             CurrentLevel = Levels.GetLevel(level);
+
+            // map settings changed since the last level count from now; clients get them before the LevelStart
+            var mapSettingsChanged = _LevelConfig != null && HasMapSettingsChanged();
+            _LevelConfig = _Settings.GameConfig.Clone();
+
+            if (mapSettingsChanged)
+                Broadcast(new GameConfigMessage { GameConfig = BuildClientConfig() });
+
             var seed = Levels.GetSeed(_Settings.GameConfig.ServerSeed, CurrentLevel.Level);
             Map = MapMaker.Generate(_Settings.GameConfig, seed);
             _LevelSeed = seed;
@@ -205,6 +232,7 @@ namespace EatMeServer
             BuildFlagBasePaths();
             CreateGhosts();
             ResetPowerUps();
+            _WeaponEffects.Clear();
 
             foreach (var serverPlayer in _Players.Values)
             {
@@ -214,7 +242,7 @@ namespace EatMeServer
             }
 
             Broadcast(BuildLevelStart());
-            Console.WriteLine($"Level {CurrentLevel.Level}: {CurrentLevel.Name} (seed {seed})");
+            ServerLog.Write(eLogType.Level, $"Level {CurrentLevel.Level}: {CurrentLevel.Name} (seed {seed})");
         }
 
         public void HandleEvent(NetworkEvent networkEvent)
@@ -270,6 +298,10 @@ namespace EatMeServer
                     serverPlayer.Lag.AddSample((int)(ClockMs - serverPong.ServerTime));
                     break;
 
+                case ActionMessage:
+                    HandleAction(serverPlayer.Player);
+                    break;
+
                 case LeaveMessage:
                     RemovePlayer(connection);
                     connection.Close();
@@ -311,6 +343,7 @@ namespace EatMeServer
             UpdateEating(elapsedMs);
             UpdatePacFights();
             UpdateGhosts(deltaSeconds, elapsedMs);
+            UpdateWeaponEffects(deltaSeconds, elapsedMs);
             UpdatePowerUps(deltaSeconds, elapsedMs);
             UpdateFlags();
             UpdateRegens(elapsedMs);
@@ -349,6 +382,9 @@ namespace EatMeServer
 
             foreach (var powerUp in _PowerUps)
                 snapshot.PowerUps.Add(powerUp.ToState());
+
+            foreach (var effect in _WeaponEffects)
+                snapshot.WeaponEffects.Add(new WeaponEffectState(effect.Id, effect.Kind, effect.Location.X, effect.Location.Y, effect.Facing));
 
             return snapshot;
         }
@@ -443,13 +479,19 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Counts down dead pacs and brings them back at base when their time is up, unless their team's spawn is locked
-        /// (IsSpawnLocked); then they wait, and come back as soon as the lock is lifted.
+        /// Counts down dead pacs and brings them back when their time is up:
+        /// - one with Extra Life (1-up) when it died comes back after PowerUpEffects.EXTRA_LIFE_RESPAWN_MS where it
+        ///   died, at its size, whatever else is going on (its own buff wins);
+        /// - otherwise, while a living teammate has Reinforcements, at once at base, hearing the angelic chorus;
+        /// - otherwise at base when its timer runs out, unless its team's spawn is locked (IsSpawnLocked); then it waits,
+        ///   and comes back as soon as the lock is lifted.
         /// </summary>
         public void UpdateRespawns(int elapsedMs)
         {
             var redLocked = IsSpawnLocked(eTeam.Red);
             var blueLocked = IsSpawnLocked(eTeam.Blue);
+            var redReinforced = IsReinforced(eTeam.Red);
+            var blueReinforced = IsReinforced(eTeam.Blue);
 
             foreach (var serverPlayer in _Players.Values)
             {
@@ -460,9 +502,58 @@ namespace EatMeServer
 
                 player.RespawnTimer -= elapsedMs;
 
+                if (player.ExtraLifePending)
+                {
+                    if (player.RespawnTimer <= 0)
+                        RespawnFromExtraLife(player);
+
+                    continue;
+                }
+
+                if (player.Team == eTeam.Red ? redReinforced : blueReinforced)
+                {
+                    Respawn(player);
+
+                    if (serverPlayer.Connection != null)
+                        Send(serverPlayer.Connection, new GameEventMessage { EventType = eGameEvent.AngelicRespawn, TargetId = player.Id, X = player.Location.X, Y = player.Location.Y, Team = player.Team });
+
+                    continue;
+                }
+
                 if (player.RespawnTimer <= 0 && !(player.Team == eTeam.Red ? redLocked : blueLocked))
                     Respawn(player);
             }
+        }
+
+        /// <summary>
+        /// True while a living pac on the team has Reinforcements (Mega Man 1-up), so its dead teammates respawn at once.
+        /// </summary>
+        public bool IsReinforced(eTeam team)
+        {
+            foreach (var serverPlayer in _Players.Values)
+            {
+                var player = serverPlayer.Player;
+
+                if (player.Team == team && PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.Reinforcements))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Brings a pac back from its Extra Life: alive where it died, at the size it was, with no buff.
+        /// </summary>
+        private void RespawnFromExtraLife(Player player)
+        {
+            var location = player.ExtraLifeLocation;
+            var size = player.ExtraLifeSize;
+            var facing = player.Facing;
+
+            Respawn(player);
+            player.Location = location;
+            player.Size = size;
+            player.Facing = facing;
         }
 
         /// <summary>
@@ -574,7 +665,7 @@ namespace EatMeServer
             var height = Map.GetLength(1);
 
             CollectLiving();
-            var world = new BotWorld { Map = Map, MaxSize = config.PacMaxSize, PerceptionSeed = _LevelSeed, Pacs = _Living, Ghosts = _Ghosts, Flags = _Flags, PowerUps = _PowerUps };
+            var world = new BotWorld { Map = Map, MaxSize = config.PacMaxSize, PerceptionSeed = _LevelSeed, Pacs = _Living, Ghosts = _Ghosts, Flags = _Flags, PowerUps = _PowerUps, WeaponEffects = _WeaponEffects };
 
             foreach (var serverPlayer in _Players.Values)
             {
@@ -609,6 +700,10 @@ namespace EatMeServer
                     memory.TurnedBack();
                     serverPlayer.Input = MazeMovement.ToDirection(MazeMovement.GetOpposite(pac.Facing));
                 }
+
+                // bots with a sword or fireballs press the action button at an enemy or ghost straight ahead
+                if (PacBrain.ShouldFire(world, pac))
+                    HandleAction(pac);
             }
         }
 
@@ -636,6 +731,11 @@ namespace EatMeServer
                     * PowerUpEffects.GetTwisterSpeedScale(pac, pac.Location, _Twisters);
                 var distance = speed * deltaSeconds;
                 var blocked = MazeMovement.GetPacBlocked(pac.Team);
+
+                // Raccoon Tail goes through walls, wrapping off the map's edges like a warp tunnel
+                if (pac.PassesThroughWalls)
+                    blocked &= ~eGridDef.Wall;
+
                 var wanted = MazeMovement.ToFacing(serverPlayer.Input);
                 var facing = pac.Facing;
 
@@ -815,6 +915,16 @@ namespace EatMeServer
             if (gain > 0f)
                 player.Size = PacRules.WearOffPowerPill(player.Size, gain);
 
+            // a Raccoon Tail running out inside a wall puts the pac in the nearest open cell
+            if (player.PassesThroughWalls && player.Alive)
+            {
+                var (x, y) = MazeMovement.GetCell(player.Location);
+                var open = MazeMovement.FindNearestOpenCell(Map, x, y, MazeMovement.GetPacBlocked(player.Team));
+
+                if (open.HasValue && open.Value != (x, y))
+                    player.Location = new Point2(open.Value.X + CELL_CENTER, open.Value.Y + CELL_CENTER);
+            }
+
             player.PowerUpEffect = ePowerUpEffect.None;
             player.PowerUpMs = 0;
         }
@@ -905,6 +1015,10 @@ namespace EatMeServer
                     if (!a.Alive || !b.Alive || a.Team == b.Team || !PacRules.IsTouchingPac(a.Location, a.Size, b.Location, b.Size))
                         continue;
 
+                    // Morph Ball and Raccoon Tail pass straight through enemy pacs
+                    if (a.PassesThrough || b.PassesThrough)
+                        continue;
+
                     if (a.IsInvincible == b.IsInvincible && (a.IsInvincible || a.Size == b.Size))
                     {
                         Bounce(a, b);
@@ -917,7 +1031,7 @@ namespace EatMeServer
                     eater.PlayerKills++;
                     AddScore(eater, _Settings.GameConfig.PlayerKill);
                     KillPac(eaten, eGameEvent.PacEaten, eater.Id);
-                    Console.WriteLine($"{eater.Name} ate {eaten.Name}");
+                    ServerLog.Write(eLogType.Kill, $"{eater.Name} ate {eaten.Name}");
                 }
             }
         }
@@ -951,14 +1065,70 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Kills a pac: drops any flag where it is, tells everyone, and starts its respawn timer.
+        /// Kills a pac: drops any flag where it is, tells everyone, and starts its respawn timer. Death removes its buff;
+        /// with Extra Life (1-up) it comes back PowerUpEffects.EXTRA_LIFE_RESPAWN_MS later in the cell where it died,
+        /// at the size it was (UpdateRespawns).
         /// </summary>
         private void KillPac(Player player, eGameEvent cause, int actorId)
         {
             DropFlag(player);
             player.Alive = false;
             player.RespawnTimer = _Settings.GameConfig.PlayerRespawnTimeMs;
+
+            if (player.PowerUpEffect == ePowerUpEffect.ExtraLife && player.PowerUpMs > 0)
+            {
+                var (x, y) = MazeMovement.GetCell(player.Location);
+                player.ExtraLifePending = true;
+                player.ExtraLifeLocation = new Point2(x + CELL_CENTER, y + CELL_CENTER);
+                player.ExtraLifeSize = player.Size;
+                player.RespawnTimer = PowerUpEffects.EXTRA_LIFE_RESPAWN_MS;
+            }
+
+            player.PowerUpEffect = ePowerUpEffect.None;
+            player.PowerUpMs = 0;
             Broadcast(new GameEventMessage { EventType = cause, ActorId = actorId, TargetId = player.Id, X = player.Location.X, Y = player.Location.Y });
+        }
+
+        /// <summary>
+        /// Kills a pac for a killer (a weapon effect's owner, or null): an enemy killer gets PlayerKill points and a
+        /// kill; killing a teammate or itself counts for nothing. An invincible pac can't be killed: returns false.
+        /// </summary>
+        private bool KillPacBy(Player victim, Player killer)
+        {
+            if (!victim.Alive || victim.IsInvincible)
+                return false;
+
+            if (killer != null && killer.Team != victim.Team)
+            {
+                killer.PlayerKills++;
+                AddScore(killer, _Settings.GameConfig.PlayerKill);
+            }
+
+            KillPac(victim, eGameEvent.PacEaten, killer?.Id ?? GameEventMessage.NO_ID);
+            ServerLog.Write(eLogType.Kill, $"{victim.Name} was killed{(killer != null ? $" by {killer.Name}" : string.Empty)}");
+            return true;
+        }
+
+        /// <summary>
+        /// Kills a ghost for a killer (null for none): it comes back after GhostRegenTimeMs, holds a grudge against
+        /// the killer, and the killer gets GhostKill points and a kill.
+        /// </summary>
+        private void KillGhost(Ghost ghost, Player killer)
+        {
+            var config = _Settings.GameConfig;
+            ghost.Alive = false;
+            ghost.RespawnTimer = config.GhostRegenTimeMs;
+            ghost.CurrentTarget = null;
+
+            if (killer != null)
+            {
+                ghost.GrudgeId = killer.Id;
+                killer.GhostKills++;
+                AddScore(killer, config.GhostKill);
+            }
+
+            Broadcast(new GameEventMessage { EventType = eGameEvent.GhostKilled, ActorId = killer?.Id ?? GameEventMessage.NO_ID, TargetId = ghost.Id, X = ghost.Location.X, Y = ghost.Location.Y });
+            ServerLog.Write(eLogType.Kill, $"{(killer != null ? killer.Name : "Something")} killed {ghost.Name}");
         }
 
         /// <summary>
@@ -1034,6 +1204,10 @@ namespace EatMeServer
             {
                 if (!ghost.Alive)
                 {
+                    // a ghost held in a poke ball waits there until something lets it out
+                    if (ghost.IsCaptured)
+                        continue;
+
                     ghost.RespawnTimer -= elapsedMs;
 
                     if (ghost.RespawnTimer <= 0)
@@ -1303,20 +1477,14 @@ namespace EatMeServer
 
             foreach (var player in _Living)
             {
-                if (!player.Alive || !PacRules.IsTouchingGhost(player.Location, player.Size, ghost.Location, ghostRadius))
+                // a pac passing through ghosts (Morph Ball, Raccoon Tail) neither kills nor is killed
+                if (!player.Alive || player.PassesThrough || !PacRules.IsTouchingGhost(player.Location, player.Size, ghost.Location, ghostRadius))
                     continue;
 
                 // an invincible pac kills any ghost it touches and can't be killed by one
                 if (player.IsInvincible || PacRules.CanKillGhost(player.Size, player.IsPowered, config.PacMaxSize))
                 {
-                    ghost.Alive = false;
-                    ghost.RespawnTimer = config.GhostRegenTimeMs;
-                    ghost.CurrentTarget = null;
-                    ghost.GrudgeId = player.Id;
-                    player.GhostKills++;
-                    AddScore(player, config.GhostKill);
-                    Broadcast(new GameEventMessage { EventType = eGameEvent.GhostKilled, ActorId = player.Id, TargetId = ghost.Id, X = ghost.Location.X, Y = ghost.Location.Y });
-                    Console.WriteLine($"{player.Name} killed {ghost.Name}");
+                    KillGhost(ghost, player);
                     return;
                 }
 
@@ -1326,7 +1494,7 @@ namespace EatMeServer
                     ghost.GrudgeId = Ghost.NO_GRUDGE;
 
                 KillPac(player, eGameEvent.PacEaten, GameEventMessage.NO_ID);
-                Console.WriteLine($"{ghost.Name} got {player.Name}");
+                ServerLog.Write(eLogType.Kill, $"{ghost.Name} got {player.Name}");
             }
         }
 
@@ -1433,7 +1601,377 @@ namespace EatMeServer
             });
 
             ApplyPowerUp(player, powerUp.Item);
-            Console.WriteLine($"{player.Name} ate a {powerUp.Item}");
+            ServerLog.Write(eLogType.PowerUp, $"{player.Name} ate a {powerUp.Item}");
+        }
+
+        /// <summary>
+        /// Moves and resolves every weapon effect each tick. Nothing goes through walls. Kills credit the effect's owner
+        /// (KillPacBy, KillGhost), and nothing hurts an invincible pac.
+        /// - Swords and fireballs fly straight on at WeaponRules speeds, wrapping through warp tunnels, until a wall
+        ///   stops them or they hit something: the first pac (either team, and the thrower once the shot has left it)
+        ///   or ghost they touch dies, and the shot is gone.
+        /// - Holy flames go down in each cell a pac with Holy Fire leaves, and kill any pac or ghost that touches them
+        ///   (the pac that laid them too, once it has moved off). They all go when its Holy Fire ends or it dies.
+        /// - A blue shell follows the maze to the enemy flag carrier, or else the enemy with the highest score, and
+        ///   kills it on contact; it ignores everything else and is gone once it hits or there is no enemy alive.
+        /// - A poke ball follows the maze to the nearest ghost (wandering the corridors when there is none) and catches
+        ///   the first ghost it touches, then sits still holding it; when any pac or ghost touches it the ghost comes
+        ///   back out there and the ball is gone.
+        /// </summary>
+        public void UpdateWeaponEffects(float deltaSeconds, int elapsedMs)
+        {
+            CollectLiving();
+
+            foreach (var serverPlayer in _Players.Values)
+            {
+                var player = serverPlayer.Player;
+
+                if (player.FireCooldownMs > 0)
+                    player.FireCooldownMs = Math.Max(0, player.FireCooldownMs - elapsedMs);
+            }
+
+            UpdateHolyFlames();
+
+            for (var i = _WeaponEffects.Count - 1; i > -1; i--)
+            {
+                var effect = _WeaponEffects[i];
+
+                var keep = effect.Kind switch
+                {
+                    eWeaponEffect.Sword or eWeaponEffect.Fireball => UpdateShot(effect, deltaSeconds),
+                    eWeaponEffect.HolyFlame => UpdateHolyFlame(effect),
+                    eWeaponEffect.BlueShell => UpdateBlueShell(effect, deltaSeconds),
+                    eWeaponEffect.PokeBall => UpdatePokeBall(effect, deltaSeconds),
+                    _ => false,
+                };
+
+                if (!keep)
+                    _WeaponEffects.RemoveAt(i);
+            }
+        }
+
+        private WeaponEffect AddWeaponEffect(eWeaponEffect kind, Player owner, Point2 location, eFacing facing)
+        {
+            var effect = new WeaponEffect
+            {
+                Id = _NextWeaponEffectId++,
+                Kind = kind,
+                OwnerId = owner.Id,
+                Team = owner.Team,
+                Location = location,
+                Facing = facing,
+                Alive = true,
+            };
+
+            _WeaponEffects.Add(effect);
+            return effect;
+        }
+
+        private int CountWeaponEffects(int ownerId, eWeaponEffect kind)
+        {
+            var count = 0;
+
+            foreach (var effect in _WeaponEffects)
+                if (effect.OwnerId == ownerId && effect.Kind == kind)
+                    count++;
+
+            return count;
+        }
+
+        private Player FindPlayer(int id)
+        {
+            foreach (var serverPlayer in _Players.Values)
+                if (serverPlayer.Player.Id == id)
+                    return serverPlayer.Player;
+
+            return null;
+        }
+
+        private float GetWeaponDistance(WeaponEffect effect, float deltaSeconds)
+        {
+            return _Settings.GameConfig.PacSpeed * WeaponRules.GetSpeedScale(effect.Kind) * deltaSeconds;
+        }
+
+        /// <summary>
+        /// Lays a holy flame in each cell a living pac with Holy Fire leaves, and puts out every flame whose pac no
+        /// longer has Holy Fire working (it ran out, was replaced, or the pac died or left).
+        /// </summary>
+        private void UpdateHolyFlames()
+        {
+            _WeaponEffects.RemoveAll(effect => effect.Kind == eWeaponEffect.HolyFlame
+                && !(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUpEffect.HolyFire)));
+
+            foreach (var serverPlayer in _Players.Values)
+            {
+                var player = serverPlayer.Player;
+
+                if (!PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.HolyFire))
+                {
+                    player.HolyFireCell = null;
+                    continue;
+                }
+
+                var cell = MazeMovement.GetCell(player.Location);
+
+                if (player.HolyFireCell is { } left && left != cell && !HasFlameAt(left))
+                    AddWeaponEffect(eWeaponEffect.HolyFlame, player, new Point2(left.X + CELL_CENTER, left.Y + CELL_CENTER), player.Facing);
+
+                player.HolyFireCell = cell;
+            }
+        }
+
+        private bool HasFlameAt((int X, int Y) cell)
+        {
+            foreach (var effect in _WeaponEffects)
+                if (effect.Kind == eWeaponEffect.HolyFlame && MazeMovement.GetCell(effect.Location) == cell)
+                    return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Kills the first pac or ghost the effect touches, for its owner, and says whether it touched anything (an
+        /// invincible pac stops it without dying). The owner is skipped until the effect has stopped touching it.
+        /// </summary>
+        private bool HitFirstThing(WeaponEffect effect)
+        {
+            var owner = FindPlayer(effect.OwnerId);
+            var touchingOwner = false;
+
+            foreach (var pac in _Living)
+            {
+                if (!pac.Alive || !WeaponRules.IsTouchingPac(effect.Location, pac.Location, pac.Size))
+                    continue;
+
+                if (pac == owner && !effect.OwnerClear)
+                {
+                    touchingOwner = true;
+                    continue;
+                }
+
+                KillPacBy(pac, owner);
+                return true;
+            }
+
+            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+
+            foreach (var ghost in _Ghosts)
+            {
+                if (ghost.Alive && WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius))
+                {
+                    KillGhost(ghost, owner);
+                    return true;
+                }
+            }
+
+            if (!touchingOwner)
+                effect.OwnerClear = true;
+
+            return false;
+        }
+
+        private bool UpdateShot(WeaponEffect effect, float deltaSeconds)
+        {
+            var moved = MazeMovement.Move(Map, effect, null, GetWeaponDistance(effect, deltaSeconds), canWarp: true, blocked: eGridDef.Wall);
+            return !HitFirstThing(effect) && moved;
+        }
+
+        /// <summary>
+        /// A flame stays put and kills whatever touches it (KillPacBy spares the invincible); it is never used up.
+        /// </summary>
+        private bool UpdateHolyFlame(WeaponEffect effect)
+        {
+            var owner = FindPlayer(effect.OwnerId);
+            var touchingOwner = false;
+
+            foreach (var pac in _Living)
+            {
+                if (!pac.Alive || !WeaponRules.IsTouchingPac(effect.Location, pac.Location, pac.Size))
+                    continue;
+
+                if (pac == owner && !effect.OwnerClear)
+                {
+                    touchingOwner = true;
+                    continue;
+                }
+
+                KillPacBy(pac, owner);
+            }
+
+            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+
+            foreach (var ghost in _Ghosts)
+                if (ghost.Alive && WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius))
+                    KillGhost(ghost, owner);
+
+            if (!touchingOwner)
+                effect.OwnerClear = true;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Moves a seeker along the maze toward goal: at each cell centre it takes the way downhill on a full path map
+        /// from goal (walls block it; spawn tiles and warp tunnels don't). With no goal it wanders at random.
+        /// </summary>
+        private void MoveSeeker(WeaponEffect effect, (int X, int Y)? goal, float distance)
+        {
+            eFacing? wanted = null;
+
+            if (MazeMovement.GetDistanceToCentre(effect.Location, effect.Facing) <= distance)
+            {
+                var (cx, cy) = MazeMovement.GetNextCentreCell(effect.Location, effect.Facing, Map.GetLength(0), Map.GetLength(1));
+
+                if (goal.HasValue)
+                {
+                    _SeekerPaths.Fill(Map, goal.Value.X, goal.Value.Y, blocked: eGridDef.Wall);
+                    wanted = PacBrain.ChooseDownhill(Map, cx, cy, _SeekerPaths, eGridDef.Wall);
+                }
+                else
+                    wanted = PacBrain.ChooseWanderDirection(Map, cx, cy, effect.Facing, _Random, false, eGridDef.Wall);
+            }
+
+            MazeMovement.Move(Map, effect, wanted, distance, canWarp: true, blocked: eGridDef.Wall);
+        }
+
+        private bool UpdateBlueShell(WeaponEffect effect, float deltaSeconds)
+        {
+            var target = WeaponRules.PickBlueShellTarget(effect.Team, _Living);
+
+            if (target == null)
+                return false;
+
+            if (!WeaponRules.IsTouchingPac(effect.Location, target.Location, target.Size))
+            {
+                MoveSeeker(effect, MazeMovement.GetCell(target.Location), GetWeaponDistance(effect, deltaSeconds));
+
+                if (!WeaponRules.IsTouchingPac(effect.Location, target.Location, target.Size))
+                    return true;
+            }
+
+            // contact: the target dies unless it is invincible, and the shell is spent either way
+            KillPacBy(target, FindPlayer(effect.OwnerId));
+            return false;
+        }
+
+        private bool UpdatePokeBall(WeaponEffect effect, float deltaSeconds)
+        {
+            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+
+            if (effect.IsHoldingGhost)
+                return !TryReleaseGhost(effect, ghostRadius);
+
+            if (TryCatchGhost(effect, ghostRadius))
+                return true;
+
+            (int X, int Y)? goal = null;
+            var distance = GetWeaponDistance(effect, deltaSeconds);
+
+            // the nearest ghost only matters for the turn at the next cell centre
+            if (MazeMovement.GetDistanceToCentre(effect.Location, effect.Facing) <= distance)
+            {
+                var (x, y) = MazeMovement.GetCell(effect.Location);
+                _SeekerPaths.Fill(Map, x, y, blocked: eGridDef.Wall);
+                var nearest = WeaponRules.FindNearestGhost(_Ghosts, _SeekerPaths);
+
+                if (nearest != null)
+                    goal = MazeMovement.GetCell(nearest.Location);
+            }
+
+            MoveSeeker(effect, goal, distance);
+            TryCatchGhost(effect, ghostRadius);
+            return true;
+        }
+
+        /// <summary>
+        /// A flying poke ball catches the first living ghost it touches: the ghost is gone (not counting down to
+        /// respawn) and the ball sits still on its cell holding it.
+        /// </summary>
+        private bool TryCatchGhost(WeaponEffect effect, float ghostRadius)
+        {
+            foreach (var ghost in _Ghosts)
+            {
+                if (!ghost.Alive || !WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius))
+                    continue;
+
+                ghost.Alive = false;
+                ghost.IsCaptured = true;
+                ghost.CurrentTarget = null;
+                effect.CapturedGhostId = ghost.Id;
+
+                var (x, y) = MazeMovement.GetCell(effect.Location);
+                effect.Location = new Point2(x + CELL_CENTER, y + CELL_CENTER);
+
+                Broadcast(new GameEventMessage { EventType = eGameEvent.PokeBallCapture, ActorId = effect.OwnerId, TargetId = ghost.Id, X = effect.Location.X, Y = effect.Location.Y });
+                ServerLog.Write(eLogType.PowerUp, $"A poke ball caught {ghost.Name}");
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// A poke ball holding a ghost lets it out where the ball is as soon as any living pac or ghost touches it.
+        /// </summary>
+        private bool TryReleaseGhost(WeaponEffect effect, float ghostRadius)
+        {
+            var touched = false;
+
+            foreach (var pac in _Living)
+                touched |= pac.Alive && WeaponRules.IsTouchingPac(effect.Location, pac.Location, pac.Size);
+
+            foreach (var ghost in _Ghosts)
+                touched |= ghost.Alive && WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius);
+
+            if (!touched)
+                return false;
+
+            foreach (var ghost in _Ghosts)
+            {
+                if (ghost.Id != effect.CapturedGhostId)
+                    continue;
+
+                ghost.IsCaptured = false;
+                ghost.Alive = true;
+                ghost.Location = effect.Location;
+                ghost.StunMs = 0;
+                ghost.CurrentTarget = null;
+                Broadcast(new GameEventMessage { EventType = eGameEvent.PokeBallRelease, ActorId = effect.OwnerId, TargetId = ghost.Id, X = effect.Location.X, Y = effect.Location.Y });
+                ServerLog.Write(eLogType.PowerUp, $"{ghost.Name} got out of a poke ball");
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// The player pressed the action button (ActionMessage): whatever their power up effect does on action. A dead
+        /// pac, or one whose effect does nothing on action, ignores it.
+        /// </summary>
+        public void HandleAction(Player player)
+        {
+            if (player == null || !player.Alive || player.PowerUpMs <= 0)
+                return;
+
+            switch (player.PowerUpEffect)
+            {
+                // White Sword: a sword the way the pac faces, at most WeaponRules.MAX_SWORDS in flight
+                case ePowerUpEffect.SwordSwing:
+                    if (WeaponRules.CanThrowSword(CountWeaponEffects(player.Id, eWeaponEffect.Sword)))
+                        AddWeaponEffect(eWeaponEffect.Sword, player, player.Location, player.Facing);
+                    break;
+
+                // Fire Flower: a fireball the way the pac faces, one per WeaponRules.FIREBALL_COOLDOWN_MS, as many in flight as you like
+                case ePowerUpEffect.FireFlower:
+                    if (player.FireCooldownMs <= 0)
+                    {
+                        AddWeaponEffect(eWeaponEffect.Fireball, player, player.Location, player.Facing);
+                        player.FireCooldownMs = WeaponRules.FIREBALL_COOLDOWN_MS;
+                    }
+                    break;
+
+                default:
+                    break;
+            }
         }
 
         /// <summary>
@@ -1487,6 +2025,43 @@ namespace EatMeServer
                 case ePowerUp.Starman:
                     StartPowerUpEffect(player, ePowerUpEffect.Invincible);
                     break;
+
+                case ePowerUp.OneUpMushroom:
+                    StartPowerUpEffect(player, ePowerUpEffect.ExtraLife);
+                    break;
+
+                case ePowerUp.MegaManOneUp:
+                    StartPowerUpEffect(player, ePowerUpEffect.Reinforcements);
+                    break;
+
+                case ePowerUp.MorphBall:
+                    StartPowerUpEffect(player, ePowerUpEffect.MorphBall);
+                    break;
+
+                case ePowerUp.SuperLeaf:
+                    StartPowerUpEffect(player, ePowerUpEffect.RaccoonTail);
+                    break;
+
+                case ePowerUp.WhiteSword:
+                    StartPowerUpEffect(player, ePowerUpEffect.SwordSwing);
+                    break;
+
+                case ePowerUp.HolyWater:
+                    StartPowerUpEffect(player, ePowerUpEffect.HolyFire);
+                    break;
+
+                case ePowerUp.FireFlower:
+                    StartPowerUpEffect(player, ePowerUpEffect.FireFlower);
+                    break;
+
+                // instant: they don't touch the pac's buff
+                case ePowerUp.BlueShell:
+                    AddWeaponEffect(eWeaponEffect.BlueShell, player, player.Location, player.Facing);
+                    break;
+
+                case ePowerUp.PokeBall:
+                    AddWeaponEffect(eWeaponEffect.PokeBall, player, player.Location, player.Facing);
+                    break;
             }
         }
 
@@ -1504,7 +2079,7 @@ namespace EatMeServer
             if (!winner.HasValue)
                 return false;
 
-            Console.WriteLine($"{winner.Value} wins level {CurrentLevel.Level} ({RedScore} to {BlueScore})");
+            ServerLog.Write(eLogType.Level, $"{winner.Value} wins level {CurrentLevel.Level} ({RedScore} to {BlueScore})");
             UpdateHighScores(DateTime.Now);
 
             var intermissionTimeMs = _Settings.GameConfig.IntermissionTimeMs;
@@ -1682,7 +2257,7 @@ namespace EatMeServer
             player.FlagRescues++;
             AddScore(player, _Settings.GameConfig.FlagRescue);
             Broadcast(new GameEventMessage { EventType = eGameEvent.FlagReturned, ActorId = player.Id, X = flag.X, Y = flag.Y, Team = flag.Team });
-            Console.WriteLine($"{player.Name} returned the {flag.Team} flag");
+            ServerLog.Write(eLogType.Flag, $"{player.Name} returned the {flag.Team} flag");
         }
 
         /// <summary>
@@ -1706,7 +2281,7 @@ namespace EatMeServer
             player.FlagCaps++;
             AddScore(player, _Settings.GameConfig.FlagScore);
             Broadcast(new GameEventMessage { EventType = eGameEvent.FlagCaptured, ActorId = player.Id, X = player.Location.X, Y = player.Location.Y, Team = capturedTeam });
-            Console.WriteLine($"{player.Name} captured a flag for {player.Team}");
+            ServerLog.Write(eLogType.Flag, $"{player.Name} captured a flag for {player.Team}");
         }
 
         /// <summary>
@@ -1803,7 +2378,7 @@ namespace EatMeServer
                 ServerName = _Settings.ServerName,
                 MessageOfTheDay = ConfigManager.GetMessageOfTheDay(_Settings.MessageOfTheDay),
                 LoadingScreenTips = _LoadingScreenTips,
-                GameConfig = _Settings.GameConfig,
+                GameConfig = BuildClientConfig(),
             });
             Send(connection, BuildHighScores());
             Send(connection, BuildLevelStart());
@@ -1821,7 +2396,7 @@ namespace EatMeServer
             Volatile.Write(ref _PlayerCount, _Players.Count - _BotCount);
 
             if (wasPaused)
-                Console.WriteLine("Game resumed");
+                ServerLog.Write(eLogType.Info, "Game resumed");
 
             // and tell everyone, the new player included, about the new player
             Broadcast(BuildPlayerJoined(player));
@@ -1833,13 +2408,13 @@ namespace EatMeServer
                 Send(connection, _LevelWon);
             }
 
-            Console.WriteLine($"{player.Name} joined the {player.Team} team ({_PlayerCount} players, {_BotCount} bots)");
+            ServerLog.Write(eLogType.Join, $"{player.Name} joined the {player.Team} team ({_PlayerCount} players, {_BotCount} bots)");
             BalanceBots();
         }
 
         private void Reject(IClientConnection connection, eRejectReason reason)
         {
-            Console.WriteLine($"Client {connection.Id} rejected: {reason}");
+            ServerLog.Write(eLogType.Leave, $"Client {connection.Id} rejected: {reason}");
             Send(connection, new RejectMessage { Reason = reason });
             connection.CloseAfterSending();
         }
@@ -1868,10 +2443,10 @@ namespace EatMeServer
 
             Volatile.Write(ref _PlayerCount, _Players.Count - _BotCount);
             Broadcast(new PlayerLeftMessage { PlayerId = player.Id });
-            Console.WriteLine($"{player.Name} left ({_PlayerCount} players, {_BotCount} bots)");
+            ServerLog.Write(eLogType.Leave, $"{player.Name} left ({_PlayerCount} players, {_BotCount} bots)");
 
             if (!serverPlayer.IsBot && IsPaused)
-                Console.WriteLine("Game paused: no players connected");
+                ServerLog.Write(eLogType.Info, "Game paused: no players connected");
         }
 
         /// <summary>
@@ -1910,6 +2485,40 @@ namespace EatMeServer
         }
 
         /// <summary>
+        /// The game rules clients are given: the current settings, but with the map settings
+        /// (GameConfiguration.MAP_SETTINGS) the level being played was built with, so a client builds the same map
+        /// as the server until the next level starts.
+        /// </summary>
+        public GameConfiguration BuildClientConfig()
+        {
+            var config = _Settings.GameConfig.Clone();
+
+            if (_LevelConfig != null)
+                config.CopyMapSettingsFrom(_LevelConfig);
+
+            return config;
+        }
+
+        private bool HasMapSettingsChanged()
+        {
+            var now = _Settings.GameConfig;
+
+            return now.MazeSize != _LevelConfig.MazeSize || now.WarpTunnelCount != _LevelConfig.WarpTunnelCount
+                || now.GhostCount != _LevelConfig.GhostCount || now.PowerPillCount != _LevelConfig.PowerPillCount
+                || now.FlagCount != _LevelConfig.FlagCount || now.PlayerBaseCount != _LevelConfig.PlayerBaseCount
+                || now.ServerSeed != _LevelConfig.ServerSeed;
+        }
+
+        /// <summary>
+        /// Sends every client the game rules after a console setting command changed one (map settings only count
+        /// from the next level, BuildClientConfig).
+        /// </summary>
+        public void SendGameConfig()
+        {
+            Broadcast(new GameConfigMessage { GameConfig = BuildClientConfig() });
+        }
+
+        /// <summary>
         /// Turns AutoBalanceTeams on or off and rebalances the bots. Runtime only; server.cfg isn't changed.
         /// </summary>
         public void SetAutoBalanceTeams(bool autoBalanceTeams)
@@ -1944,7 +2553,7 @@ namespace EatMeServer
             if (serverPlayer.IsBot || !_Players.ContainsKey(serverPlayer.Player.Id))
                 return false;
 
-            Console.WriteLine($"{serverPlayer.Player.Name} was kicked");
+            ServerLog.Write(eLogType.Leave, $"{serverPlayer.Player.Name} was kicked");
             Send(serverPlayer.Connection, new RejectMessage { Reason = eRejectReason.Kicked });
             serverPlayer.Connection.CloseAfterSending();
             Remove(serverPlayer);
@@ -2012,7 +2621,7 @@ namespace EatMeServer
             _BotCount++;
 
             Broadcast(BuildPlayerJoined(bot));
-            Console.WriteLine($"Bot {bot.Name} joined the {bot.Team} team ({_PlayerCount} players, {_BotCount} bots)");
+            ServerLog.Write(eLogType.Join, $"Bot {bot.Name} joined the {bot.Team} team ({_PlayerCount} players, {_BotCount} bots)");
         }
 
         /// <summary>
@@ -2082,6 +2691,9 @@ namespace EatMeServer
             player.Eating = false;
             player.LastCellX = -1;
             player.LastCellY = -1;
+            player.ExtraLifePending = false;
+            player.FireCooldownMs = 0;
+            player.HolyFireCell = null;
         }
 
         private LevelStartMessage BuildLevelStart()
