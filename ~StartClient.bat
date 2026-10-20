@@ -1,10 +1,10 @@
 @echo off
-rem Starts the published client. Publish first with: PublishApps.bat
-set EXE_DIR=%~dp0publish\client
+rem Starts the published client. Publish first with: ~PublishPC.bat
+set EXE_DIR=%~dp0publish\pc_client
 
 if not exist "%EXE_DIR%\EatMeClient.exe" (
     echo EatMeClient.exe not found in %EXE_DIR%
-    echo Publish first with: PublishApps.bat
+    echo Publish first with: ~PublishPC.bat
     pause
     exit /b 1
 )

@@ -66,8 +66,9 @@
 - Build everything: `dotnet build EatMe.sln`
 - Run the server: `dotnet run --project EatMeServer`
 - Run the tests: `dotnet test EatMeTests`
-- For quick testing, `StartServer.bat` and `StartClient.bat` in the solution root run the published builds in `publish\server` and `publish\client`, so run `PublishApps.bat` first. Each starts in its exe's folder so `server.cfg`, `LoadingScreenTips.txt` and content are found.
-- `PublishApps.bat` in the solution root publishes Release builds of the client and server to `publish\client` and `publish\server` (win-x64, framework-dependent so players need the .NET runtime, no `.pdb` files), deleting those folders first.
+- For quick testing, `~StartServer.bat` and `~StartClient.bat` in the solution root run the published builds in `publish\pc_server` and `publish\pc_client`, so run `~PublishPC.bat` first. Each starts in its exe's folder so `server.cfg`, `LoadingScreenTips.txt` and content are found.
+- `~PublishPC.bat` in the solution root publishes Release builds of the client and server to `publish\pc_client` and `publish\pc_server` (win-x64, framework-dependent so players need the .NET runtime, no `.pdb` files), deleting those folders first.
+- `~PublishMac.bat` does the same for macOS on Apple silicon (`osx-arm64`), into `publish\mac_client` and `publish\mac_server`.
 
 ## Non-negotiables (apply everywhere in this repo)
 

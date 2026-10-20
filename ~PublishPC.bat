@@ -1,7 +1,7 @@
 @echo off
-rem Publishes release builds of the client and server to publish\client and publish\server, with no .pdb files. Players need the .NET runtime installed.
-set CLIENT_DIR=%~dp0publish\client
-set SERVER_DIR=%~dp0publish\server
+rem Publishes release builds of the client and server to publish\pc_client and publish\pc_server, with no .pdb files. Players need the .NET runtime installed.
+set CLIENT_DIR=%~dp0publish\pc_client
+set SERVER_DIR=%~dp0publish\pc_server
 
 if exist "%CLIENT_DIR%" rmdir /s /q "%CLIENT_DIR%"
 if exist "%SERVER_DIR%" rmdir /s /q "%SERVER_DIR%"
