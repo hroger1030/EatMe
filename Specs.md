@@ -22,7 +22,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Edit player profile: name and preferred team are set on the join screen and remembered between games.
 - Search for and join local games. The list only shows servers running the same game version.
 - Join games via IP address, typed as host or host:port (port defaults to 7777). The last address used is remembered.
-- Settings screen with music volume level, sound level, input type and a brightness fader (50% to 100%, default 100%). Brightness dims the whole screen (menus and game) as soon as it is moved, so players can soften the game's bright colours; black stays black. Below it, a colour bloom fader (0% to 100%, default 0%, off) makes the bright colours glow on every screen, also as soon as it is moved. The settings screen can also be opened during a game from the in-game menu, without leaving the server: the game is hidden and silent while it is open (and while the in-game menu is), the game carries on on the server, and Back returns to the in-game menu.
+- Settings screen with music volume level, sound level, input type and a brightness fader (50% to 100%, default 100%). Brightness dims the whole screen (menus and game) as soon as it is moved, so players can soften the game's bright colours; black stays black. Below it, a colour bloom fader (0% to 100%, default 0%, off) makes the bright colours glow on every screen, also as soon as it is moved. A Display toggle switches between full screen (the default, at the desktop's resolution) and a window 80% of the desktop's size, as soon as it is changed; the window can be maximized or resized. The settings screen can also be opened during a game from the in-game menu, without leaving the server: the game is hidden and silent while it is open (and while the in-game menu is), the game carries on on the server, and Back returns to the in-game menu.
 - The game board is drawn with a sharp bilinear filter: pixel art stays crisp, but scaled, turned and moving sprites get smooth edges. Pacs with Sugar Rush (cherry) leave a short fading speed trail; a power pill leaves none.
 - Supports keyboard (WASD-style control mapping or arrow keys) or gamepad controllers.
 - Plays an 8-bit style looped soundtrack song.
@@ -80,7 +80,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: ghost regen time (int) defaults to 5000, time in ms before a dead ghost reappears.
 - Server setting: dot regen percent (int) defaults to 50, from 0 to 100. Eaten dots are queued oldest first; once that percent of the level's dots has been eaten, each dot eaten makes the oldest eaten dot reappear, so that share of the dots stays eaten. At 0 a dot comes back as soon as it is eaten; at 100 dots never come back.
 - Server setting: power pill regen time (int) defaults to 5000, time in ms before a power pill reappears.
-- Server setting: player respawn timer (int) defaults to 5000, time in ms before a player respawns at base.
+- Server setting: player respawn timer (int) defaults to 10000, time in ms before a player respawns at base.
 - Server setting: PacMaxSize (float) defaults to 100.0, the most dots can make a pac (power pills can take it past this).
 - Server setting: PacSpeed (float) defaults to 6.0, the speed in map cells per second of a size 0 pac.
 - Server setting: GhostSpeed (float) defaults to 5.0, ghost speed in map cells per second.

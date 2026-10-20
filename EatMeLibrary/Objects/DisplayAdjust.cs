@@ -50,6 +50,11 @@ namespace EatMeLibrary
         public const float BLOOM_BLUR_SIGMA = 2f;
 
         /// <summary>
+        /// Share of the desktop's width and height the game's window takes in windowed mode, so it and its title bar fit.
+        /// </summary>
+        public const float WINDOWED_SCREEN_FRACTION = 0.8f;
+
+        /// <summary>
         /// Clamps a brightness to BRIGHTNESS_MIN to BRIGHTNESS_MAX. Anything that isn't a number becomes BRIGHTNESS_DEFAULT.
         /// </summary>
         public static float ClampBrightness(float brightness)
@@ -129,6 +134,17 @@ namespace EatMeLibrary
                 weights[i] /= total;
 
             return weights;
+        }
+
+        /// <summary>
+        /// The back buffer size for windowed mode on a desktop of the given size: WINDOWED_SCREEN_FRACTION of it,
+        /// keeping its aspect ratio, and never less than one pixel each way.
+        /// </summary>
+        public static (int Width, int Height) GetWindowedSize(int displayWidth, int displayHeight)
+        {
+            var width = Math.Max(1, (int)(displayWidth * WINDOWED_SCREEN_FRACTION));
+            var height = Math.Max(1, (int)(displayHeight * WINDOWED_SCREEN_FRACTION));
+            return (width, height);
         }
     }
 }

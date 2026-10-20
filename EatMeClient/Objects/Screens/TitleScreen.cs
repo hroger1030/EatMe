@@ -73,6 +73,7 @@ namespace EatMeClient
             IsMouseVisible = true;
             Window.Title = Const.GAME_TITLE;
             Window.TextInput += (_, e) => InputManager.AddTypedCharacter(e.Character);
+            Window.ClientSizeChanged += (_, _) => FollowWindowSize();
         }
 
         protected override void Initialize()
@@ -90,6 +91,7 @@ namespace EatMeClient
             SoundManager.Initialize();
 
             ConfigManager.Load();
+            ApplyDisplayMode();
             HighScoreStore.Load();
             AssetCache.Initialize(Content);
 
@@ -200,6 +202,10 @@ namespace EatMeClient
         {
             InputManager.Update();
 
+            // the display mode can be changed from either settings screen, and takes effect straight away
+            if (ConfigManager.Settings.FullScreen != _Graphics.IsFullScreen)
+                ApplyDisplayMode();
+
             // Restart the settle timer whenever the window isn't at full screen size yet
             if (IsDisplaySettled(Window.ClientBounds, _Graphics.PreferredBackBufferWidth, _Graphics.PreferredBackBufferHeight))
                 _DisplayStableSeconds += (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -288,7 +294,45 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// True once the window has reached the full screen size it was asked for.
+        /// Switches to full screen at the desktop's resolution, or to a window DisplayAdjust.GetWindowedSize big,
+        /// as GameSettings.FullScreen says.
+        /// </summary>
+        private void ApplyDisplayMode()
+        {
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            var fullScreen = ConfigManager.Settings.FullScreen;
+            var (width, height) = fullScreen ? (displayMode.Width, displayMode.Height) : DisplayAdjust.GetWindowedSize(displayMode.Width, displayMode.Height);
+
+            _Graphics.PreferredBackBufferWidth = width;
+            _Graphics.PreferredBackBufferHeight = height;
+            _Graphics.IsFullScreen = fullScreen;
+
+            // a window can be maximized or dragged to any size; FollowWindowSize keeps the back buffer in step
+            Window.AllowUserResizing = !fullScreen;
+            _Graphics.ApplyChanges();
+        }
+
+        /// <summary>
+        /// Resizes the back buffer to the window after it is maximized, restored or dragged, in windowed mode only.
+        /// A minimized window (no size) is left alone.
+        /// </summary>
+        private void FollowWindowSize()
+        {
+            var bounds = Window.ClientBounds;
+
+            if (_Graphics.IsFullScreen || bounds.Width <= 0 || bounds.Height <= 0)
+                return;
+
+            if (bounds.Width == _Graphics.PreferredBackBufferWidth && bounds.Height == _Graphics.PreferredBackBufferHeight)
+                return;
+
+            _Graphics.PreferredBackBufferWidth = bounds.Width;
+            _Graphics.PreferredBackBufferHeight = bounds.Height;
+            _Graphics.ApplyChanges();
+        }
+
+        /// <summary>
+        /// True once the window has reached the size it was asked for.
         /// </summary>
         public static bool IsDisplaySettled(Rectangle clientBounds, int width, int height)
         {

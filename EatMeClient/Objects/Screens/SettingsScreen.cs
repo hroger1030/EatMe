@@ -11,16 +11,18 @@ namespace EatMeClient
         private const float VOLUME_ADJUST_RATE = 60f;
         private const float SLIDER_SPACING = 30f;
 
-        private enum SettingsItem { MusicVolume, SoundVolume, Brightness, Bloom, Controls, Back }
+        private enum SettingsItem { MusicVolume, SoundVolume, Brightness, Bloom, Controls, Display, Back }
 
-        private static readonly SettingsItem[] SETTINGS_ITEMS = [SettingsItem.MusicVolume, SettingsItem.SoundVolume, SettingsItem.Brightness, SettingsItem.Bloom, SettingsItem.Controls, SettingsItem.Back];
+        private static readonly SettingsItem[] SETTINGS_ITEMS = [SettingsItem.MusicVolume, SettingsItem.SoundVolume, SettingsItem.Brightness, SettingsItem.Bloom, SettingsItem.Controls, SettingsItem.Display, SettingsItem.Back];
         private static readonly string[] CONTROL_SCHEME_OPTIONS = [Const.STRING_CONTROLS_MOUSE_KEYBOARD, Const.STRING_CONTROLS_GAME_PAD];
+        private static readonly string[] DISPLAY_OPTIONS = [Const.STRING_DISPLAY_FULL_SCREEN, Const.STRING_DISPLAY_WINDOWED];
 
         private SpriteFont _Font;
         private SpriteFont _TitleFont;
         private SliderControl _MusicVolumeSlider;
         private SliderControl _SoundVolumeSlider;
         private ToggleControl _ControlsToggle;
+        private ToggleControl _DisplayToggle;
         private SliderControl _BrightnessSlider;
         private SliderControl _BloomSlider;
         private readonly Action _OnBack;
@@ -39,12 +41,13 @@ namespace EatMeClient
             _MusicVolumeSlider = new SliderControl(_Font, Const.STRING_MUSIC_VOLUME);
             _SoundVolumeSlider = new SliderControl(_Font, Const.STRING_SOUND_VOLUME);
             _ControlsToggle = new ToggleControl(_Font, Const.STRING_CONTROLS, CONTROL_SCHEME_OPTIONS);
+            _DisplayToggle = new ToggleControl(_Font, Const.STRING_DISPLAY, DISPLAY_OPTIONS);
             _BrightnessSlider = new SliderControl(_Font, Const.STRING_BRIGHTNESS, DisplayAdjust.BRIGHTNESS_MIN, DisplayAdjust.BRIGHTNESS_MAX);
             _BloomSlider = new SliderControl(_Font, Const.STRING_BLOOM, DisplayAdjust.BLOOM_MIN, DisplayAdjust.BLOOM_MAX);
 
             // one line each, labels right-aligned in a shared column so the tracks and the toggle's value line up
             var sliders = new[] { _MusicVolumeSlider, _SoundVolumeSlider, _BrightnessSlider, _BloomSlider };
-            var labelWidth = _ControlsToggle.GetLabelColumnWidth();
+            var labelWidth = MathF.Max(_ControlsToggle.GetLabelColumnWidth(), _DisplayToggle.GetLabelColumnWidth());
 
             foreach (var slider in sliders)
                 labelWidth = MathF.Max(labelWidth, slider.GetLabelColumnWidth());
@@ -57,6 +60,8 @@ namespace EatMeClient
 
             _ControlsToggle.IsInline = true;
             _ControlsToggle.LabelWidth = labelWidth;
+            _DisplayToggle.IsInline = true;
+            _DisplayToggle.LabelWidth = labelWidth;
         }
 
         public void Activate()
@@ -65,6 +70,7 @@ namespace EatMeClient
             _MusicVolumeSlider.Value = MusicManager.GetVolume() * 100f;
             _SoundVolumeSlider.Value = SoundManager.GetVolume() * 100f;
             _ControlsToggle.SelectedIndex = (int)ConfigManager.Settings.ControllerType;
+            _DisplayToggle.SelectedIndex = ConfigManager.Settings.FullScreen ? 0 : 1;
             _BrightnessSlider.Value = ConfigManager.Settings.Brightness;
             _BloomSlider.Value = ConfigManager.Settings.Bloom;
         }
@@ -150,6 +156,19 @@ namespace EatMeClient
                     SoundManager.PlaySound(Const.SFX_TICK);
             }
 
+            // and between full screen and windowed
+            if (_SelectedItem == SettingsItem.Display)
+            {
+                if (rightPressed)
+                    _DisplayToggle.Next();
+
+                if (leftPressed)
+                    _DisplayToggle.Previous();
+
+                if (leftPressed || rightPressed)
+                    SoundManager.PlaySound(Const.SFX_TICK);
+            }
+
             // Unneeded local var? can we just store this in config manager?
             _MusicVolumeSlider.Update(GetMusicSliderPosition(viewport));
             MusicManager.SetVolume(_MusicVolumeSlider.Value / 100f);
@@ -160,6 +179,7 @@ namespace EatMeClient
 
             // hover tracking, and a click moves to the next option
             _ControlsToggle.Update(GetControlsPosition(viewport));
+            _DisplayToggle.Update(GetDisplayPosition(viewport));
 
             // Brightness takes effect straight away, so this screen previews it
             _BrightnessSlider.Update(GetBrightnessSliderPosition(viewport));
@@ -178,6 +198,9 @@ namespace EatMeClient
             // Update config manager
             ConfigManager.Settings.ControllerType = (eControllerType)_ControlsToggle.SelectedIndex;
 
+            // TitleScreen switches the display mode as soon as this changes
+            ConfigManager.Settings.FullScreen = _DisplayToggle.SelectedIndex == 0;
+
             var backBounds = GetBackBounds(viewport);
             var mousePoint = new Point(InputManager.MouseState.X, InputManager.MouseState.Y);
             var isBackHovered = backBounds.Contains(mousePoint);
@@ -187,6 +210,7 @@ namespace EatMeClient
                 _ when _MusicVolumeSlider.IsHovered => SettingsItem.MusicVolume,
                 _ when _SoundVolumeSlider.IsHovered => SettingsItem.SoundVolume,
                 _ when _ControlsToggle.IsHovered => SettingsItem.Controls,
+                _ when _DisplayToggle.IsHovered => SettingsItem.Display,
                 _ when _BrightnessSlider.IsHovered => SettingsItem.Brightness,
                 _ when _BloomSlider.IsHovered => SettingsItem.Bloom,
                 _ when isBackHovered => SettingsItem.Back,
@@ -215,8 +239,8 @@ namespace EatMeClient
         {
             var backSize = _Font.MeasureString(Const.STRING_BACK);
             // Normally 80% of the way down, but never over the last setting
-            var controlsBottom = GetControlsPosition(viewport).Y + _ControlsToggle.GetHeight() + SLIDER_SPACING;
-            var backPosition = new Vector2((viewport.Width - backSize.X) / 2f, MathF.Max(viewport.Height * 0.8f, controlsBottom));
+            var displayBottom = GetDisplayPosition(viewport).Y + _DisplayToggle.GetHeight() + SLIDER_SPACING;
+            var backPosition = new Vector2((viewport.Width - backSize.X) / 2f, MathF.Max(viewport.Height * 0.8f, displayBottom));
             return new Rectangle((int)backPosition.X, (int)backPosition.Y, (int)backSize.X, (int)backSize.Y);
         }
 
@@ -227,7 +251,7 @@ namespace EatMeClient
         {
             var width = MathF.Max(_MusicVolumeSlider.GetWidth(), _SoundVolumeSlider.GetWidth());
             width = MathF.Max(width, MathF.Max(_BrightnessSlider.GetWidth(), _BloomSlider.GetWidth()));
-            width = MathF.Max(width, _ControlsToggle.GetWidth());
+            width = MathF.Max(width, MathF.Max(_ControlsToggle.GetWidth(), _DisplayToggle.GetWidth()));
             return (viewport.Width - width) / 2f;
         }
 
@@ -251,6 +275,13 @@ namespace EatMeClient
             var bloomPosition = GetBloomSliderPosition(viewport);
             var controlsX = GetControlsLeft(viewport);
             return new Vector2(controlsX, bloomPosition.Y + _BloomSlider.GetHeight() + SLIDER_SPACING);
+        }
+
+        private Vector2 GetDisplayPosition(Viewport viewport)
+        {
+            var controlsPosition = GetControlsPosition(viewport);
+            var displayX = GetControlsLeft(viewport);
+            return new Vector2(displayX, controlsPosition.Y + _ControlsToggle.GetHeight() + SLIDER_SPACING);
         }
 
         private Vector2 GetBrightnessSliderPosition(Viewport viewport)
@@ -278,6 +309,7 @@ namespace EatMeClient
             _MusicVolumeSlider.Draw(spriteBatch, GetMusicSliderPosition(viewport), _SelectedItem == SettingsItem.MusicVolume);
             _SoundVolumeSlider.Draw(spriteBatch, GetSoundSliderPosition(viewport), _SelectedItem == SettingsItem.SoundVolume);
             _ControlsToggle.Draw(spriteBatch, GetControlsPosition(viewport), _SelectedItem == SettingsItem.Controls);
+            _DisplayToggle.Draw(spriteBatch, GetDisplayPosition(viewport), _SelectedItem == SettingsItem.Display);
             _BrightnessSlider.Draw(spriteBatch, GetBrightnessSliderPosition(viewport), _SelectedItem == SettingsItem.Brightness);
             _BloomSlider.Draw(spriteBatch, GetBloomSliderPosition(viewport), _SelectedItem == SettingsItem.Bloom);
 

@@ -22,6 +22,11 @@ namespace EatMeClient
         /// </summary>
         public float Bloom { get; set; } = DisplayAdjust.BLOOM_DEFAULT;
 
+        /// <summary>
+        /// Full screen at the desktop's resolution, or a window DisplayAdjust.WINDOWED_SCREEN_FRACTION of it.
+        /// </summary>
+        public bool FullScreen { get; set; } = true;
+
         public eControllerType ControllerType { get; set; } = eControllerType.MouseAndKeyboard;
 
         public string PlayerName { get; set; } = "Player";

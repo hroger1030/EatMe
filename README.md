@@ -129,7 +129,7 @@ JSON, deserialized into `ServerSettings`. Edit `EatMeServer/server.cfg`; it is c
 | `GameConfig.GhostRegenTimeMs` | int | 5000 | ms before a dead ghost reappears. |
 | `GameConfig.DotRegenPercent` | int | 50 | Percent (0-100) of a level's dots that stay eaten: once that many are eaten, each dot eaten brings back the oldest eaten one. |
 | `GameConfig.PowerPillRegenTimeMs` | int | 5000 | ms before an eaten power pill reappears. |
-| `GameConfig.PlayerRespawnTimeMs` | int | 5000 | ms before a dead player respawns at base. |
+| `GameConfig.PlayerRespawnTimeMs` | int | 10000 | ms before a dead player respawns at base. |
 | `GameConfig.PacMaxSize` | float | 100.0 | The most dots can make a pac (power pills can take it past this). A pac needs at least this size and a power pill working to eat ghosts. |
 | `GameConfig.PacSpeed` | float | 6.0 | Speed in map cells per second of a size 0 pac; a pac at max size is 20% faster. |
 | `GameConfig.GhostSpeed` | float | 5.0 | Ghost speed in map cells per second. |

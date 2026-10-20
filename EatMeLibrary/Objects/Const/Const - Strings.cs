@@ -21,6 +21,9 @@
         public const string STRING_BLOOM = "Color Bloom";
         public const string STRING_CONTROLS_MOUSE_KEYBOARD = "Mouse + Keyboard";
         public const string STRING_CONTROLS_GAME_PAD = "Game Pad";
+        public const string STRING_DISPLAY = "Display";
+        public const string STRING_DISPLAY_FULL_SCREEN = "Full Screen";
+        public const string STRING_DISPLAY_WINDOWED = "Windowed";
         public const string STRING_RANK = "Rank";
         public const string STRING_NAME = "Name";
         public const string STRING_SCORE = "Score";

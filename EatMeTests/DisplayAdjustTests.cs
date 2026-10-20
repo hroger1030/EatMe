@@ -91,5 +91,28 @@ namespace EatMeTests
             for (var i = 1; i < weights.Length; i++)
                 Assert.That(weights[i], Is.LessThan(weights[i - 1]));
         }
+
+        [Test]
+        public void GetWindowedSize_IsAShareOfTheDesktop()
+        {
+            var (width, height) = DisplayAdjust.GetWindowedSize(1920, 1080);
+            Assert.That(width, Is.EqualTo(1536));
+            Assert.That(height, Is.EqualTo(864));
+        }
+
+        [Test]
+        public void GetWindowedSize_KeepsTheAspectRatio()
+        {
+            var (width, height) = DisplayAdjust.GetWindowedSize(2560, 1440);
+            Assert.That(width * 9, Is.EqualTo(height * 16));
+        }
+
+        [Test]
+        public void GetWindowedSize_NeverZero()
+        {
+            var (width, height) = DisplayAdjust.GetWindowedSize(0, 0);
+            Assert.That(width, Is.EqualTo(1));
+            Assert.That(height, Is.EqualTo(1));
+        }
     }
 }

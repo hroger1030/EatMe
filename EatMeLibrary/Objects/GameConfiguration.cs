@@ -89,7 +89,7 @@ namespace EatMeLibrary
         /// <summary>
         /// Time before a dead player respawns at base.
         /// </summary>
-        public int PlayerRespawnTimeMs { get; set; } = 5000;
+        public int PlayerRespawnTimeMs { get; set; } = 10000;
 
         /// <summary>
         /// Dots can't make a pac bigger than this (power pills can), and a pac needs at least this size (and a power
