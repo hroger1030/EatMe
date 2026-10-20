@@ -23,6 +23,19 @@ namespace EatMeLibrary
 
         public bool IsAtBase => !IsCarried && X == BaseX && Y == BaseY;
 
+        /// <summary>
+        /// True while a living pac of the flag's team has Force Field (triforce) working: enemies can't pick it up.
+        /// </summary>
+        public bool IsSealed { get; set; }
+
+        /// <summary>
+        /// True if a pac of the given team may pick this flag up: an enemy flag nobody carries that isn't sealed.
+        /// </summary>
+        public bool CanBePickedUpBy(eTeam team)
+        {
+            return team != Team && !IsCarried && !IsSealed;
+        }
+
         public GameFlag(int id, eTeam team, float baseX, float baseY)
         {
             Id = id;
@@ -42,7 +55,7 @@ namespace EatMeLibrary
 
         public FlagState ToState()
         {
-            return new FlagState(Id, Team, X, Y, CarrierId);
+            return new FlagState(Id, Team, X, Y, CarrierId, IsSealed);
         }
     }
 }

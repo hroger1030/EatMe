@@ -17,13 +17,19 @@ namespace EatMeLibrary
 
         public bool IsCarried => CarrierId != NO_CARRIER;
 
-        public FlagState(int flagId, eTeam team, float x, float y, int carrierId)
+        /// <summary>
+        /// Whether the flag is sealed in a Force Field (triforce): enemies can't pick it up, and the client draws the field.
+        /// </summary>
+        public bool IsSealed { get; }
+
+        public FlagState(int flagId, eTeam team, float x, float y, int carrierId, bool isSealed = false)
         {
             FlagId = flagId;
             Team = team;
             X = x;
             Y = y;
             CarrierId = carrierId;
+            IsSealed = isSealed;
         }
 
         public void Write(BinaryWriter writer)
@@ -33,6 +39,7 @@ namespace EatMeLibrary
             writer.Write(X);
             writer.Write(Y);
             writer.Write(CarrierId);
+            writer.Write(IsSealed);
         }
 
         public static FlagState Read(BinaryReader reader)
@@ -42,7 +49,8 @@ namespace EatMeLibrary
                 (eTeam)reader.ReadByte(),
                 reader.ReadSingle(),
                 reader.ReadSingle(),
-                reader.ReadInt32());
+                reader.ReadInt32(),
+                reader.ReadBoolean());
         }
     }
 }

@@ -68,12 +68,28 @@
         public const string STRING_TWISTER = "Twister";
         public const string STRING_INVINCIBLE = "Invincible";
         public const string STRING_EXTRA_LIFE = "Extra Life";
-        public const string STRING_REINFORCEMENTS = "Reinforcements";
+        public const string STRING_REINFORCEMENTS = "Reinforce";
         public const string STRING_MORPH_BALL = "Morph Ball";
         public const string STRING_RACCOON_TAIL = "Raccoon Tail";
-        public const string STRING_SWORD_SWING = "Sword Swing";
+        public const string STRING_SWORD_SWING = "Throw Sword";
         public const string STRING_HOLY_FIRE = "Holy Fire";
         public const string STRING_FIREBALL = "Fireball";
+        public const string STRING_WARP = "Warp";
+        public const string STRING_BANANA_PEEL = "Banana Peel";
+        public const string STRING_BLOCK_DROP = "Block Drop";
+        public const string STRING_HAMMER_TIME = "Hammer Time";
+        public const string STRING_BFG = "BFG 9000";
+        public const string STRING_SUPER_SIZE = "Super Size";
+        public const string STRING_ENERGY_TANK = "Energy Tank";
+        public const string STRING_SCREW_ATTACK = "Screw Attack";
+        public const string STRING_PEPPER = "Pepper";
+        public const string STRING_SPREAD_SHOT = "Spread Shot";
+        public const string STRING_FORCE_FIELD = "Force Field";
+
+        // Respawn countdown, shown while the own pac is dead
+        public const string STRING_RESPAWNING_IN = "Respawning in";
+        public const string STRING_SECONDS = "seconds";
+        public const string STRING_LOCKED_OUT = "Locked out!";
 
         // Game screen stats bar
         public const string STRING_SIZE = "Size";

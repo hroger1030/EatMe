@@ -16,7 +16,7 @@ namespace EatMeLibrary
         /// <summary>
         /// How long each animation frame shows.
         /// </summary>
-        public const float FRAME_SECONDS = 0.15f;
+        public const float FRAME_SECONDS = 0.25f;
 
         /// <summary>
         /// Which animation frame shows a time in seconds after the effect appeared, looping through FRAME_COUNT.
@@ -52,6 +52,15 @@ namespace EatMeLibrary
                 eFacing.Up => -MathF.PI * 0.5f,
                 _ => 0f,
             };
+        }
+
+        /// <summary>
+        /// True for effects lying in the maze (holy flames, banana peels, Tetromino blocks), drawn before the rest so
+        /// flying ones go over them.
+        /// </summary>
+        public static bool IsOnFloor(eWeaponEffect effect)
+        {
+            return effect == eWeaponEffect.HolyFlame || effect == eWeaponEffect.BananaPeel || effect == eWeaponEffect.TetrisBlock;
         }
 
         /// <summary>

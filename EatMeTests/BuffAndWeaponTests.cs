@@ -236,9 +236,12 @@ namespace EatMeTests
             server.ApplyPowerUp(red, ePowerUp.WhiteSword);
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SwordSwing));
 
-            server.HandleAction(red);
-            server.HandleAction(red);
-            server.HandleAction(red);
+            // the action button cools down between presses (no ticks, so the swords stay where they are)
+            for (var i = 0; i < 3; i++)
+            {
+                red.ActionCooldownMs = 0;
+                server.HandleAction(red);
+            }
 
             Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.Sword), Is.EqualTo(WeaponRules.MAX_SWORDS));
             Assert.That(server.WeaponEffects.First().Facing, Is.EqualTo(red.Facing));
@@ -300,7 +303,7 @@ namespace EatMeTests
             // a ghost in the way dies, and the shooter gets the kill
             server.Ghosts[0].Location = red.Location;
             blue.Location = new Point2(1.5f, 1.5f);
-            server.UpdateWeaponEffects(WeaponRules.FIREBALL_COOLDOWN_MS / 1000f, WeaponRules.FIREBALL_COOLDOWN_MS);
+            server.UpdateWeaponEffects(WeaponRules.ACTION_COOLDOWN_MS / 1000f, WeaponRules.ACTION_COOLDOWN_MS);
             server.HandleAction(red);
             Tick(server, 1);
             Assert.That(server.Ghosts[0].Alive, Is.False);

@@ -244,9 +244,10 @@ namespace EatMeLibrary
                     if (!IsAttacker(me))
                         return null;
 
-                    // a loose enemy flag nearby, otherwise the enemy base, where the flag usually is
-                    return FindNearestFlag(world, paths, f => f.Team != me.Team && !f.IsCarried, SEARCH_DISTANCE)
-                        ?? FindNearestBase(world, x, y, f => f.Team != me.Team && f.IsAtBase);
+                    // a loose enemy flag nearby, otherwise the enemy base, where the flag usually is; a flag sealed in a
+                    // force field (triforce) can't be taken, so it is left alone
+                    return FindNearestFlag(world, paths, f => f.CanBePickedUpBy(me.Team), SEARCH_DISTANCE)
+                        ?? FindNearestBase(world, x, y, f => f.Team != me.Team && f.IsAtBase && !f.IsSealed);
 
                 case eBotGoal.Dot:
                     // an invincible bot leaves power pills alone, since one would replace its effect

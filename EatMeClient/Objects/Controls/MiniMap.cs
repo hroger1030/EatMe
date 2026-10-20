@@ -109,8 +109,12 @@ namespace EatMeClient
             // a carried flag isn't drawn; its carrier's dot shows where it is
             foreach (var flag in snapshot.Flags)
             {
-                if (!flag.IsCarried)
-                    DrawCentred(spriteBatch, _triangle, inner, mapSize, flag.X, flag.Y, FLAG_TRIANGLE_PIXELS, ClientColors.GetFlagColor(flag.Team, animationTime));
+                if (flag.IsCarried)
+                    continue;
+
+                // a flag sealed in a force field (triforce) blinks gold
+                var color = flag.IsSealed && ForceField.IsMiniMapGold(animationTime) ? ClientColors.COLOR_FORCE_FIELD : ClientColors.GetFlagColor(flag.Team, animationTime);
+                DrawCentred(spriteBatch, _triangle, inner, mapSize, flag.X, flag.Y, FLAG_TRIANGLE_PIXELS, color);
             }
         }
 

@@ -173,7 +173,7 @@ namespace EatMeClient
             var panelBounds = GetPanelBounds(viewport);
 
             spriteBatch.Begin();
-            spriteBatch.Draw(_Pixel, panelBounds, ClientColors.COLOR_LIGHT_MENU_PANEL);
+            TextureHelper.FillRounded(spriteBatch, _Pixel, panelBounds, MiniMap.CORNER_RADIUS, ClientColors.COLOR_LIGHT_MENU_PANEL);
 
             var optionBounds = GetOptionBounds(viewport);
 

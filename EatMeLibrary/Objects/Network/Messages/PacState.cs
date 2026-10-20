@@ -57,8 +57,19 @@ namespace EatMeLibrary
         /// </summary>
         public bool Stunned { get; }
 
+        /// <summary>
+        /// ms before a dead pac respawns (0 while alive). The client shows its own as a countdown.
+        /// </summary>
+        public int RespawnMsLeft { get; }
+
+        /// <summary>
+        /// Whether the pac's team can't respawn right now because a living enemy has Lockdown (key) working.
+        /// </summary>
+        public bool SpawnLocked { get; }
+
         public PacState(int playerId, eTeam team, float x, float y, float size, eFacing facing, bool alive, bool hasFlag, bool eating,
-            int flagCaps = 0, int ghostKills = 0, int playerKills = 0, int rescues = 0, ePowerUpEffect powerUpEffect = ePowerUpEffect.None, int powerUpMsLeft = 0, int totalScore = 0, int msSinceEaten = 0, bool stunned = false)
+            int flagCaps = 0, int ghostKills = 0, int playerKills = 0, int rescues = 0, ePowerUpEffect powerUpEffect = ePowerUpEffect.None, int powerUpMsLeft = 0, int totalScore = 0, int msSinceEaten = 0, bool stunned = false,
+            int respawnMsLeft = 0, bool spawnLocked = false)
         {
             PlayerId = playerId;
             Team = team;
@@ -78,6 +89,8 @@ namespace EatMeLibrary
             TotalScore = totalScore;
             MsSinceEaten = msSinceEaten;
             Stunned = stunned;
+            RespawnMsLeft = respawnMsLeft;
+            SpawnLocked = spawnLocked;
         }
 
         public void Write(BinaryWriter writer)
@@ -100,6 +113,8 @@ namespace EatMeLibrary
             writer.Write(TotalScore);
             writer.Write(MsSinceEaten);
             writer.Write(Stunned);
+            writer.Write(RespawnMsLeft);
+            writer.Write(SpawnLocked);
         }
 
         public static PacState Read(BinaryReader reader)
@@ -121,6 +136,8 @@ namespace EatMeLibrary
                 (ePowerUpEffect)reader.ReadByte(),
                 reader.ReadInt32(),
                 reader.ReadInt32(),
+                reader.ReadInt32(),
+                reader.ReadBoolean(),
                 reader.ReadInt32(),
                 reader.ReadBoolean());
         }

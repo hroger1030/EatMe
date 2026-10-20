@@ -58,6 +58,9 @@ namespace EatMeClient
         public static readonly Color COLOR_MINI_MAP_WARP = new(0x77, 0x77, 0x77);
         public static readonly Color COLOR_MINI_MAP_POWER_UP = new(120, 81, 169);
 
+        // the Triforce's force field over a sealed flag, and its blink on the mini map
+        public static readonly Color COLOR_FORCE_FIELD = new(255, 215, 0);
+
         // ghost body colors are each personality's GhostPersonality.Color (library)
         public static readonly Color COLOR_GHOST_SCARED = new(33, 33, 222);
 

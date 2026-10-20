@@ -321,6 +321,32 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// The respawn countdown shown while our own pac is dead: "Respawning in n seconds" (seconds rounded up), or
+        /// "Locked out!" while an enemy's Lockdown keeps our team from respawning. Null while it is alive or unknown.
+        /// </summary>
+        public string GetOwnRespawnText()
+        {
+            var ownPac = GetOwnPac();
+            if (!ownPac.HasValue || ownPac.Value.Alive)
+                return null;
+
+            return GetRespawnText(ownPac.Value.RespawnMsLeft, ownPac.Value.SpawnLocked);
+        }
+
+        /// <summary>
+        /// The respawn countdown text for ms left on a dead pac's timer: "Respawning in n seconds", n rounded up, or
+        /// "Locked out!" while its spawn is locked.
+        /// </summary>
+        public static string GetRespawnText(int respawnMsLeft, bool spawnLocked)
+        {
+            if (spawnLocked)
+                return Const.STRING_LOCKED_OUT;
+
+            var seconds = (int)((Math.Max(0, respawnMsLeft) + MS_PER_SECOND - 1) / MS_PER_SECOND);
+            return $"{Const.STRING_RESPAWNING_IN} {seconds} {Const.STRING_SECONDS}";
+        }
+
+        /// <summary>
         /// Seconds left before the next level starts, to the nearest second, so a 10 second wait shows 10 down to 0.
         /// </summary>
         public int GetIntermissionSecondsLeft(long nowMs)

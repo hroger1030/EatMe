@@ -238,3 +238,14 @@ The reverb is a Schroeder reverb: four damped comb filters in parallel (29.7, 37
 - The sum goes through three resonant band pass filters for the "ah" vowel's formants: 800 Hz (80 Hz wide), 1150 Hz (90 Hz wide, at 0.6) and 2900 Hz (120 Hz wide, at 0.25).
 - It swells in over 0.7 s (squared, so it starts softly) and fades out over the last second.
 - The same Schroeder reverb as the POW boom, with comb feedback 0.82 for a big hall, mixed in at 0.5.
+
+## BFG burst
+
+`SoundFX_BfgBurst.wav` (1.6 s) plays where a BFG ball bursts: sizzling, crackling electricity. It is synthesised the same way (44,100 Hz, 16-bit stereo, the same sample in both channels, 0.9 peak), from a fixed random seed so it comes out the same every time. The dry sound is the sum of four parts:
+
+- an electric hum: a 120 Hz buzz with its first eight harmonics (each at 1/n), at 0.22, its loudness flickering at random every 4 ms between 35% and 100%
+- a sizzle: white noise through a first difference high pass, at 0.28, gated at random every 3 ms so it fizzes
+- crackles: about 70 a second at random times, each a burst of high passed noise 2 to 9 ms long at a random level, dying away fast
+- six zaps at random times: square waves falling from 1800 Hz to 250 Hz over 70 ms, at 0.3, fading out as they fall
+
+It starts in 4 ms, dies away (`exp(-1.6 t)`) and fades to silence over the last 0.25 s.

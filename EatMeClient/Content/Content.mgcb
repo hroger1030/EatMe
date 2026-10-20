@@ -308,6 +308,12 @@
 /processorParam:Quality=Best
 /build:Audio/SoundFX_Bloop.wav
 
+#begin Audio/SoundFX_BfgBurst.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/SoundFX_BfgBurst.wav
+
 #begin Audio/SoundFX_PowerUp.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor

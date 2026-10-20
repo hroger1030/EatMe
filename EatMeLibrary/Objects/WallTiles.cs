@@ -62,7 +62,8 @@ namespace EatMeLibrary
 
         private static bool IsWall(eGridDef[,] map, int x, int y)
         {
-            return x >= 0 && y >= 0 && x < map.GetLength(0) && y < map.GetLength(1) && map[x, y].HasFlag(eGridDef.Wall);
+            return x >= 0 && y >= 0 && x < map.GetLength(0) && y < map.GetLength(1) && map[x, y].HasFlag(eGridDef.Wall)
+                && !map[x, y].HasFlag(eGridDef.TetrisBlock);
         }
     }
 }

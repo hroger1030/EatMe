@@ -34,6 +34,17 @@ namespace EatMeLibrary
                 ePowerUpEffect.SwordSwing => Const.STRING_SWORD_SWING,
                 ePowerUpEffect.HolyFire => Const.STRING_HOLY_FIRE,
                 ePowerUpEffect.FireFlower => Const.STRING_FIREBALL,
+                ePowerUpEffect.Warp => Const.STRING_WARP,
+                ePowerUpEffect.BananaPeel => Const.STRING_BANANA_PEEL,
+                ePowerUpEffect.BlockDrop => Const.STRING_BLOCK_DROP,
+                ePowerUpEffect.HammerTime => Const.STRING_HAMMER_TIME,
+                ePowerUpEffect.Bfg => Const.STRING_BFG,
+                ePowerUpEffect.SuperSize => Const.STRING_SUPER_SIZE,
+                ePowerUpEffect.EnergyTank => Const.STRING_ENERGY_TANK,
+                ePowerUpEffect.ScrewAttack => Const.STRING_SCREW_ATTACK,
+                ePowerUpEffect.Pepper => Const.STRING_PEPPER,
+                ePowerUpEffect.SpreadShot => Const.STRING_SPREAD_SHOT,
+                ePowerUpEffect.ForceField => Const.STRING_FORCE_FIELD,
                 _ => Const.STRING_POWER_UP_NONE,
             };
         }
@@ -53,12 +64,105 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if a pac with this effect moves through walls too: Raccoon Tail.
+        /// True if a pac with this effect moves through walls: Raccoon Tail, and Super Size (which smashes them as it goes).
         /// </summary>
         public static bool PassesThroughWalls(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.RaccoonTail;
+            return effect == ePowerUpEffect.RaccoonTail || effect == ePowerUpEffect.SuperSize;
         }
+
+        /// <summary>
+        /// True if a pac with this effect smashes every wall it moves into (never the outer wall) into a dot cell: Super Size.
+        /// </summary>
+        public static bool SmashesWalls(ePowerUpEffect effect)
+        {
+            return effect == ePowerUpEffect.SuperSize;
+        }
+
+        /// <summary>
+        /// A pac's size while Super Size (mushroom) works. It goes back to PacRules.START_SIZE when the effect ends.
+        /// </summary>
+        public const float SUPER_SIZE = 300f;
+
+        /// <summary>
+        /// A pac's size while Energy Tank works.
+        /// </summary>
+        public const float ENERGY_TANK_SIZE = 150f;
+
+        /// <summary>
+        /// The size an effect sets the pac to when it starts (Super Size, Energy Tank), or null if it doesn't set one.
+        /// </summary>
+        public static float? GetStartSize(ePowerUpEffect effect)
+        {
+            return effect switch
+            {
+                ePowerUpEffect.SuperSize => SUPER_SIZE,
+                ePowerUpEffect.EnergyTank => ENERGY_TANK_SIZE,
+                _ => null,
+            };
+        }
+
+        /// <summary>
+        /// The size an effect puts the pac back to when it ends (Super Size: PacRules.START_SIZE; Energy Tank, when another
+        /// buff replaces it: maxSize, the normal PacMaxSize), or null if it leaves the size alone.
+        /// </summary>
+        public static float? GetEndSize(ePowerUpEffect effect, float maxSize)
+        {
+            return effect switch
+            {
+                ePowerUpEffect.SuperSize => PacRules.START_SIZE,
+                ePowerUpEffect.EnergyTank => maxSize,
+                _ => null,
+            };
+        }
+
+        /// <summary>
+        /// True if a pac with this effect kills any enemy pac or ghost it touches, and a ghost touching it doesn't kill
+        /// it: Screw Attack. An invincible pac still beats it, and weapons still kill it.
+        /// </summary>
+        public static bool KillsOnContact(ePowerUpEffect effect)
+        {
+            return effect == ePowerUpEffect.ScrewAttack;
+        }
+
+        /// <summary>
+        /// True if a pac with this effect can eat dots and power pills: every effect but Screw Attack.
+        /// </summary>
+        public static bool CanEat(ePowerUpEffect effect)
+        {
+            return effect != ePowerUpEffect.ScrewAttack;
+        }
+
+        /// <summary>
+        /// True if a pac with this effect can pick up an enemy flag: only with no effect at all (a power pill counts as one).
+        /// </summary>
+        public static bool CanPickUpFlag(ePowerUpEffect effect)
+        {
+            return effect == ePowerUpEffect.None;
+        }
+
+        /// <summary>
+        /// True if this pac seals its team's flags in a force field, so enemies can't pick them up: it is alive and has
+        /// Force Field (triforce) working.
+        /// </summary>
+        public static bool SealsFlags(Player pac)
+        {
+            return HasActiveEffect(pac, ePowerUpEffect.ForceField);
+        }
+
+        /// <summary>
+        /// True if a ghost touching a pac with this effect is stunned (STUN_MS) instead of killing it: Pepper.
+        /// </summary>
+        public static bool StunsGhosts(ePowerUpEffect effect)
+        {
+            return effect == ePowerUpEffect.Pepper;
+        }
+
+        /// <summary>
+        /// How long a stun lasts unless the item says otherwise (banana peel, spread shot, pepper). Being stunned again
+        /// starts it over.
+        /// </summary>
+        public const int STUN_MS = 2000;
 
         /// <summary>
         /// A rolling (Morph Ball) pac turns this many full turns for every cell it moves.
@@ -81,7 +185,29 @@ namespace EatMeLibrary
         public const float FIRE_FLASH_SECONDS = 0.05f;
 
         /// <summary>
-        /// True if a pac with Fireball is drawn white at a time in seconds (otherwise its normal color).
+        /// True if a pac with this effect flashes white (IsFireFlashWhite): Fireball and Screw Attack.
+        /// </summary>
+        public static bool FlashesWhite(ePowerUpEffect effect)
+        {
+            return effect == ePowerUpEffect.FireFlower || effect == ePowerUpEffect.ScrewAttack;
+        }
+
+        /// <summary>
+        /// A Screw Attack pac turns this many full turns for every cell it moves, so it spins very fast, and only while moving.
+        /// </summary>
+        public const float SCREW_TURNS_PER_CELL = 2f;
+
+        /// <summary>
+        /// The angle (radians, 0 to 2 pi) a Screw Attack pac at (x, y) is turned to.
+        /// </summary>
+        public static float GetScrewAngle(float x, float y)
+        {
+            var turns = (x + y) * SCREW_TURNS_PER_CELL;
+            return (turns - MathF.Floor(turns)) * MathF.PI * 2f;
+        }
+
+        /// <summary>
+        /// True if a flashing pac (FlashesWhite) is drawn white at a time in seconds (otherwise its normal color).
         /// </summary>
         public static bool IsFireFlashWhite(float seconds)
         {
@@ -121,6 +247,14 @@ namespace EatMeLibrary
         public static bool ShakesScreen(eGameEvent eventType)
         {
             return eventType == eGameEvent.Pow;
+        }
+
+        /// <summary>
+        /// True for events that shake every player's screen, wherever they are: Super Size smashing walls.
+        /// </summary>
+        public static bool ShakesEveryScreen(eGameEvent eventType)
+        {
+            return eventType == eGameEvent.WallSmash;
         }
 
         /// <summary>
@@ -196,19 +330,21 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if an effect never runs out: its timer stays full and it lasts until the pac dies or another effect
-        /// replaces it. Vitamin C, Doctor Away and Extra Life.
+        /// replaces it. Vitamin C, Doctor Away, Extra Life and Energy Tank.
         /// </summary>
         public static bool IsPermanent(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.ExtraLife;
+            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.ExtraLife
+                || effect == ePowerUpEffect.EnergyTank;
         }
 
         /// <summary>
-        /// True if a pac with this effect never gets hungry: its time since eating stays at 0. Vitamin C and Melon Belly.
+        /// True if a pac with this effect never gets hungry: its time since eating stays at 0. Vitamin C, Melon Belly and
+        /// Energy Tank (so it stays ENERGY_TANK_SIZE).
         /// </summary>
         public static bool PreventsStarving(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly;
+            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank;
         }
 
         /// <summary>

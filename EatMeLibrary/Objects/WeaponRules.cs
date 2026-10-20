@@ -26,9 +26,20 @@ namespace EatMeLibrary
         public const float FIREBALL_SPEED_SCALE = 1.25f;
 
         /// <summary>
-        /// A pac with Fireball can fire one this often.
+        /// After the action button does something it does nothing again for this long, whatever the effect, so it
+        /// can't be spammed.
         /// </summary>
-        public const int FIREBALL_COOLDOWN_MS = 500;
+        public const int ACTION_COOLDOWN_MS = 500;
+
+        /// <summary>
+        /// A spread shot moves this many times PacSpeed.
+        /// </summary>
+        public const float SPREAD_SHOT_SPEED_SCALE = 1.5f;
+
+        /// <summary>
+        /// A pac with Spread Shot fires four shots (up, down, left, right) this often.
+        /// </summary>
+        public const int SPREAD_SHOT_INTERVAL_MS = 500;
 
         /// <summary>
         /// The blue shell and poke ball move this many times PacSpeed.
@@ -51,6 +62,7 @@ namespace EatMeLibrary
             {
                 eWeaponEffect.Sword => SWORD_SPEED_SCALE,
                 eWeaponEffect.Fireball => FIREBALL_SPEED_SCALE,
+                eWeaponEffect.SpreadShot => SPREAD_SHOT_SPEED_SCALE,
                 eWeaponEffect.BlueShell or eWeaponEffect.PokeBall => SEEKER_SPEED_SCALE,
                 _ => 0f,
             };
@@ -154,6 +166,87 @@ namespace EatMeLibrary
             }
 
             return cells;
+        }
+
+        /// <summary>
+        /// True if (x, y) is on the outer wall's ring, which can never be broken.
+        /// </summary>
+        public static bool IsOuterCell(int x, int y, int width, int height)
+        {
+            return x <= 0 || y <= 0 || x >= width - 1 || y >= height - 1;
+        }
+
+        /// <summary>
+        /// True if the Hammer or Super Size can smash the cell: a wall, not a Tetromino block and not the outer wall.
+        /// </summary>
+        public static bool CanSmash(eGridDef[,] map, int x, int y)
+        {
+            var cell = map[x, y];
+            return cell.HasFlag(eGridDef.Wall) && !cell.HasFlag(eGridDef.TetrisBlock) && !IsOuterCell(x, y, map.GetLength(0), map.GetLength(1));
+        }
+
+        /// <summary>
+        /// What a smashed wall cell becomes: open, with a dot.
+        /// </summary>
+        public static eGridDef GetSmashedCell(eGridDef cell)
+        {
+            return (cell & ~eGridDef.Wall) | eGridDef.Food;
+        }
+
+        /// <summary>
+        /// A random cell with a dot that isn't in occupied (cells with a pac or ghost in them), for Warp (pear); null if
+        /// there is none.
+        /// </summary>
+        public static (int X, int Y)? PickWarpCell(eGridDef[,] map, ICollection<(int X, int Y)> occupied, Random random)
+        {
+            var cells = new List<(int X, int Y)>();
+
+            for (var x = 0; x < map.GetLength(0); x++)
+                for (var y = 0; y < map.GetLength(1); y++)
+                    if (map[x, y].HasFlag(eGridDef.Food) && !map[x, y].HasFlag(eGridDef.Wall) && !occupied.Contains((x, y)))
+                        cells.Add((x, y));
+
+            if (cells.Count == 0)
+                return null;
+
+            return cells[random.Next(cells.Count)];
+        }
+
+        /// <summary>
+        /// Where a pac at location's hammer is: one cell further along facing, wrapped round the map so it stays on it.
+        /// </summary>
+        public static Point2 GetHammerLocation(Point2 location, eFacing facing, int width, int height)
+        {
+            var (dx, dy) = facing switch
+            {
+                eFacing.Up => (0f, -1f),
+                eFacing.Down => (0f, 1f),
+                eFacing.Left => (-1f, 0f),
+                _ => (1f, 0f),
+            };
+
+            var x = (location.X + dx + width) % width;
+            var y = (location.Y + dy + height) % height;
+            return new Point2(x, y);
+        }
+
+        /// <summary>
+        /// The cell a Tetromino block goes in for a pac in (x, y) facing facing: the one behind it (wrapping round the map).
+        /// </summary>
+        public static (int X, int Y) GetBehindCell(int x, int y, eFacing facing, int width, int height)
+        {
+            return MazeMovement.GetNeighbor(x, y, MazeMovement.GetOpposite(facing), width, height);
+        }
+
+        /// <summary>
+        /// True if a Tetromino block can go in the cell: open, not a spawn tile, flag base or ghost generator, and with
+        /// no block in it already.
+        /// </summary>
+        public static bool CanDropBlock(eGridDef cell)
+        {
+            const eGridDef SPECIAL = eGridDef.Wall | eGridDef.SpawnPointRed | eGridDef.SpawnPointBlue | eGridDef.FlagBaseRed
+                | eGridDef.FlagBaseBlue | eGridDef.GhostGenerator;
+            return (cell & SPECIAL) == 0;
         }
 
         /// <summary>

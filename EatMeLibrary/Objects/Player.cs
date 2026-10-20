@@ -75,7 +75,7 @@
         public bool PassesThrough => PowerUpEffects.PassesThrough(PowerUpEffect) && PowerUpMs > 0;
 
         /// <summary>
-        /// True while Raccoon Tail is working: the pac moves through walls too.
+        /// True while Raccoon Tail or Super Size is working: the pac moves through walls.
         /// </summary>
         public bool PassesThroughWalls => PowerUpEffects.PassesThroughWalls(PowerUpEffect) && PowerUpMs > 0;
 
@@ -90,9 +90,14 @@
         public float ExtraLifeSize { get; set; }
 
         /// <summary>
-        /// ms before the Fireball effect's next shot is ready (WeaponRules.FIREBALL_COOLDOWN_MS).
+        /// ms before the action button does anything again (WeaponRules.ACTION_COOLDOWN_MS after every press that did something).
         /// </summary>
-        public int FireCooldownMs { get; set; }
+        public int ActionCooldownMs { get; set; }
+
+        /// <summary>
+        /// ms before a pac with Spread Shot fires its next four shots (WeaponRules.SPREAD_SHOT_INTERVAL_MS).
+        /// </summary>
+        public int SpreadShotMs { get; set; }
 
         /// <summary>
         /// The cell a pac with Holy Fire was in last tick, so a flame goes down in each cell it leaves.

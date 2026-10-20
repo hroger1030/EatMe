@@ -21,6 +21,9 @@ namespace EatMeClient
 
         private const float PING_INTERVAL_SECONDS = 2f;
         private const float PAC_FRAME_SECONDS = 0.08f;
+
+        // space between the respawn countdown's text and the edge of its panel
+        private const float RESPAWN_PANEL_PADDING = 24f;
         private const int PAC_FRAME_COUNT = 4;
         private const float HUD_MARGIN = 20f;
 
@@ -102,6 +105,10 @@ namespace EatMeClient
         private Texture2D _WinBlueTexture;
         private Texture2D _WinRedTexture;
         private Texture2D _FlagTexture;
+
+        // the Triforce's force field, built from ForceField.GetAlpha (white, tinted gold when drawn)
+        private Texture2D _ForceFieldTexture;
+        private const int FORCE_FIELD_TEXTURE_PIXELS = 96;
         private Texture2D _PacSheet;
         private Texture2D _PowerUpSheet;
         private Texture2D _WeaponEffectSheet;
@@ -495,6 +502,10 @@ namespace EatMeClient
                             // an area effect's shockwave shakes the board for everyone inside its radius, the pac that set it off included
                             if (PowerUpEffects.ShakesScreen(gameEvent.EventType) && _State.IsOwnPacInEffectRange(gameEvent))
                                 ShakeScreen(ScreenShake.POW_AMPLITUDE_PIXELS, ScreenShake.POW_DURATION_SECONDS);
+
+                            // smashed walls shake every board, wherever the player is
+                            if (PowerUpEffects.ShakesEveryScreen(gameEvent.EventType))
+                                ShakeScreen(ScreenShake.POW_AMPLITUDE_PIXELS, ScreenShake.POW_DURATION_SECONDS);
                         }
 
                         StartDeathAnimation(gameEvent);
@@ -544,12 +555,17 @@ namespace EatMeClient
                 eGameEvent.PowerUpEaten => Const.SFX_POWER_UP_EATEN,
                 eGameEvent.Pow => Const.SFX_POW,
                 eGameEvent.PokeBallCapture or eGameEvent.PokeBallRelease => Const.SFX_BLOOP,
+                eGameEvent.BfgBurst => Const.SFX_BFG_BURST,
                 _ => null,
             };
 
             // the server only sends this to the pac that respawned thanks to a teammate's Reinforcements: heard at full volume
             if (gameEvent.EventType == eGameEvent.AngelicRespawn)
                 SoundManager.PlaySound(Const.SFX_ANGELIC_CHORUS);
+
+            // smashed walls (Super Size) boom for everyone at full volume
+            if (gameEvent.EventType == eGameEvent.WallSmash)
+                SoundManager.PlaySound(Const.SFX_POW);
 
             if (sound != null)
             {
@@ -722,10 +738,37 @@ namespace EatMeClient
                 var ownPac = _State.GetOwnPac();
                 var ownSize = ownPac.HasValue ? (int)Math.Round(ownPac.Value.Size) : 0;
                 _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill());
+                DrawRespawnCountdown(spriteBatch, viewport);
                 spriteBatch.End();
             }
 
             _InGameMenu.Draw(spriteBatch, viewport);
+        }
+
+        /// <summary>
+        /// While our own pac is dead: "Respawning in n seconds", or "Locked out!" while an enemy's Lockdown works
+        /// (ClientGameState.GetOwnRespawnText), in white in the game font, centred on the board on a half-transparent
+        /// panel with rounded corners.
+        /// </summary>
+        private void DrawRespawnCountdown(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            var text = _State.GetOwnRespawnText();
+            if (text == null)
+                return;
+
+            var board = GetBoardViewport(viewport);
+            var size = _Font.MeasureString(text);
+            var position = new Vector2(
+                (float)Math.Round(board.X + (board.Width - size.X) * 0.5f),
+                (float)Math.Round(board.Y + (board.Height - size.Y) * 0.5f));
+            var panel = new Rectangle(
+                (int)(position.X - RESPAWN_PANEL_PADDING),
+                (int)(position.Y - RESPAWN_PANEL_PADDING),
+                (int)(size.X + RESPAWN_PANEL_PADDING * 2f),
+                (int)(size.Y + RESPAWN_PANEL_PADDING * 2f));
+
+            TextureHelper.FillRounded(spriteBatch, _Pixel, panel, MiniMap.CORNER_RADIUS, ClientColors.COLOR_TEXT_PANEL);
+            spriteBatch.DrawString(_Font, text, position, Color.White);
         }
 
         /// <summary>
@@ -1045,6 +1088,10 @@ namespace EatMeClient
                     var screen = _Camera.ToScreenPosition(CellToWorld(x, y), viewport);
                     var bounds = new Rectangle((int)screen.X, (int)screen.Y, CELL_PIXELS, CELL_PIXELS);
 
+                    // a Tetromino block is drawn as its weapon effect sprite, not a wall
+                    if (cell.HasFlag(eGridDef.TetrisBlock))
+                        continue;
+
                     if (cell.HasFlag(eGridDef.Wall))
                     {
                         DrawWall(spriteBatch, map, x, y, bounds, wallColor, wallFillColor, isRainbow);
@@ -1132,12 +1179,17 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Flags nobody is carrying, one cell wide, in their team's color, at base or wherever they were dropped.
+        /// Flags nobody is carrying, one cell wide, in their team's color, at base or wherever they were dropped. A flag
+        /// sealed by a Force Field (triforce) has a pulsing gold bubble over it, ForceField.FIELD_CELLS wide.
         /// </summary>
         private void DrawLooseFlags(SpriteBatch spriteBatch, Viewport viewport)
         {
             if (_State.Snapshot == null)
                 return;
+
+            _ForceFieldTexture ??= CreateForceFieldTexture(spriteBatch.GraphicsDevice);
+            var fieldPixels = (int)(CELL_PIXELS * ForceField.FIELD_CELLS);
+            var fieldColor = ClientColors.COLOR_FORCE_FIELD * ForceField.GetPulse(_AnimationTime);
 
             foreach (var flag in _State.Snapshot.Flags)
             {
@@ -1147,7 +1199,30 @@ namespace EatMeClient
                 var center = _Camera.ToScreenPosition(CellToWorld(flag.X, flag.Y), viewport);
                 var bounds = new Rectangle((int)(center.X - CELL_PIXELS * 0.5f), (int)(center.Y - CELL_PIXELS * 0.5f), CELL_PIXELS, CELL_PIXELS);
                 spriteBatch.Draw(_FlagTexture, bounds, GetFlagColor(flag.Team));
+
+                if (flag.IsSealed)
+                {
+                    var field = new Rectangle((int)(center.X - fieldPixels * 0.5f), (int)(center.Y - fieldPixels * 0.5f), fieldPixels, fieldPixels);
+                    spriteBatch.Draw(_ForceFieldTexture, field, fieldColor);
+                }
             }
+        }
+
+        /// <summary>
+        /// The force field bubble: white, with each pixel's opacity from ForceField.GetAlpha (premultiplied).
+        /// </summary>
+        private static Texture2D CreateForceFieldTexture(GraphicsDevice graphicsDevice)
+        {
+            const int SIZE = FORCE_FIELD_TEXTURE_PIXELS;
+            var data = new Color[SIZE * SIZE];
+
+            for (var y = 0; y < SIZE; y++)
+                for (var x = 0; x < SIZE; x++)
+                    data[y * SIZE + x] = Color.White * ForceField.GetAlpha(x, y, SIZE);
+
+            var texture = new Texture2D(graphicsDevice, SIZE, SIZE);
+            texture.SetData(data);
+            return texture;
         }
 
         /// <summary>
@@ -1256,8 +1331,8 @@ namespace EatMeClient
                 if (pac.PowerUpEffect == ePowerUpEffect.Invincible && PowerUpEffects.IsStarBlinkYellow(_AnimationTime))
                     tint = ClientColors.COLOR_PAC_YELLOW;
 
-                // a pac with Fireball flashes white
-                if (pac.PowerUpEffect == ePowerUpEffect.FireFlower && PowerUpEffects.IsFireFlashWhite(_AnimationTime))
+                // a pac with Fireball or Screw Attack flashes white
+                if (PowerUpEffects.FlashesWhite(pac.PowerUpEffect) && PowerUpEffects.IsFireFlashWhite(_AnimationTime))
                     tint = Color.White;
 
                 var (rotation, effects) = GetFacingTransform(pac.Facing);
@@ -1269,6 +1344,10 @@ namespace EatMeClient
                 // a Morph Ball pac rolls as it moves
                 if (pac.PowerUpEffect == ePowerUpEffect.MorphBall)
                     rotation += PowerUpEffects.GetRollAngle(pac.X, pac.Y);
+
+                // a Screw Attack pac spins very fast as it moves
+                if (pac.PowerUpEffect == ePowerUpEffect.ScrewAttack)
+                    rotation += PowerUpEffects.GetScrewAngle(pac.X, pac.Y);
 
                 // speed trail behind a pac with Sugar Rush, oldest copy first so the newer ones sit on top
                 var trail = _Trails.GetTrail(pac.PlayerId);
@@ -1336,8 +1415,9 @@ namespace EatMeClient
 
         /// <summary>
         /// Draws every weapon effect one cell wide from the weapon effects sheet in its own colors, flipping between
-        /// its two frames (WeaponEffectSprites.GetFrame, offset by id so they don't all flip together). Holy flames go
-        /// first so the rest sit on top; a thrown sword is turned to point the way it flies.
+        /// its two frames (WeaponEffectSprites.GetFrame, offset by id so they don't all flip together). Things lying in
+        /// the maze (holy flames, banana peels, Tetromino blocks) go first so the rest sit on top; a thrown sword is
+        /// turned to point the way it flies, and a hammer facing left is mirrored.
         /// </summary>
         private void DrawWeaponEffects(SpriteBatch spriteBatch, Viewport viewport)
         {
@@ -1348,7 +1428,7 @@ namespace EatMeClient
             {
                 foreach (var effect in _State.Snapshot.WeaponEffects)
                 {
-                    if ((effect.Kind == eWeaponEffect.HolyFlame) != (pass == 0))
+                    if (WeaponEffectSprites.IsOnFloor(effect.Kind) != (pass == 0))
                         continue;
 
                     var frame = WeaponEffectSprites.GetFrame(_AnimationTime + effect.Id * WeaponEffectSprites.FRAME_SECONDS);
@@ -1358,8 +1438,9 @@ namespace EatMeClient
                     var origin = new Vector2(WeaponEffectSprites.CELL_PIXELS * 0.5f);
                     var scale = (float)CELL_PIXELS / WeaponEffectSprites.CELL_PIXELS;
                     var rotation = effect.Kind == eWeaponEffect.Sword ? WeaponEffectSprites.GetRotation(effect.Facing) : 0f;
+                    var effects = effect.Kind == eWeaponEffect.Hammer && effect.Facing == eFacing.Left ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 
-                    spriteBatch.Draw(_WeaponEffectSheet, center, source, Color.White, rotation, origin, scale, SpriteEffects.None, 0f);
+                    spriteBatch.Draw(_WeaponEffectSheet, center, source, Color.White, rotation, origin, scale, effects, 0f);
                 }
             }
         }

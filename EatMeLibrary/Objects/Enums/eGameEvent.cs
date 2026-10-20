@@ -49,5 +49,17 @@ namespace EatMeLibrary
         /// Something touched a poke ball holding a ghost (TargetId), which got out at X, Y.
         /// </summary>
         PokeBallRelease,
+
+        /// <summary>
+        /// A pac with Super Size (mushroom) smashed one or more walls this tick; X, Y is where it is. Everyone hears
+        /// the boom and every board shakes.
+        /// </summary>
+        WallSmash,
+
+        /// <summary>
+        /// A BFG ball (owner ActorId) burst at X, Y, killing everything that isn't invincible within
+        /// PowerUpEffects.EFFECT_RADIUS.
+        /// </summary>
+        BfgBurst,
     }
 }

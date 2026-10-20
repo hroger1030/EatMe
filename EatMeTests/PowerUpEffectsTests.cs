@@ -139,21 +139,22 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsPermanent_VitaminCDoctorAwayAndExtraLife()
+        public void IsPermanent_VitaminCDoctorAwayExtraLifeAndEnergyTank()
         {
             foreach (var effect in Enum.GetValues<ePowerUpEffect>())
             {
-                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.ExtraLife;
+                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.ExtraLife
+                    || effect == ePowerUpEffect.EnergyTank;
                 Assert.That(PowerUpEffects.IsPermanent(effect), Is.EqualTo(expected), effect.ToString());
             }
         }
 
         [Test]
-        public void PreventsStarving_VitaminCAndMelonBelly()
+        public void PreventsStarving_VitaminCMelonBellyAndEnergyTank()
         {
             foreach (var effect in Enum.GetValues<ePowerUpEffect>())
             {
-                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly;
+                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank;
                 Assert.That(PowerUpEffects.PreventsStarving(effect), Is.EqualTo(expected), effect.ToString());
             }
         }
