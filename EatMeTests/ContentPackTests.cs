@@ -105,7 +105,7 @@ namespace EatMeTests
         [Test]
         public void TryOpen_IsNullWhenThereIsNoPack()
         {
-            Assert.That(ContentPack.TryOpen(Path.Combine(Path.GetTempPath(), "EatMeNoSuchPack", Const.CONTENT_PACK_FILE)), Is.Null);
+            Assert.That(ContentPack.TryOpen(Path.Combine(Path.GetTempPath(), "EatMeNoSuchPack", Const.RESOURCE_PACK_FILE)), Is.Null);
         }
 
         [Test]

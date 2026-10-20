@@ -7,7 +7,7 @@ using System.Collections.Generic;
 namespace EatMeClient
 {
     /// <summary>
-    /// Plays one looping song at a time, decoding its .ogg (AssetCache.OpenMusic, so it can come from Content.pak)
+    /// Plays one looping song at a time, decoding its .ogg (AssetCache.OpenMusic, so it can come from Resource.pac)
     /// with NVorbis and streaming it through a DynamicSoundEffectInstance.
     /// </summary>
     public static class MusicManager

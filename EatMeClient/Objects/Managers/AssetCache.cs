@@ -36,7 +36,7 @@ namespace EatMeClient
 
         /// <summary>
         /// Opens a song's .ogg for MusicManager to decode and stream: from memory if LoadMusic cached it (the title theme),
-        /// otherwise straight from the content (Content.pak when there is one), so level tracks are read only when played.
+        /// otherwise straight from the content (Resource.pac when there is one), so level tracks are read only when played.
         /// </summary>
         public static Stream OpenMusic(string songPath)
         {
@@ -78,7 +78,7 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Keeps each song's .ogg (MusicPlaylist.GetMusicFile) in memory, from Content.pak when there is one; for songs played
+        /// Keeps each song's .ogg (MusicPlaylist.GetMusicFile) in memory, from Resource.pac when there is one; for songs played
         /// often (the title theme). Others are read by OpenMusic when they start.
         /// </summary>
         public static void LoadMusic(IEnumerable<string> newSongs)
@@ -122,7 +122,7 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Loads plain text files copied into the content folder (mgcb /copy entries), from Content.pak when there is one.
+        /// Loads plain text files copied into the content folder (mgcb /copy entries), from Resource.pac when there is one.
         /// </summary>
         public static void LoadTexts(IEnumerable<string> newTexts)
         {

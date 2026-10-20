@@ -7,6 +7,6 @@ namespace EatMeLibrary
         /// <summary>
         /// Zip of the built content (everything but the music), made by publishing the client, in the Content folder.
         /// </summary>
-        public const string CONTENT_PACK_FILE = "Content.pak";
+        public const string RESOURCE_PACK_FILE = "Resource.pac";
     }
 }

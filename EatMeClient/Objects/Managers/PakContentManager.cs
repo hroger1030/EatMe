@@ -9,7 +9,7 @@ using System.Linq;
 namespace EatMeClient
 {
     /// <summary>
-    /// Loads content from Content.pak when the client has one (published builds), and from the loose built files
+    /// Loads content from Resource.pac when the client has one (published builds), and from the loose built files
     /// otherwise, or when the pack doesn't have a file.
     /// </summary>
     public class PakContentManager : ContentManager
@@ -18,11 +18,12 @@ namespace EatMeClient
 
         public PakContentManager(IServiceProvider serviceProvider, string rootDirectory) : base(serviceProvider, rootDirectory)
         {
-            _Pack = ContentPack.TryOpen(Path.Combine(AppContext.BaseDirectory, rootDirectory, Const.CONTENT_PACK_FILE));
+            // The pack sits next to the exe; its paths are relative to the content folder, as the loose files are
+            _Pack = ContentPack.TryOpen(Path.Combine(AppContext.BaseDirectory, Const.RESOURCE_PACK_FILE));
         }
 
         /// <summary>
-        /// True when content is coming from Content.pak.
+        /// True when content is coming from Resource.pac.
         /// </summary>
         public bool IsPacked => _Pack != null;
 

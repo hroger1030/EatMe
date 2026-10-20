@@ -24,6 +24,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - sliding on ice level
 - alternate wall art
 - change menus back to white and yellow colors with drop shadow.
+- the console needs to have input at the bottom, and a text buffer.
 
 
 ## Game Client 
@@ -322,8 +323,8 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - `~PublishPC.bat` publishes the client and server for Windows (win-x64) to `publish\pc_client` and `publish\pc_server`; `~PublishMac.bat` publishes them for macOS on Apple silicon (osx-arm64) to `publish\mac_client` and `publish\mac_server`. Each deletes its folders first.
 - Builds are Release, framework-dependent (players need the .NET runtime installed) and have no `.pdb` files.
 - Each app is a single-file executable: the app, its .NET libraries and the runtime settings (`.deps.json`, `.runtimeconfig.json`) are all inside the exe. The client's native SDL and OpenAL libraries stay next to the exe (`SDL2.dll` and `openal.dll` on Windows, `libSDL2-2.0.0.dylib` and `libopenal.dylib` on macOS), because MonoGame only loads them from the exe's folder.
-- The client folder holds only the exe, the two native libraries and `Content`. All the built content, music included, is packed into `Content\Content.pak`, a plain zip.
-- The client reads each asset from `Content.pak` when it has one, and from the loose built files otherwise, so normal builds and debugging use loose files.
+- The client folder holds only the exe, the two native libraries and `Resource.pac`. All the built content, music included, is packed into `Resource.pac`, a plain zip; there is no `Content` folder.
+- The client reads each asset from `Resource.pac` when it has one, and from the loose built files otherwise, so normal builds and debugging use loose files.
 - The server folder holds only the exe, `server.cfg`, `LoadingScreenTips.txt`, `bot_names.txt` and `highscores.txt`.
 - Both apps read and write their files (settings, high scores, server config) next to the exe.
 - `~StartClient.bat` and `~StartServer.bat` run the published Windows builds.

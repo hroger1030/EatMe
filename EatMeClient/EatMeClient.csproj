@@ -30,20 +30,18 @@
     <ProjectReference Include="..\..\FastG\FastG\FastG.csproj" />
     <ProjectReference Include="..\EatMeLibrary\EatMeLibrary.csproj" />
   </ItemGroup>
-  <!-- Publishing zips the built content, music included, into Content\Content.pak -->
+  <!-- Publishing zips the built content, music included, into Resource.pac next to the exe, and removes the Content folder -->
   <Target Name="PackContent" AfterTargets="Publish">
     <PropertyGroup>
       <PackContentDir>$(PublishDir)Content\</PackContentDir>
       <PackStagingDir>$(IntermediateOutputPath)ContentPack\</PackStagingDir>
     </PropertyGroup>
     <ItemGroup>
-      <PackFiles Include="$(PackContentDir)**\*" Exclude="$(PackContentDir)Content.pak" />
-      <PackFolders Include="@(PackFiles->'$(PackContentDir)%(RecursiveDir)')" Condition="'%(PackFiles.RecursiveDir)' != ''" />
+      <PackFiles Include="$(PackContentDir)**\*" />
     </ItemGroup>
     <RemoveDir Directories="$(PackStagingDir)" />
     <Copy SourceFiles="@(PackFiles)" DestinationFiles="@(PackFiles->'$(PackStagingDir)%(RecursiveDir)%(Filename)%(Extension)')" />
-    <ZipDirectory SourceDirectory="$(PackStagingDir)" DestinationFile="$(PackContentDir)Content.pak" Overwrite="true" />
-    <Delete Files="@(PackFiles)" />
-    <RemoveDir Directories="@(PackFolders->Distinct());$(PackStagingDir)" />
+    <ZipDirectory SourceDirectory="$(PackStagingDir)" DestinationFile="$(PublishDir)Resource.pac" Overwrite="true" />
+    <RemoveDir Directories="$(PackContentDir);$(PackStagingDir)" />
   </Target>
 </Project>

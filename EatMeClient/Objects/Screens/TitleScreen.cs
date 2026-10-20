@@ -67,7 +67,7 @@ namespace EatMeClient
             // Program.cs has loaded the settings, so the window is created in the saved mode
             SetDisplayMode();
 
-            // Reads Content.pak in published builds, the loose built files otherwise
+            // Reads Resource.pac in published builds, the loose built files otherwise
             Content = new PakContentManager(Services, "Content");
             IsMouseVisible = true;
             Window.Title = Const.GAME_TITLE;
