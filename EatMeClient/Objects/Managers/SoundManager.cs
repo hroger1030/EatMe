@@ -8,6 +8,9 @@ namespace EatMeClient
     {
         private const float DEFAULT_VOLUME = 0.2f;
 
+        // Not SoundEffect.MasterVolume, which would scale the music too (MusicManager streams through a SoundEffectInstance)
+        private static float _Volume;
+
         public static void Initialize(float defaultVolume = DEFAULT_VOLUME)
         {
             SetVolume(defaultVolume);
@@ -15,12 +18,12 @@ namespace EatMeClient
 
         public static float GetVolume()
         {
-            return SoundEffect.MasterVolume;
+            return _Volume;
         }
 
         public static void SetVolume(float newVolume)
         {
-            SoundEffect.MasterVolume = MathHelper.Clamp(newVolume, 0f, 1f);
+            _Volume = MathHelper.Clamp(newVolume, 0f, 1f);
         }
 
         /// <summary>
@@ -30,7 +33,7 @@ namespace EatMeClient
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(sfxName);
 
-            AssetCache.GetSfx(sfxName).Play();
+            AssetCache.GetSfx(sfxName).Play(_Volume, 0f, 0f);
         }
 
         /// <summary>
@@ -42,7 +45,7 @@ namespace EatMeClient
             ArgumentException.ThrowIfNullOrWhiteSpace(sfxName);
 
             if (volume > 0f)
-                AssetCache.GetSfx(sfxName).Play(MathHelper.Clamp(volume, 0f, 1f), 0f, 0f);
+                AssetCache.GetSfx(sfxName).Play(MathHelper.Clamp(volume, 0f, 1f) * _Volume, 0f, 0f);
         }
     }
 }

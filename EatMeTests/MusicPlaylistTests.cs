@@ -60,5 +60,11 @@ namespace EatMeTests
         {
             Assert.That(MusicPlaylist.GetResumeMusic(levelStartedWhilePaused, isIntermission), Is.EqualTo(expected));
         }
+
+        [Test]
+        public void GetMusicFile_AddsTheOggExtension()
+        {
+            Assert.That(MusicPlaylist.GetMusicFile(Const.SONG_TITLE_THEME), Is.EqualTo("Music/TitleTheme.ogg"));
+        }
     }
 }

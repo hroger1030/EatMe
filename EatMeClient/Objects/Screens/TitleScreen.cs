@@ -141,9 +141,9 @@ namespace EatMeClient
                 Const.IMAGE_WALL, Const.IMAGE_WALL_FILL, Const.IMAGE_SPACE_FILL, Const.IMAGE_POINTER, Const.IMAGE_MINI_MAP_ICONS]);
 
             // music
-            var trackFolder = Path.Combine(AppContext.BaseDirectory, Content.RootDirectory, MusicPlaylist.TRACK_FOLDER);
-            MusicManager.LevelTracks = Directory.Exists(trackFolder) ? MusicPlaylist.GetTrackNames(Directory.GetFiles(trackFolder, "*.xnb")) : [];
-            AssetCache.LoadSongs([Const.SONG_TITLE_THEME, .. MusicManager.LevelTracks]);
+            MusicManager.LevelTracks = MusicPlaylist.GetTrackNames(((PakContentManager)Content).GetFiles(MusicPlaylist.TRACK_FOLDER));
+            // only the title theme stays in memory; each level track is read when its level starts
+            AssetCache.LoadMusic([Const.SONG_TITLE_THEME]);
 
             // sound effects
             AssetCache.LoadSfx([
@@ -193,7 +193,7 @@ namespace EatMeClient
             _SelectedMenuIndex = 0;
 
             // Loops until a game starts; Play is a no-op if the theme is already playing
-            MusicManager.Play(AssetCache.GetSong(Const.SONG_TITLE_THEME));
+            MusicManager.Play(Const.SONG_TITLE_THEME);
         }
 
         protected override void Update(GameTime gameTime)

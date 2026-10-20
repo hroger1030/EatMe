@@ -71,6 +71,25 @@ namespace EatMeLibrary
         public bool Contains(string path) => _Entries.ContainsKey(NormalizePath(path));
 
         /// <summary>
+        /// Paths of the files in a folder of the pack (subfolders included), as the pack stores them.
+        /// </summary>
+        public List<string> GetFiles(string folder)
+        {
+            ArgumentNullException.ThrowIfNull(folder);
+
+            var prefix = NormalizePath(folder).TrimEnd('/') + "/";
+            var files = new List<string>();
+
+            foreach (var path in _Entries.Keys)
+            {
+                if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    files.Add(path);
+            }
+
+            return files;
+        }
+
+        /// <summary>
         /// Reads a file out of the pack into a seekable stream, or returns null if the pack doesn't have it.
         /// </summary>
         public Stream OpenFile(string path)

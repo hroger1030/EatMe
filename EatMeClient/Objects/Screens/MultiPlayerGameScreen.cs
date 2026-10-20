@@ -463,10 +463,13 @@ namespace EatMeClient
         /// <summary>
         /// Plays a looping sound while its condition holds and stops it as soon as it doesn't:
         /// the eat sound while our pac is eating, the siren while it's alive and not eating, the power pill loop while ours has one working, the power up sound while
-        /// a power up can be heard (UpdatePowerUpLoop).
+        /// a power up can be heard (UpdatePowerUpLoop). While it plays its volume follows the sound volume setting, times volume.
         /// </summary>
-        private static void UpdateLoopSound(SoundEffectInstance loop, bool playing)
+        private static void UpdateLoopSound(SoundEffectInstance loop, bool playing, float volume = 1f)
         {
+            if (playing)
+                loop.Volume = SoundManager.GetVolume() * volume;
+
             if (playing && loop.State != SoundState.Playing)
                 loop.Play();
             else if (!playing && loop.State == SoundState.Playing)
@@ -491,8 +494,7 @@ namespace EatMeClient
                 }
             }
 
-            _PowerUpLoop.Volume = volume;
-            UpdateLoopSound(_PowerUpLoop, volume > 0f);
+            UpdateLoopSound(_PowerUpLoop, volume > 0f, volume);
         }
 
         private void StopLoopSounds()
@@ -524,6 +526,7 @@ namespace EatMeClient
             _Announcer?.Stop();
             _Announcer?.Dispose();
             _Announcer = AssetCache.GetSfx(name).CreateInstance();
+            _Announcer.Volume = SoundManager.GetVolume();
             _Announcer.Play();
         }
 

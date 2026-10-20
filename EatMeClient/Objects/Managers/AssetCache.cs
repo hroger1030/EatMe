@@ -1,7 +1,6 @@
 using EatMeLibrary;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Media;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,7 +12,7 @@ namespace EatMeClient
         private static PakContentManager _ContentManager;
         private static readonly Dictionary<string, Texture2D> _Textures = new();
         private static readonly Dictionary<string, SoundEffect> _Sounds = new();
-        private static readonly Dictionary<string, Song> _Songs = new();
+        private static readonly Dictionary<string, byte[]> _Music = new();
         private static readonly Dictionary<string, SpriteFont> _Fonts = new();
         private static readonly Dictionary<string, string> _Texts = new();
         private static readonly Dictionary<string, Effect> _Effects = new();
@@ -35,7 +34,18 @@ namespace EatMeClient
 
         public static SoundEffect GetSfx(string sfxPath) => _Sounds[sfxPath];
 
-        public static Song GetSong(string songPath) => _Songs[songPath];
+        /// <summary>
+        /// Opens a song's .ogg for MusicManager to decode and stream: from memory if LoadMusic cached it (the title theme),
+        /// otherwise straight from the content (Content.pak when there is one), so level tracks are read only when played.
+        /// </summary>
+        public static Stream OpenMusic(string songPath)
+        {
+            ArgumentNullException.ThrowIfNull(songPath);
+
+            return _Music.TryGetValue(songPath, out var music)
+                ? new MemoryStream(music, false)
+                : _ContentManager.OpenFile(MusicPlaylist.GetMusicFile(songPath));
+        }
 
         public static SpriteFont GetFont(string fontPath) => _Fonts[fontPath];
 
@@ -67,14 +77,23 @@ namespace EatMeClient
             }
         }
 
-        public static void LoadSongs(IEnumerable<string> newSongs)
+        /// <summary>
+        /// Keeps each song's .ogg (MusicPlaylist.GetMusicFile) in memory, from Content.pak when there is one; for songs played
+        /// often (the title theme). Others are read by OpenMusic when they start.
+        /// </summary>
+        public static void LoadMusic(IEnumerable<string> newSongs)
         {
             ArgumentNullException.ThrowIfNull(newSongs);
 
             foreach (var name in newSongs)
             {
-                if (!_Songs.ContainsKey(name))
-                    _Songs[name] = _ContentManager.Load<Song>(name);
+                if (_Music.ContainsKey(name))
+                    continue;
+
+                using var stream = _ContentManager.OpenFile(MusicPlaylist.GetMusicFile(name));
+                using var memory = new MemoryStream();
+                stream.CopyTo(memory);
+                _Music[name] = memory.ToArray();
             }
         }
 

@@ -2,13 +2,15 @@ using EatMeLibrary;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace EatMeClient
 {
     /// <summary>
     /// Loads content from Content.pak when the client has one (published builds), and from the loose built files
-    /// otherwise, or when the pack doesn't have a file (the music, which is played from files on disk).
+    /// otherwise, or when the pack doesn't have a file.
     /// </summary>
     public class PakContentManager : ContentManager
     {
@@ -35,6 +37,20 @@ namespace EatMeClient
         public Stream OpenFile(string path)
         {
             return _Pack?.OpenFile(path) ?? TitleContainer.OpenStream(Path.Combine(RootDirectory, path));
+        }
+
+        /// <summary>
+        /// Paths (within the content folder) of the files in one of its folders, from the pack when it has any there.
+        /// </summary>
+        public List<string> GetFiles(string folder)
+        {
+            var files = _Pack?.GetFiles(folder);
+
+            if (files is { Count: > 0 })
+                return files;
+
+            var directory = Path.Combine(AppContext.BaseDirectory, RootDirectory, folder);
+            return Directory.Exists(directory) ? Directory.GetFiles(directory, "*", SearchOption.AllDirectories).Select(path => Path.GetRelativePath(Path.Combine(AppContext.BaseDirectory, RootDirectory), path)).ToList() : [];
         }
 
         protected override void Dispose(bool disposing)

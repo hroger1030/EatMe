@@ -107,5 +107,29 @@ namespace EatMeTests
         {
             Assert.That(ContentPack.TryOpen(Path.Combine(Path.GetTempPath(), "EatMeNoSuchPack", Const.CONTENT_PACK_FILE)), Is.Null);
         }
+
+        [Test]
+        public void GetFiles_ListsOnlyTheFolder()
+        {
+            using var pack = BuildPack(("Music/Track1.ogg", "a"), ("Music/Track1.xnb", "b"), ("Images/title.xnb", "c"), ("MusicNotes.txt", "d"));
+
+            Assert.That(pack.GetFiles("Music"), Is.EquivalentTo(new[] { "Music/Track1.ogg", "Music/Track1.xnb" }));
+        }
+
+        [Test]
+        public void GetFiles_IgnoresCaseAndSlashDirection()
+        {
+            using var pack = BuildPack(("Music/Track1.ogg", "a"));
+
+            Assert.That(pack.GetFiles(@"\music\"), Is.EquivalentTo(new[] { "Music/Track1.ogg" }));
+        }
+
+        [Test]
+        public void GetFiles_IsEmptyForAFolderNotInThePack()
+        {
+            using var pack = BuildPack(("Images/title.xnb", "a"));
+
+            Assert.That(pack.GetFiles("Music"), Is.Empty);
+        }
     }
 }

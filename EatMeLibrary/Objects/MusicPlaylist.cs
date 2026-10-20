@@ -16,6 +16,11 @@ namespace EatMeLibrary
         /// </summary>
         public const string TRACK_FOLDER = "Music";
 
+        /// <summary>
+        /// Extension of the audio file the content pipeline builds next to each song's .xnb; this is what is played.
+        /// </summary>
+        public const string MUSIC_FILE_EXTENSION = ".ogg";
+
         private static readonly Regex TRACK_NAME = new(@"^Track(\d+)(b?)$", RegexOptions.IgnoreCase);
 
         /// <summary>
@@ -35,6 +40,16 @@ namespace EatMeLibrary
                 .ThenBy(track => int.Parse(track.Match.Groups[1].Value))
                 .Select(track => TRACK_FOLDER + "/" + track.Name)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Path in the content folder of a song's audio file from its content name, e.g. "Music/Track1" is "Music/Track1.ogg".
+        /// </summary>
+        public static string GetMusicFile(string songName)
+        {
+            ArgumentNullException.ThrowIfNull(songName);
+
+            return songName + MUSIC_FILE_EXTENSION;
         }
 
         /// <summary>
