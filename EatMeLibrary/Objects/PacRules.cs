@@ -44,6 +44,11 @@ namespace EatMeLibrary
         public const float INVINCIBLE_SPEED_SCALE = 1.25f;
 
         /// <summary>
+        /// A pac with Energy Tank moves this many times as fast.
+        /// </summary>
+        public const float ENERGY_TANK_SPEED_SCALE = 1.3f;
+
+        /// <summary>
         /// Size a pac gains while Melon Belly (melon) works, lost again when it ends.
         /// </summary>
         public const float MELON_BELLY_SIZE_GAIN = 50f;
@@ -171,7 +176,7 @@ namespace EatMeLibrary
 
         /// <summary>
         /// What a power up effect multiplies a pac's speed (GetSpeed) by: SUGAR_RUSH_SPEED_SCALE for Sugar Rush,
-        /// INVINCIBLE_SPEED_SCALE for Invincible, otherwise 1.
+        /// INVINCIBLE_SPEED_SCALE for Invincible, ENERGY_TANK_SPEED_SCALE for Energy Tank, otherwise 1.
         /// </summary>
         public static float GetEffectSpeedScale(ePowerUpEffect effect)
         {
@@ -179,6 +184,7 @@ namespace EatMeLibrary
             {
                 ePowerUpEffect.SugarRush => SUGAR_RUSH_SPEED_SCALE,
                 ePowerUpEffect.Invincible => INVINCIBLE_SPEED_SCALE,
+                ePowerUpEffect.EnergyTank => ENERGY_TANK_SPEED_SCALE,
                 _ => 1f,
             };
         }

@@ -37,16 +37,11 @@ namespace EatMeLibrary
         public string BackgroundImage { get; }
 
         /// <summary>
-        /// Bonus items that appear in the level. Power pills are on every level regardless.
-        /// </summary>
-        public ePowerUp PowerUps { get; }
-
-        /// <summary>
         /// A rainbow level: rainbow dots and walls (Rainbow), and ghosts twice the size (PacRules.GetGhostRadius).
         /// </summary>
         public bool IsRainbow { get; }
 
-        public LevelInfo(int level, string name, FastColor wallColor, FastColor wallFillColor, FastColor backgroundColor, ePowerUp powerUps,
+        public LevelInfo(int level, string name, FastColor wallColor, FastColor wallFillColor, FastColor backgroundColor,
             bool isRainbow = false, string backgroundImage = null)
         {
             IsRainbow = isRainbow;
@@ -56,7 +51,6 @@ namespace EatMeLibrary
             WallFillColor = wallFillColor;
             BackgroundColor = backgroundColor;
             BackgroundImage = backgroundImage;
-            PowerUps = powerUps;
         }
     }
 }

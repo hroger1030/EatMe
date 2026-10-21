@@ -118,33 +118,6 @@ namespace EatMeTests
         }
 
         [Test]
-        public void EveryLevel_IntroducesExactlyOnePowerUp()
-        {
-            var seen = ePowerUp.None;
-
-            for (var level = 1; level <= Levels.Count; level++)
-            {
-                var added = Levels.GetLevel(level).PowerUps & ~seen;
-
-                Assert.That(added, Is.Not.EqualTo(ePowerUp.None), $"level {level}");
-                Assert.That(added & (added - 1), Is.EqualTo(ePowerUp.None), $"level {level} adds more than one");
-
-                seen |= added;
-            }
-        }
-
-        [Test]
-        public void EveryPowerUp_IsIntroducedBySomeLevel()
-        {
-            var seen = ePowerUp.None;
-
-            for (var level = 1; level <= Levels.Count; level++)
-                seen |= Levels.GetLevel(level).PowerUps;
-
-            Assert.That(seen, Is.EqualTo(ePowerUp.Any));
-        }
-
-        [Test]
         public void Any_IsEveryPowerUp()
         {
             var all = ePowerUp.None;

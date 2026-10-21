@@ -35,6 +35,7 @@ Player list (hold)  Tab                     Left or right shoulder
 Menu / pause        Esc                     Back
 Menu select         Enter or Space          A
 Menu back           Esc                     B or Back
+Performance overlay F1
 
 Text boxes (such as your name) are moved between with the arrow keys only,
 since W, A, S and D can be typed.

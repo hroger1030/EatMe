@@ -7,36 +7,40 @@ namespace EatMeClient
 {
     /// <summary>
     /// The player's power up effect, under the mini-map: the effect's name ("No power up" when there isn't one) above a meter,
-    /// greyed out, with a yellow bar over it counting down the time left, and the player's size under that, then a hunger meter filling red as the pac nears starving, inside a
-    /// yellow border with rounded corners like the mini-map's. The text is left aligned.
+    /// greyed out, with a yellow bar over it counting down the time left, and the player's size under that, then a hunger meter filling red as the pac nears starving,
+    /// then "Stunned!" centred in JLS Space Gothic 48, barely visible dark grey until the pac is stunned, when it turns bright red, inside a
+    /// yellow border with rounded corners like the mini-map's. The rest of the text is left aligned.
     /// </summary>
     public class PlayerState
     {
         private const int PADDING_PIXELS = 8;
-        private const int METER_HEIGHT_PIXELS = 12;
+        private const int BAR_HEIGHT_PIXELS = 18;
 
         private readonly SpriteFont _font;
+        private readonly SpriteFont _stunnedFont;
         private Texture2D _pixel;
 
-        public PlayerState(SpriteFont font)
+        public PlayerState(SpriteFont font, SpriteFont stunnedFont)
         {
             _font = font;
+            _stunnedFont = stunnedFont;
         }
 
         /// <summary>
         /// Height of the whole control, border included: padding, the label, padding, the meter, padding, the size, padding,
-        /// the size bar, padding, the hunger meter and padding.
+        /// the size bar, padding, the hunger meter, padding, "Stunned!" and padding.
         /// </summary>
         public int GetHeight()
         {
-            return MiniMap.BORDER_PIXELS * 2 + PADDING_PIXELS * 6 + _font.LineSpacing * 2 + METER_HEIGHT_PIXELS * 3;
+            return MiniMap.BORDER_PIXELS * 2 + PADDING_PIXELS * 7 + _font.LineSpacing * 2 + BAR_HEIGHT_PIXELS * 3
+                + _stunnedFont.LineSpacing;
         }
 
         /// <summary>
         /// Draws the control filling bounds (border included). fill is the share of the effect's time left, 0 to 1, and
-        /// size is the player's pac size and hunger how close it is to starving, 0 to 1.
+        /// size is the player's pac size and hunger how close it is to starving, 0 to 1; stunned lights up "Stunned!".
         /// </summary>
-        public void Draw(SpriteBatch spriteBatch, Rectangle bounds, ePowerUpEffect effect, float fill, int size, float hunger)
+        public void Draw(SpriteBatch spriteBatch, Rectangle bounds, ePowerUpEffect effect, float fill, int size, float hunger, bool stunned)
         {
             if (_pixel == null)
                 _pixel = TextureHelper.GetPixel(spriteBatch.GraphicsDevice);
@@ -52,7 +56,7 @@ namespace EatMeClient
             var textX = inner.X + PADDING_PIXELS;
             spriteBatch.DrawString(_font, label, new Vector2(textX, inner.Y + PADDING_PIXELS), labelColor);
 
-            var meter = new Rectangle(inner.X + PADDING_PIXELS, inner.Y + PADDING_PIXELS * 2 + _font.LineSpacing, inner.Width - PADDING_PIXELS * 2, METER_HEIGHT_PIXELS);
+            var meter = new Rectangle(inner.X + PADDING_PIXELS, inner.Y + PADDING_PIXELS * 2 + _font.LineSpacing, inner.Width - PADDING_PIXELS * 2, BAR_HEIGHT_PIXELS);
             spriteBatch.Draw(_pixel, meter, ClientColors.COLOR_POWER_UP_BAR_EMPTY);
 
             // the yellow part shrinks towards the left as the effect runs out
@@ -66,7 +70,7 @@ namespace EatMeClient
             spriteBatch.DrawString(_font, sizeText, new Vector2(textX, sizeY), ClientColors.COLOR_PAC_WHITE);
 
             // the size bar fills green up to 100, then turns orange above 100 and red above 150
-            var sizeBar = new Rectangle(meter.X, sizeY + _font.LineSpacing + PADDING_PIXELS, meter.Width, METER_HEIGHT_PIXELS);
+            var sizeBar = new Rectangle(meter.X, sizeY + _font.LineSpacing + PADDING_PIXELS, meter.Width, BAR_HEIGHT_PIXELS);
             spriteBatch.Draw(_pixel, sizeBar, ClientColors.COLOR_POWER_UP_BAR_EMPTY);
 
             var sizeWidth = (int)Math.Round(sizeBar.Width * SizeBar.GetFill(size));
@@ -75,13 +79,19 @@ namespace EatMeClient
                 spriteBatch.Draw(_pixel, new Rectangle(sizeBar.X, sizeBar.Y, sizeWidth, sizeBar.Height), ClientColors.GetSizeBarColor(SizeBar.GetLevel(size)));
 
             // the red part grows towards the right as the pac gets hungrier, and empties when it eats
-            var hungerMeter = new Rectangle(meter.X, sizeBar.Bottom + PADDING_PIXELS, meter.Width, METER_HEIGHT_PIXELS);
+            var hungerMeter = new Rectangle(meter.X, sizeBar.Bottom + PADDING_PIXELS, meter.Width, BAR_HEIGHT_PIXELS);
             spriteBatch.Draw(_pixel, hungerMeter, ClientColors.COLOR_POWER_UP_BAR_EMPTY);
 
             var hungerWidth = (int)Math.Round(hungerMeter.Width * Math.Clamp(hunger, 0f, 1f));
 
             if (hungerWidth > 0)
                 spriteBatch.Draw(_pixel, new Rectangle(hungerMeter.X, hungerMeter.Y, hungerWidth, hungerMeter.Height), ClientColors.COLOR_PAC_RED);
+
+            // always there, barely visible, until the pac is stunned
+            var stunnedWidth = _stunnedFont.MeasureString(Const.STRING_STUNNED).X;
+            var stunnedPosition = new Vector2((int)(inner.X + (inner.Width - stunnedWidth) / 2), hungerMeter.Bottom + PADDING_PIXELS);
+            var stunnedColor = stunned ? ClientColors.COLOR_STUNNED_ON : ClientColors.COLOR_STUNNED_OFF;
+            spriteBatch.DrawString(_stunnedFont, Const.STRING_STUNNED, stunnedPosition, stunnedColor);
         }
     }
 }

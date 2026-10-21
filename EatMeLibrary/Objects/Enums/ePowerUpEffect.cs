@@ -20,12 +20,13 @@ namespace EatMeLibrary
         SweetTooth = 3,
 
         /// <summary>
-        /// Orange: never starves, and lasts until the pac dies or another effect replaces it (PowerUpEffects.IsPermanent).
+        /// Orange: never starves while it lasts.
         /// </summary>
         VitaminC = 4,
 
         /// <summary>
-        /// Apple: ghosts won't chase the pac and run from it (Player.RepelsGhosts). Permanent (PowerUpEffects.IsPermanent).
+        /// Apple: kills every ghost within PowerUpEffects.EFFECT_RADIUS while it lasts (PowerUpEffects.KillsGhostsInRange),
+        /// and ghosts won't chase the pac and run from it (Player.RepelsGhosts).
         /// </summary>
         DoctorAway = 5,
 
@@ -125,7 +126,8 @@ namespace EatMeLibrary
         SuperSize = 24,
 
         /// <summary>
-        /// Energy tank (permanent): size PowerUpEffects.ENERGY_TANK_SIZE, and never starves.
+        /// Energy tank: PacRules.ENERGY_TANK_SPEED_SCALE speed, dots grow it to PowerUpEffects.GetMaxSize (twice PacMaxSize),
+        /// and never starves; back down to PacMaxSize when it ends.
         /// </summary>
         EnergyTank = 25,
 
@@ -150,5 +152,23 @@ namespace EatMeLibrary
         /// while it works the team's flags are sealed in a force field: enemies can't pick them up (GameFlag.IsSealed).
         /// </summary>
         ForceField = 29,
+
+        /// <summary>
+        /// POW block: each press of the action button stuns every ghost and every other pac within
+        /// PowerUpEffects.EFFECT_RADIUS for POW_STUN_MS (GameServer.PowStun).
+        /// </summary>
+        Pow = 30,
+
+        /// <summary>
+        /// Heart container: when it starts the pac grows to PacMaxSize if smaller and its hunger resets, and it never
+        /// starves while it lasts. Its size stays as it is when it ends.
+        /// </summary>
+        FullHeal = 31,
+
+        /// <summary>
+        /// Poke ball: each press of the action button (at most one per WeaponRules.POKE_BALL_COOLDOWN_MS) throws a poke
+        /// ball that seeks the nearest ghost. Every ball still flying goes when the effect ends.
+        /// </summary>
+        Gotcha = 32,
     }
 }

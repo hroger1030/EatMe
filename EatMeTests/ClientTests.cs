@@ -408,5 +408,22 @@ namespace EatMeTests
             state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, false, false, false, msSinceEaten: msUntilStarvation)] }, 0);
             Assert.That(state.GetOwnHungerFill(), Is.EqualTo(0f), "a dead pac isn't hungry");
         }
+
+        [Test]
+        public void OwnStunned_FollowsOwnLivingPac()
+        {
+            var state = JoinedState(playerId: 3);
+            Assert.That(state.IsOwnPacStunned(), Is.False, "no snapshot yet");
+
+            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false, stunned: true)] }, 0);
+            Assert.That(state.IsOwnPacStunned(), Is.True);
+
+            state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false)] }, 0);
+            Assert.That(state.IsOwnPacStunned(), Is.False, "reverts when the stun ends");
+
+            state.Apply(new SnapshotMessage { Tick = 3, Pacs = [new PacState(4, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false, stunned: true),
+                new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, false, false, false, stunned: true)] }, 0);
+            Assert.That(state.IsOwnPacStunned(), Is.False, "another pac's stun and a dead own pac don't count");
+        }
     }
 }

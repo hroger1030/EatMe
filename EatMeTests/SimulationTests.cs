@@ -337,7 +337,7 @@ namespace EatMeTests
         }
 
         [Test]
-        public void VitaminC_NeverRunsOutOrStarves()
+        public void VitaminC_NeverStarvesWhileItLasts()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
@@ -347,12 +347,24 @@ namespace EatMeTests
             red.MsSinceEaten = Config.MsUntilStarvation;
             server.StartPowerUpEffect(red, ePowerUpEffect.VitaminC);
 
-            server.UpdateEating(Config.PowerUpDurationMs + Config.MsUntilStarvation + 5000);
+            server.UpdateEating(Config.PowerUpDurationMs - 1000);
 
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.VitaminC));
-            Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs), "the buff bar stays full");
+            Assert.That(red.PowerUpMs, Is.EqualTo(1000), "the buff bar counts down");
             Assert.That(red.MsSinceEaten, Is.EqualTo(0), "the hunger bar stays empty");
             Assert.That(red.Size, Is.EqualTo(50f), "never shrinks");
+        }
+
+        [Test]
+        public void VitaminC_RunsOutAfterTheStandardDuration()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.StartPowerUpEffect(red, ePowerUpEffect.VitaminC);
+
+            server.UpdateEating(Config.PowerUpDurationMs);
+
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
         }
 
         [Test]
@@ -375,18 +387,21 @@ namespace EatMeTests
         }
 
         [Test]
-        public void Apple_StartsDoctorAway_WhichIsPermanent()
+        public void Apple_StartsDoctorAway_ForTheStandardDuration()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
 
             server.ApplyPowerUp(red, ePowerUp.Apple);
-            server.UpdateEating(Config.PowerUpDurationMs + 5000);
-
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.DoctorAway));
-            Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs), "the buff bar stays full");
             Assert.That(red.RepelsGhosts, Is.True);
-            Assert.That(red.IsPowered, Is.False, "can't kill ghosts");
+
+            server.UpdateEating(Config.PowerUpDurationMs / 2);
+            Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs - Config.PowerUpDurationMs / 2), "the buff bar counts down");
+
+            server.UpdateEating(Config.PowerUpDurationMs);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(red.RepelsGhosts, Is.False);
         }
 
         [Test]
@@ -735,6 +750,36 @@ namespace EatMeTests
         }
 
         [Test]
+        public void MovePacs_PacStopsAtGhostGenerator([Values(eTeamPreference.Red, eTeamPreference.Blue)] eTeamPreference team)
+        {
+            var server = MakeServer();
+            var (pac, _) = Join(server, 1, team);
+            var width = server.Map.GetLength(0);
+            var height = server.Map.GetLength(1);
+
+            foreach (var (x, y) in FindCells(server, eGridDef.GhostGenerator))
+                foreach (var inward in Enum.GetValues<eFacing>())
+                {
+                    var (ox, oy) = MazeMovement.GetNeighbor(x, y, MazeMovement.GetOpposite(inward), width, height);
+
+                    if ((server.Map[ox, oy] & (eGridDef.Wall | eGridDef.GhostGenerator)) != 0)
+                        continue;
+
+                    PutOn(pac, (ox, oy));
+                    pac.Facing = inward;
+                    server.Players.Single(p => p.Player == pac).Input = MazeMovement.ToDirection(inward);
+
+                    server.MovePacs(1.5f / PacRules.GetSpeed(Config.PacSpeed, pac.Size, Config.PacMaxSize), 0);
+
+                    Assert.That(pac.Location.X, Is.EqualTo(ox + 0.5f).Within(0.0001f));
+                    Assert.That(pac.Location.Y, Is.EqualTo(oy + 0.5f).Within(0.0001f));
+                    return;
+                }
+
+            Assert.Fail("No way into the ghost generator");
+        }
+
+        [Test]
         public void FlagCarrier_SteppingOntoSpawn_DropsFlagOutside()
         {
             var server = MakeServer();
@@ -819,12 +864,11 @@ namespace EatMeTests
             blue.Location = new Point2(10.5f, 10.5f + PowerUpEffects.EFFECT_RADIUS);
             far.Location = new Point2(10.5f + PowerUpEffects.EFFECT_RADIUS + 1f, 10.5f);
             ghost.Location = new Point2(15.5f, 15.5f);
-            server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
-
             server.ApplyPowerUp(red, ePowerUp.PowBlock);
 
+            server.HandleAction(red);
+
             Assert.That(red.IsStunned, Is.False, "not the eater");
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SugarRush), "instant: the eater's effect is left alone");
             Assert.That(mate.StunMs, Is.EqualTo(PowerUpEffects.POW_STUN_MS), "teammates too");
             Assert.That(blue.IsStunned, Is.True);
             Assert.That(far.IsStunned, Is.False, "out of range");
@@ -836,6 +880,40 @@ namespace EatMeTests
         }
 
         [Test]
+        public void PowBlock_IsAnEffect_ThatReplacesTheOldOne_AndStunsNothingUntilAction()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            red.Location = new Point2(10.5f, 10.5f);
+            blue.Location = new Point2(12.5f, 10.5f);
+            server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
+
+            server.ApplyPowerUp(red, ePowerUp.PowBlock);
+
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Pow));
+            Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
+            Assert.That(blue.IsStunned, Is.False);
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.Pow), Is.False);
+        }
+
+        [Test]
+        public void PowBlock_GoesOffOnEveryAction_AfterTheCooldown()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            red.Location = new Point2(10.5f, 10.5f);
+            server.ApplyPowerUp(red, ePowerUp.PowBlock);
+
+            server.HandleAction(red);
+            server.HandleAction(red);
+            red.ActionCooldownMs = 0;
+            server.HandleAction(red);
+
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Count(e => e.EventType == eGameEvent.Pow), Is.EqualTo(2), "the second press is in the cooldown");
+        }
+
+        [Test]
         public void PowBlock_BroadcastsPowEvent()
         {
             var server = MakeServer();
@@ -843,6 +921,7 @@ namespace EatMeTests
             red.Location = new Point2(10.5f, 12.5f);
 
             server.ApplyPowerUp(red, ePowerUp.PowBlock);
+            server.HandleAction(red);
 
             var pow = connection.ReceivedOf<GameEventMessage>().Single(e => e.EventType == eGameEvent.Pow);
             Assert.That(pow.ActorId, Is.EqualTo(red.Id));

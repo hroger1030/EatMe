@@ -401,6 +401,7 @@ namespace EatMeTests
             PutOn(red, FindFarOpenCell(server, red));
 
             server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.HandleAction(red);
 
             for (var i = 0; i < 2000 && !ghost.IsCaptured; i++)
                 Tick(server, 1);
@@ -429,12 +430,72 @@ namespace EatMeTests
         }
 
         [Test]
+        public void PokeBall_StartsGotcha_AndEachPressAfterTheCooldownThrowsABall()
+        {
+            var server = MakeServer(ghosts: 0);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+
+            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Gotcha), "a normal effect: it replaces the buff");
+            Assert.That(server.WeaponEffects, Is.Empty, "eating it throws nothing");
+
+            server.HandleAction(red);
+            Assert.That(red.ActionCooldownMs, Is.EqualTo(WeaponRules.POKE_BALL_COOLDOWN_MS));
+            server.HandleAction(red);
+            Assert.That(server.WeaponEffects, Has.Count.EqualTo(1), "still cooling down");
+
+            red.ActionCooldownMs = 0;
+            server.HandleAction(red);
+            red.ActionCooldownMs = 0;
+            server.HandleAction(red);
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.PokeBall), Is.EqualTo(3), "no limit in flight");
+        }
+
+        [Test]
+        public void PokeBall_FlyingBallsGo_WhenGotchaEnds()
+        {
+            var server = MakeServer(ghosts: 0);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.HandleAction(red);
+            red.ActionCooldownMs = 0;
+            server.HandleAction(red);
+
+            server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
+            Tick(server, 1);
+
+            Assert.That(server.WeaponEffects, Is.Empty);
+        }
+
+        [Test]
+        public void PokeBall_HoldingAGhost_StaysWhenGotchaEnds()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var ghost = server.Ghosts[0];
+            PutOn(red, FindFarOpenCell(server, red));
+            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.HandleAction(red);
+
+            for (var i = 0; i < 2000 && !ghost.IsCaptured; i++)
+                Tick(server, 1);
+
+            Assert.That(ghost.IsCaptured, Is.True);
+            server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
+            Tick(server, 1);
+
+            Assert.That(server.WeaponEffects.Single().IsHoldingGhost, Is.True);
+        }
+
+        [Test]
         public void PokeBall_WithNoGhosts_WandersTheMaze()
         {
             var server = MakeServer(ghosts: 0);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
 
             server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.HandleAction(red);
             var start = server.WeaponEffects.Single().Location;
             Tick(server, 120);
 

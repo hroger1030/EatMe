@@ -25,6 +25,7 @@ namespace EatMeServer
         public const string AUTO_BALANCE = "autobalance";
         public const string MOTD = "motd";
         public const string SETTINGS = "settings";
+        public const string PERF = "perf";
         public const string CLEAR = "clear";
         public const string QUIT = "quit";
 
@@ -47,6 +48,7 @@ namespace EatMeServer
             { AUTO_BALANCE, "autobalance [on|off]", "Show or set whether bots keep the teams the same size" },
             { MOTD, "motd [text]", "Show or set the message of the day for players who join from now on" },
             { SETTINGS, "settings", "Every server.cfg setting with its command and value" },
+            { PERF, "perf [on|off]", "Show or set logging tick times, memory and traffic every 5 seconds" },
             { CLEAR, "clear", "Clear the console" },
             { QUIT, "quit", "Stop the server" },
         };
@@ -183,6 +185,17 @@ namespace EatMeServer
                 case SETTINGS:
                     return FormatTable(SettingCommands.GetSettingRows(game.Settings), [false, false, false]);
 
+                case PERF:
+                    if (argument.Length > 0)
+                    {
+                        if (!TryParseOnOff(argument, out var perfOn))
+                            return "Usage: perf on|off";
+
+                        game.Perf.SetLogging(perfOn);
+                    }
+
+                    return $"Perf logging {(game.Perf.IsLogging ? "on" : "off")}";
+
                 case CLEAR:
                     ServerLog.Clear();
                     return string.Empty;
@@ -246,7 +259,7 @@ namespace EatMeServer
             for (var i = 0; i < COMMANDS.GetLength(0); i++)
                 text.Append($"\n  {COMMANDS[i, 1].PadRight(width)}  {COMMANDS[i, 2]}");
 
-            text.Append("\nSettings (alone to show, with a value to change; not saved to server.cfg):");
+            text.Append("\n\nSettings (alone to show, with a value to change; not saved to server.cfg):");
 
             for (var i = 0; i < SettingCommands.COMMANDS.GetLength(0); i++)
                 text.Append($"\n  {SettingCommands.COMMANDS[i, 1].PadRight(width)}  {SettingCommands.COMMANDS[i, 2]}");

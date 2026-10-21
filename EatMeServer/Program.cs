@@ -1,3 +1,4 @@
+using EatMeLibrary;
 using EatMeServer;
 using System;
 using System.Collections.Concurrent;
@@ -126,8 +127,13 @@ while (!shutdown.IsCancellationRequested)
     var elapsedMs = (int)(nowMs - lastTickMs);
     lastTickMs = nowMs;
 
+    // the tick's parts are timed for perf logging; Record returns now, the next part's start
+    var tickStart = PerfStats.GetTimestamp();
+
     while (network.TryGetEvent(out var networkEvent))
         game.HandleEvent(networkEvent);
+
+    var perfStart = game.Perf.Record(ePerfSection.Network, tickStart);
 
     while (commands.TryDequeue(out var command))
     {
@@ -140,10 +146,17 @@ while (!shutdown.IsCancellationRequested)
             shutdown.Cancel();
     }
 
+    game.Perf.Record(ePerfSection.Commands, perfStart);
     game.Update(elapsedMs);
 
     // the prompt follows window resizes and its uptime
     ServerLog.Refresh();
+    game.Perf.Record(ePerfSection.Tick, tickStart);
+
+    var perfReport = game.Perf.Update(game);
+
+    if (perfReport != null)
+        ServerLog.Write(eLogType.Perf, perfReport);
 
     // read each tick, so the console's set TickRate takes effect at once
     var tickInterval = TimeSpan.FromSeconds(1.0 / Math.Max(1, settings.TickRate));

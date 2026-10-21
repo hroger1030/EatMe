@@ -139,21 +139,44 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsPermanent_VitaminCDoctorAwayAndEnergyTank()
+        public void GetMaxSize_OnlyEnergyTankDoubles()
         {
             foreach (var effect in Enum.GetValues<ePowerUpEffect>())
             {
-                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.EnergyTank;
-                Assert.That(PowerUpEffects.IsPermanent(effect), Is.EqualTo(expected), effect.ToString());
+                var expected = effect == ePowerUpEffect.EnergyTank ? 200f : 100f;
+                Assert.That(PowerUpEffects.GetMaxSize(effect, 100f), Is.EqualTo(expected), effect.ToString());
             }
         }
 
         [Test]
-        public void PreventsStarving_VitaminCMelonBellyAndEnergyTank()
+        public void GetEndSize_EnergyTank_OnlyShrinksPastMaxSize()
+        {
+            Assert.That(PowerUpEffects.GetEndSize(ePowerUpEffect.EnergyTank, 180f, 100f), Is.EqualTo(100f));
+            Assert.That(PowerUpEffects.GetEndSize(ePowerUpEffect.EnergyTank, 60f, 100f), Is.EqualTo(60f));
+            Assert.That(PowerUpEffects.GetEndSize(ePowerUpEffect.SugarRush, 180f, 100f), Is.Null);
+        }
+
+        [Test]
+        public void GetEffectSpeedScale_EnergyTank()
+        {
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUpEffect.EnergyTank), Is.EqualTo(PacRules.ENERGY_TANK_SPEED_SCALE));
+            Assert.That(PacRules.ENERGY_TANK_SPEED_SCALE, Is.EqualTo(1.3f));
+        }
+
+        [Test]
+        public void KillsGhostsInRange_OnlyDoctorAway()
+        {
+            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
+                Assert.That(PowerUpEffects.KillsGhostsInRange(effect), Is.EqualTo(effect == ePowerUpEffect.DoctorAway), effect.ToString());
+        }
+
+        [Test]
+        public void PreventsStarving_VitaminCMelonBellyEnergyTankAndFullHeal()
         {
             foreach (var effect in Enum.GetValues<ePowerUpEffect>())
             {
-                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank;
+                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank
+                    || effect == ePowerUpEffect.FullHeal;
                 Assert.That(PowerUpEffects.PreventsStarving(effect), Is.EqualTo(expected), effect.ToString());
             }
         }

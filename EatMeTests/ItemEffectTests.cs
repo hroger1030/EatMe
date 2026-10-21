@@ -260,7 +260,7 @@ namespace EatMeTests
         // Heart container
 
         [Test]
-        public void HeartContainer_FillsUpToMaxSize_AndResetsHunger()
+        public void HeartContainer_StartsFullHeal_FillsUpToMaxSize_AndResetsHunger()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
@@ -272,11 +272,39 @@ namespace EatMeTests
 
             Assert.That(red.Size, Is.EqualTo(new GameConfiguration().PacMaxSize));
             Assert.That(red.MsSinceEaten, Is.EqualTo(0));
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SugarRush), "instant: the buff is kept");
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.FullHeal), "a normal effect: it replaces the buff");
+            Assert.That(red.PowerUpMs, Is.EqualTo(new GameConfiguration().PowerUpDurationMs));
 
             red.Size = 150f;
             server.ApplyPowerUp(red, ePowerUp.HeartContainer);
             Assert.That(red.Size, Is.EqualTo(150f), "never smaller");
+        }
+
+        [Test]
+        public void FullHeal_ReplacingMelonBelly_StillFillsUpToMaxSize()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            red.Size = 10f;
+            server.StartPowerUpEffect(red, ePowerUpEffect.MelonBelly);
+
+            server.ApplyPowerUp(red, ePowerUp.HeartContainer);
+
+            Assert.That(red.Size, Is.EqualTo(new GameConfiguration().PacMaxSize), "Melon Belly's gain goes first");
+        }
+
+        [Test]
+        public void FullHeal_NeverStarves_AndKeepsItsSizeWhenItEnds()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.HeartContainer);
+            red.Size = 70f;
+
+            server.EndPowerUpEffect(red);
+
+            Assert.That(red.Size, Is.EqualTo(70f));
+            Assert.That(PowerUpEffects.PreventsStarving(ePowerUpEffect.FullHeal), Is.True);
         }
 
         // Tetromino
@@ -385,6 +413,42 @@ namespace EatMeTests
             Assert.That(red.PlayerKills, Is.EqualTo(1));
             Assert.That(red.GhostKills, Is.EqualTo(1));
             Assert.That(red.Alive, Is.True, "the hammer doesn't protect, but nothing hit it");
+        }
+
+        // Doctor Away
+
+        [Test]
+        public void DoctorAway_KillsGhostsInRange_AndScoresThem()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.Apple);
+            var ghost = server.Ghosts[0];
+
+            ghost.Location = new Point2(red.Location.X + PowerUpEffects.EFFECT_RADIUS + 2f, red.Location.Y);
+            Tick(server, 1);
+            Assert.That(ghost.Alive, Is.True, "out of range");
+
+            ghost.Location = new Point2(red.Location.X + PowerUpEffects.EFFECT_RADIUS - 1f, red.Location.Y);
+            Tick(server, 1);
+            Assert.That(ghost.Alive, Is.False);
+            Assert.That(red.GhostKills, Is.EqualTo(1));
+            Assert.That(red.Score, Is.EqualTo(new GameConfiguration().GhostKill));
+        }
+
+        [Test]
+        public void DoctorAway_KillsNothingOnceItEnds()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.Apple);
+            server.UpdateEating(new GameConfiguration().PowerUpDurationMs);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+
+            server.Ghosts[0].Location = new Point2(red.Location.X + 3f, red.Location.Y);
+            server.UpdateWeaponEffects(0f, 0);
+
+            Assert.That(server.Ghosts[0].Alive, Is.True);
         }
 
         // BFG
@@ -542,24 +606,63 @@ namespace EatMeTests
         // Energy tank
 
         [Test]
-        public void EnergyTank_Size150_Permanent_NeverStarves_UntilReplacedThenMaxSize()
+        public void EnergyTank_KeepsSize_GrowsPastMaxSize_NeverStarves()
+        {
+            var server = MakeServer();
+            var config = new GameConfiguration();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            red.Size = config.PacMaxSize;
+            server.ApplyPowerUp(red, ePowerUp.EnergyTank);
+
+            Assert.That(red.Size, Is.EqualTo(config.PacMaxSize), "the tank doesn't change the size");
+
+            PutOn(red, FindCell(server, (cell, _) => cell.HasFlag(eGridDef.Food) && !cell.HasFlag(eGridDef.PowerPill)));
+            server.UpdateEating(1);
+            Assert.That(red.Size, Is.EqualTo(config.PacMaxSize + config.DotSizeGain), "dots grow it past PacMaxSize");
+
+            red.Size = config.PacMaxSize * 2f;
+            PutOn(red, FindCell(server, (cell, _) => cell.HasFlag(eGridDef.Food) && !cell.HasFlag(eGridDef.PowerPill)));
+            server.UpdateEating(1);
+            Assert.That(red.Size, Is.EqualTo(config.PacMaxSize * 2f), "but no further than twice it");
+
+            PutOn(red, FindCell(server, (cell, _) => cell == eGridDef.Wall));
+            red.MsSinceEaten = 999999;
+            server.UpdateEating(1);
+            Assert.That(red.MsSinceEaten, Is.EqualTo(0), "never starves");
+            Assert.That(red.Size, Is.EqualTo(config.PacMaxSize * 2f));
+        }
+
+        [Test]
+        public void EnergyTank_RunsOut_BackToMaxSize()
+        {
+            var server = MakeServer();
+            var config = new GameConfiguration();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.EnergyTank);
+            red.Size = config.PacMaxSize * 1.8f;
+
+            Assert.That(red.PowerUpMs, Is.EqualTo(config.PowerUpDurationMs));
+            red.PowerUpMs = 1;
+
+            PutOn(red, FindCell(server, (cell, _) => cell == eGridDef.Wall));
+            server.UpdateEating(1);
+
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None), "a normal timed effect");
+            Assert.That(red.Size, Is.EqualTo(config.PacMaxSize));
+        }
+
+        [Test]
+        public void EnergyTank_Replaced_SmallerPacKeepsSize()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             server.ApplyPowerUp(red, ePowerUp.EnergyTank);
-
-            Assert.That(red.Size, Is.EqualTo(PowerUpEffects.ENERGY_TANK_SIZE));
-            Assert.That(PowerUpEffects.IsPermanent(ePowerUpEffect.EnergyTank), Is.True);
-
-            PutOn(red, FindCell(server, (cell, _) => cell == eGridDef.Wall));
-            red.MsSinceEaten = 999999;
-            server.UpdateEating(10000);
-            Assert.That(red.Size, Is.EqualTo(PowerUpEffects.ENERGY_TANK_SIZE));
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.EnergyTank));
+            red.Size = 40f;
 
             server.ApplyPowerUp(red, ePowerUp.Cherry);
+
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SugarRush), "one buff at a time");
-            Assert.That(red.Size, Is.EqualTo(new GameConfiguration().PacMaxSize), "losing the tank drops to the normal max size");
+            Assert.That(red.Size, Is.EqualTo(40f));
         }
 
         // Screw attack

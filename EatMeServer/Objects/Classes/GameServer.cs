@@ -132,6 +132,11 @@ namespace EatMeServer
         /// </summary>
         public ServerSettings Settings => _Settings;
 
+        /// <summary>
+        /// Times each part of the tick for perf logging (the perf command).
+        /// </summary>
+        public ServerPerf Perf { get; } = new();
+
         public LevelInfo CurrentLevel { get; private set; }
         public eGridDef[,] Map { get; private set; }
         public uint Tick { get; private set; }
@@ -351,28 +356,46 @@ namespace EatMeServer
 
             var deltaSeconds = (float)elapsedMs / MS_PER_SECOND;
             ClockMs += elapsedMs;
+
+            // each step's time goes to perf logging; Record returns now, the next step's start
+            var start = PerfStats.GetTimestamp();
             UpdateLagPings(elapsedMs);
+            start = Perf.Record(ePerfSection.Lag, start);
 
             if (IsIntermission)
             {
                 UpdateIntermission(elapsedMs);
+                Perf.Record(ePerfSection.Intermission, start);
                 return;
             }
 
             UpdateRespawns(elapsedMs);
+            start = Perf.Record(ePerfSection.Respawns, start);
             UpdateStuns(elapsedMs);
+            start = Perf.Record(ePerfSection.Stuns, start);
             SteerBots(deltaSeconds, elapsedMs);
+            start = Perf.Record(ePerfSection.Bots, start);
             MovePacs(deltaSeconds, elapsedMs);
+            start = Perf.Record(ePerfSection.Move, start);
             UpdateEating(elapsedMs);
+            start = Perf.Record(ePerfSection.Eating, start);
             UpdatePacFights();
+            start = Perf.Record(ePerfSection.Fights, start);
             UpdateGhosts(deltaSeconds, elapsedMs);
+            start = Perf.Record(ePerfSection.Ghosts, start);
             UpdateWeaponEffects(deltaSeconds, elapsedMs);
+            start = Perf.Record(ePerfSection.Weapons, start);
             UpdatePowerUps(deltaSeconds, elapsedMs);
+            start = Perf.Record(ePerfSection.PowerUps, start);
             UpdateFlags();
+            start = Perf.Record(ePerfSection.Flags, start);
             UpdateRegens(elapsedMs);
+            start = Perf.Record(ePerfSection.Regens, start);
             SendCellChanges();
+            start = Perf.Record(ePerfSection.Cells, start);
             CheckAboutToWin();
             CheckLevelWon();
+            start = Perf.Record(ePerfSection.Win, start);
 
             _SnapshotTimer += elapsedMs * Math.Max(1, _Settings.TargetFps);
 
@@ -382,7 +405,10 @@ namespace EatMeServer
                 _SnapshotTimer = Math.Min(_SnapshotTimer - MS_PER_SECOND, MS_PER_SECOND);
 
                 if (_PlayerCount > 0)
+                {
                     Broadcast(BuildSnapshot());
+                    Perf.Record(ePerfSection.Snapshot, start);
+                }
             }
         }
 
@@ -590,9 +616,9 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// The POW block (instant): stuns every living pac (either team) and ghost within PowerUpEffects.EFFECT_RADIUS
-        /// cells of the pac that ate it, except that pac, for POW_STUN_MS. A stun already running starts over. The
-        /// pac's own power up effect is left alone. Broadcasts a Pow event so clients play the boom and shake.
+        /// The POW block's action (ePowerUpEffect.Pow): stuns every living pac (either team) and ghost within
+        /// PowerUpEffects.EFFECT_RADIUS cells of the pac, except that pac, for POW_STUN_MS. A stun already running starts
+        /// over. Broadcasts a Pow event so clients play the boom and shake.
         /// </summary>
         public void PowStun(Player player)
         {
@@ -729,7 +755,7 @@ namespace EatMeServer
         /// <summary>
         /// Moves every living pac at the speed for its size (PacRules.GetSpeed) times its effect's scale
         /// (PacRules.GetEffectSpeedScale), turning the way its player is holding when it can.
-        /// The enemy spawn room counts as wall (MazeMovement.GetPacBlocked). A pac carrying a flag onto a spawn tile drops it
+        /// The ghost generator and the enemy spawn room count as wall (MazeMovement.GetPacBlocked). A pac carrying a flag onto a spawn tile drops it
         /// in the cell it came from. A stunned pac (PowStun) doesn't move, and one near another pac's Twister moves at
         /// half speed (PowerUpEffects.GetTwisterSpeedScale).
         /// </summary>
@@ -885,10 +911,10 @@ namespace EatMeServer
 
         /// <summary>
         /// Living pacs eat the dot or power pill in the cell they are in. A dot adds DotSizeGain (times the effect's
-        /// PacRules.GetDotGainScale) to a pac's size, up to PacMaxSize. A power pill starts the PowerPill effect (StartPowerUpEffect); the effect's timer counts down here
-        /// and EndPowerUpEffect runs when it is up, except for a permanent effect (PowerUpEffects.IsPermanent), whose timer stays full.
+        /// PacRules.GetDotGainScale) to a pac's size, up to PacMaxSize (PowerUpEffects.GetMaxSize: twice that with Energy Tank). A power pill starts the PowerPill effect
+        /// (StartPowerUpEffect); the effect's timer counts down here and EndPowerUpEffect runs when it is up.
         /// A pac on its own team's spawn tile with no dot to eat is fed: it grows at the rate it would running over dots
-        /// (PacRules.GetSpawnFeedGain, up to PacMaxSize, SpawnFeeding set while it grows) and doesn't get hungry, unless its effect can't eat.
+        /// (PacRules.GetSpawnFeedGain, up to the same limit, SpawnFeeding set while it grows) and doesn't get hungry, unless its effect can't eat.
         /// A pac with an effect that PowerUpEffects.PreventsStarving never gets hungry. Otherwise a pac that hasn't eaten for MsUntilStarvation shrinks by PacShrinkPerSecond each second.
         /// </summary>
         public void UpdateEating(int elapsedMs)
@@ -904,7 +930,7 @@ namespace EatMeServer
                 if (!player.Alive)
                     continue;
 
-                if (player.PowerUpEffect != ePowerUpEffect.None && !PowerUpEffects.IsPermanent(player.PowerUpEffect))
+                if (player.PowerUpEffect != ePowerUpEffect.None)
                 {
                     player.PowerUpMs -= elapsedMs;
 
@@ -915,6 +941,7 @@ namespace EatMeServer
                 var (x, y) = MazeMovement.GetCell(player.Location);
 
                 var cell = Map[x, y];
+                var maxSize = PowerUpEffects.GetMaxSize(player.PowerUpEffect, config.PacMaxSize);
 
                 // Screw Attack can't eat, and nothing is eaten inside a wall (a Tetromino block dropped on a dot)
                 if (!PowerUpEffects.CanEat(player.PowerUpEffect) || cell.HasFlag(eGridDef.Wall))
@@ -930,7 +957,7 @@ namespace EatMeServer
                 if (cell.HasFlag(eGridDef.Food))
                 {
                     EatDot(x, y);
-                    player.Size = PacRules.GrowFromDot(player.Size, config.DotSizeGain * PacRules.GetDotGainScale(player.PowerUpEffect), config.PacMaxSize);
+                    player.Size = PacRules.GrowFromDot(player.Size, config.DotSizeGain * PacRules.GetDotGainScale(player.PowerUpEffect), maxSize);
                     player.DotsEaten++;
                     player.MsSinceEaten = 0;
                 }
@@ -949,8 +976,8 @@ namespace EatMeServer
                     var speed = PacRules.GetSpeed(config.PacSpeed, player.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(player.PowerUpEffect);
                     var gain = PacRules.GetSpawnFeedGain(config.DotSizeGain * PacRules.GetDotGainScale(player.PowerUpEffect), speed, (float)elapsedMs / MS_PER_SECOND);
 
-                    player.SpawnFeeding = player.Size < config.PacMaxSize;
-                    player.Size = PacRules.GrowFromDot(player.Size, gain, config.PacMaxSize);
+                    player.SpawnFeeding = player.Size < maxSize;
+                    player.Size = PacRules.GrowFromDot(player.Size, gain, maxSize);
                     player.MsSinceEaten = 0;
                 }
                 else if (PowerUpEffects.PreventsStarving(player.PowerUpEffect))
@@ -982,7 +1009,7 @@ namespace EatMeServer
 
                 player.Size = PacRules.GrowFromPowerPill(player.Size, PacRules.GetEffectSizeGain(effect, config.PowerPillSizeGain));
 
-                // Super Size and Energy Tank set the size outright
+                // Super Size sets the size outright
                 if (PowerUpEffects.GetStartSize(effect) is { } startSize)
                     player.Size = startSize;
 
@@ -1004,8 +1031,8 @@ namespace EatMeServer
             if (gain > 0f)
                 player.Size = PacRules.WearOffPowerPill(player.Size, gain);
 
-            // Super Size goes back to the starting size, and a lost Energy Tank to the normal max size
-            if (PowerUpEffects.GetEndSize(player.PowerUpEffect, _Settings.GameConfig.PacMaxSize) is { } endSize)
+            // Super Size goes back to the starting size, and a pac grown past the normal max size by Energy Tank to it
+            if (PowerUpEffects.GetEndSize(player.PowerUpEffect, player.Size, _Settings.GameConfig.PacMaxSize) is { } endSize)
                 player.Size = endSize;
 
             // a Raccoon Tail or Super Size running out inside a wall puts the pac in the nearest open cell
@@ -1670,15 +1697,15 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Puts a power up on a random spawn point, heading for a random warp exit, holding a random item from the level's
-        /// set. Does nothing if the map has no spawn points or exits, or the level has no items. Returns it, or null.
+        /// Puts a power up on a random spawn point, heading for a random warp exit, holding a random item (any item, on
+        /// every level). Does nothing if the map has no spawn points or exits. Returns it, or null.
         /// </summary>
         public PowerUp SpawnPowerUp()
         {
             if (_PowerUpSpawns.Count == 0 || _PowerUpExits.Count == 0)
                 return null;
 
-            var item = PowerUpRules.PickItem(CurrentLevel.PowerUps, _Random);
+            var item = PowerUpRules.PickItem(ePowerUp.Any, _Random);
             if (item == ePowerUp.None)
                 return null;
 
@@ -1727,9 +1754,10 @@ namespace EatMeServer
         ///   (the pac that laid them too, once it has moved off). They all go when its Holy Fire ends or it dies.
         /// - A blue shell follows the maze to the enemy flag carrier, or else the enemy with the highest score, and
         ///   kills it on contact; it ignores everything else and is gone once it hits or there is no enemy alive.
-        /// - A poke ball follows the maze to the nearest ghost (wandering the corridors when there is none) and catches
-        ///   the first ghost it touches, then sits still holding it; when any pac or ghost touches it the ghost comes
-        ///   back out there and the ball is gone.
+        /// - A poke ball (thrown by a pac with Gotcha) follows the maze to the nearest ghost (wandering the corridors
+        ///   when there is none) and catches the first ghost it touches, then sits still holding it; when any pac or
+        ///   ghost touches it the ghost comes back out there and the ball is gone. A ball still flying goes when its
+        ///   pac's Gotcha isn't active any more; one holding a ghost stays.
         /// - A banana peel lies where it was dropped until a pac (the owner once it has stepped off) or ghost touches it,
         ///   which is stunned for PowerUpEffects.STUN_MS; the peel is gone.
         /// - Tetromino blocks are walls until their pac's Block Drop isn't active; then the cells open again.
@@ -1753,6 +1781,7 @@ namespace EatMeServer
                     player.ActionCooldownMs = Math.Max(0, player.ActionCooldownMs - elapsedMs);
             }
 
+            KillGhostsInRange();
             UpdateHolyFlames();
             RemoveTetrisBlocks();
             UpdateHammers();
@@ -1778,6 +1807,23 @@ namespace EatMeServer
 
                 if (!keep)
                     _WeaponEffects.RemoveAt(i);
+            }
+        }
+
+        /// <summary>
+        /// Every living pac with an active Doctor Away (PowerUpEffects.KillsGhostsInRange) kills every living ghost
+        /// within PowerUpEffects.EFFECT_RADIUS, scoring each as a normal ghost kill.
+        /// </summary>
+        private void KillGhostsInRange()
+        {
+            foreach (var pac in _Living)
+            {
+                if (!pac.Alive || pac.PowerUpMs <= 0 || !PowerUpEffects.KillsGhostsInRange(pac.PowerUpEffect))
+                    continue;
+
+                foreach (var ghost in _Ghosts)
+                    if (ghost.Alive && PowerUpEffects.IsInEffectRange(pac.Location, ghost.Location))
+                        KillGhost(ghost, pac);
             }
         }
 
@@ -2204,6 +2250,10 @@ namespace EatMeServer
             if (effect.IsHoldingGhost)
                 return !TryReleaseGhost(effect, ghostRadius);
 
+            // a ball still flying goes when its pac's Gotcha isn't active any more (ran out, replaced, died or left)
+            if (!(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUpEffect.Gotcha)))
+                return false;
+
             if (TryCatchGhost(effect, ghostRadius))
                 return true;
 
@@ -2289,7 +2339,7 @@ namespace EatMeServer
         /// <summary>
         /// The player pressed the action button (ActionMessage): whatever their power up effect does on action. A dead
         /// pac, or one whose effect does nothing on action, ignores it. After a press that does something the button
-        /// does nothing for WeaponRules.ACTION_COOLDOWN_MS, whatever the effect.
+        /// does nothing for WeaponRules.ACTION_COOLDOWN_MS (POKE_BALL_COOLDOWN_MS for Gotcha).
         /// </summary>
         public void HandleAction(Player player)
         {
@@ -2333,12 +2383,24 @@ namespace EatMeServer
                     acted = true;
                     break;
 
+                // POW block: a stun round the pac each press
+                case ePowerUpEffect.Pow:
+                    PowStun(player);
+                    acted = true;
+                    break;
+
+                // Gotcha: a poke ball that seeks the nearest ghost, as many in flight as you like
+                case ePowerUpEffect.Gotcha:
+                    AddWeaponEffect(eWeaponEffect.PokeBall, player, player.Location, player.Facing);
+                    acted = true;
+                    break;
+
                 default:
                     break;
             }
 
             if (acted)
-                player.ActionCooldownMs = WeaponRules.ACTION_COOLDOWN_MS;
+                player.ActionCooldownMs = player.PowerUpEffect == ePowerUpEffect.Gotcha ? WeaponRules.POKE_BALL_COOLDOWN_MS : WeaponRules.ACTION_COOLDOWN_MS;
         }
 
         /// <summary>
@@ -2442,7 +2504,7 @@ namespace EatMeServer
                     break;
 
                 case ePowerUp.PowBlock:
-                    PowStun(player);
+                    StartPowerUpEffect(player, ePowerUpEffect.Pow);
                     break;
 
                 case ePowerUp.Pretzel:
@@ -2528,19 +2590,21 @@ namespace EatMeServer
                     SealFlags();
                     break;
 
-                // Full Heal (instant): up to PacMaxSize if smaller, and no longer hungry
+                // Full Heal: up to PacMaxSize if smaller (after the old effect has ended), no longer hungry, and never
+                // starving while it lasts; the size stays when it ends
                 case ePowerUp.HeartContainer:
+                    StartPowerUpEffect(player, ePowerUpEffect.FullHeal);
                     player.Size = Math.Max(player.Size, _Settings.GameConfig.PacMaxSize);
                     player.MsSinceEaten = 0;
                     break;
 
-                // instant: they don't touch the pac's buff
-                case ePowerUp.BlueShell:
-                    AddWeaponEffect(eWeaponEffect.BlueShell, player, player.Location, player.Facing);
+                case ePowerUp.PokeBall:
+                    StartPowerUpEffect(player, ePowerUpEffect.Gotcha);
                     break;
 
-                case ePowerUp.PokeBall:
-                    AddWeaponEffect(eWeaponEffect.PokeBall, player, player.Location, player.Facing);
+                // instant: it doesn't touch the pac's buff
+                case ePowerUp.BlueShell:
+                    AddWeaponEffect(eWeaponEffect.BlueShell, player, player.Location, player.Facing);
                     break;
             }
         }

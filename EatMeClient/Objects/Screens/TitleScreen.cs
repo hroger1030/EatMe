@@ -15,6 +15,7 @@ namespace EatMeClient
         private const float LOGO_WIDTH_RATIO = 0.5f;
         private const float TITLE_CENTER_Y_RATIO = 1f / 4f;
         private const float DISPLAY_SETTLE_SECONDS = 0.25f;
+        private const float PERF_OVERLAY_MARGIN = 16f;
 
         /// <summary>
         /// Times the bloom glow is blurred each way; more makes it wider and softer.
@@ -45,6 +46,8 @@ namespace EatMeClient
         private JoinGameScreen _JoinGameScreen;
         private MessageScroller _MessageScroller;
         private VersionLabel _VersionLabel;
+        private PerfOverlay _PerfOverlay;
+        private readonly ClientPerf _Perf = new();
 
         private SpriteBatch _SpriteBatch;
         private SpriteFont _MenuFont;
@@ -122,6 +125,9 @@ namespace EatMeClient
             _VersionLabel = new VersionLabel();
             _VersionLabel.LoadContent();
 
+            _PerfOverlay = new PerfOverlay();
+            _PerfOverlay.LoadContent(GraphicsDevice);
+
             ActivateTitleMenu();
         }
 
@@ -198,7 +204,26 @@ namespace EatMeClient
 
         protected override void Update(GameTime gameTime)
         {
+            var start = PerfStats.GetTimestamp();
+
             InputManager.Update();
+
+            // F1 shows or hides the perf overlay on every screen
+            if (InputManager.KeyPressed(Keys.F1))
+                _Perf.ToggleVisible();
+
+            UpdateScreens(gameTime);
+
+            var end = _Perf.Record(eClientPerfSection.Update, start);
+            var inGame = _CurrentScreen == eScreenState.Game;
+            _Perf.Update(end, inGame, _GameScreen.SnapshotsReceived, _GameScreen.PingText);
+        }
+
+        /// <summary>
+        /// Updates the display mode and the active screen.
+        /// </summary>
+        private void UpdateScreens(GameTime gameTime)
+        {
 
             // the display mode can be changed from either settings screen, and takes effect straight away
             if (ConfigManager.Settings.FullScreen != _Graphics.IsFullScreen)
@@ -458,6 +483,36 @@ namespace EatMeClient
         }
 
         protected override void Draw(GameTime gameTime)
+        {
+            var start = PerfStats.GetTimestamp();
+            _Perf.StartFrame(start);
+
+            DrawFrame(gameTime);
+
+            // after the brightness pass, so neither brightness nor bloom touch it
+            if (_Perf.IsVisible && _DisplayStableSeconds >= DISPLAY_SETTLE_SECONDS)
+            {
+                _SpriteBatch.Begin();
+                _PerfOverlay.Draw(_SpriteBatch, GetPerfOverlayPosition(), _Perf.Lines);
+                _SpriteBatch.End();
+            }
+
+            _Perf.Record(eClientPerfSection.Draw, start);
+        }
+
+        /// <summary>
+        /// Top left corner of the perf overlay: the screen's top left corner, under the score bar in a game.
+        /// </summary>
+        private Vector2 GetPerfOverlayPosition()
+        {
+            var top = _CurrentScreen == eScreenState.Game ? _GameScreen.HudBarHeight : 0;
+            return new Vector2(PERF_OVERLAY_MARGIN, top + PERF_OVERLAY_MARGIN);
+        }
+
+        /// <summary>
+        /// Draws the active screen into the scene target and copies it to the screen through bloom and brightness.
+        /// </summary>
+        private void DrawFrame(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
 

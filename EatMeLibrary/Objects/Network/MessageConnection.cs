@@ -26,6 +26,10 @@ namespace EatMeLibrary
         private readonly Channel<byte[]> _Outbound = Channel.CreateBounded<byte[]>(
             new BoundedChannelOptions(MAX_QUEUED_FRAMES) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
 
+        // bytes every connection in this process has read and written, for perf logging
+        private static long _TotalBytesReceived;
+        private static long _TotalBytesSent;
+
         private Action<MessageConnection, INetworkMessage> _OnMessage;
         private Action<MessageConnection> _OnClosed;
         private int _Closing;
@@ -39,6 +43,16 @@ namespace EatMeLibrary
         public string CloseReason { get; private set; }
 
         public bool IsClosed => Volatile.Read(ref _Closed) != 0;
+
+        /// <summary>
+        /// Bytes read by every connection in this process since it started.
+        /// </summary>
+        public static long TotalBytesReceived => Interlocked.Read(ref _TotalBytesReceived);
+
+        /// <summary>
+        /// Bytes written by every connection in this process since it started.
+        /// </summary>
+        public static long TotalBytesSent => Interlocked.Read(ref _TotalBytesSent);
 
         public MessageConnection(TcpClient client)
         {
@@ -122,6 +136,7 @@ namespace EatMeLibrary
                     if (read == 0)
                         break;
 
+                    Interlocked.Add(ref _TotalBytesReceived, read);
                     frames.Append(buffer, 0, read);
 
                     while (frames.TryReadMessage(out var message))
@@ -147,7 +162,10 @@ namespace EatMeLibrary
             try
             {
                 await foreach (var frame in _Outbound.Reader.ReadAllAsync(_Cancel.Token))
+                {
                     await _Stream.WriteAsync(frame, _Cancel.Token);
+                    Interlocked.Add(ref _TotalBytesSent, frame.Length);
+                }
             }
             catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException or OperationCanceledException)
             {

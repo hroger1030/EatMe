@@ -41,6 +41,7 @@ bots [n]              Show or set MinPlayers.
 autobalance [on|off]  Show or set AutoBalanceTeams.
 motd [text]           Show or set the message of the day.
 settings              List every setting and its value.
+perf [on|off]         Show or set logging performance every 5 seconds.
 clear (or cls)        Clear the console.
 quit (or stop, exit)  Stop the server.
 

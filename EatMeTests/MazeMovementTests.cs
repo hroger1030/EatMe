@@ -242,6 +242,15 @@ namespace EatMeTests
         }
 
         [Test]
+        public void CanMove_GhostGeneratorIsAWallForPacs([Values(eTeam.Red, eTeam.Blue)] eTeam team)
+        {
+            var map = MakeMap(CORRIDOR);
+            map[2, 1] |= eGridDef.GhostGenerator;
+
+            Assert.That(MazeMovement.CanMove(map, 1, 1, eFacing.Right, true, MazeMovement.GetPacBlocked(team)), Is.False);
+        }
+
+        [Test]
         public void CanMove_GhostsCantEnterAnySpawn([Values(eGridDef.SpawnPointRed, eGridDef.SpawnPointBlue)] eGridDef spawn)
         {
             var map = MakeMap(CORRIDOR);

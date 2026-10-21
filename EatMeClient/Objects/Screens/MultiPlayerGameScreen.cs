@@ -193,6 +193,21 @@ namespace EatMeClient
         /// The message of the day from the last server joined, empty if none has sent one yet.
         /// </summary>
         public string MessageOfTheDay => _State?.MessageOfTheDay ?? string.Empty;
+
+        /// <summary>
+        /// Snapshots received this game, for the perf overlay.
+        /// </summary>
+        public long SnapshotsReceived => _State?.SnapshotsReceived ?? 0;
+
+        /// <summary>
+        /// The stats bar's ping text, for the perf overlay.
+        /// </summary>
+        public string PingText => _State?.GetPingText() ?? string.Empty;
+
+        /// <summary>
+        /// Height of the score bar across the top, so the perf overlay can sit under it.
+        /// </summary>
+        public int HudBarHeight => GetHudBarHeight();
         private readonly Stopwatch _Clock = Stopwatch.StartNew();
         private float _PingTimer;
         private float _AnimationTime;
@@ -220,7 +235,8 @@ namespace EatMeClient
         {
             _Font = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48);
             _NameFont = AssetCache.GetFont(Const.FONT_ARIAL20);
-            _PlayerState = new PlayerState(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30));
+            _PlayerState = new PlayerState(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30),
+                AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48));
             _PlayerList = new PlayerList(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30));
             _DotTexture = AssetCache.GetTexture(Const.IMAGE_DOT);
             _PacBaseTexture = AssetCache.GetTexture(Const.IMAGE_PAC_BASE);
@@ -648,7 +664,8 @@ namespace EatMeClient
             // global sounds are heard everywhere at full volume, queued so they play one at a time
             var now = _Clock.ElapsedMilliseconds;
 
-            if (gameEvent.EventType == eGameEvent.FlagCaptured)
+            // the capture sting is only for the player who made the capture
+            if (gameEvent.EventType == eGameEvent.FlagCaptured && gameEvent.ActorId == _State.PlayerId)
                 _Announcements.Enqueue(Const.SFX_FLAG_CAP, now);
 
             _Announcements.Enqueue(Announcements.GetSound(gameEvent.EventType, gameEvent.Team), now);
@@ -816,7 +833,7 @@ namespace EatMeClient
                         _MiniMap.Draw(spriteBatch, GetMiniMapBounds(viewport), _State.Snapshot, _State.Map, _State.PlayerId, _AnimationTime);
                         var ownPac = _State.GetOwnPac();
                         var ownSize = ownPac.HasValue ? (int)Math.Round(ownPac.Value.Size) : 0;
-                        _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill());
+                        _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill(), _State.IsOwnPacStunned());
                         DrawRespawnCountdown(spriteBatch, viewport);
 
                         if (_PlayerListHeld && _State.HasPlayerList)

@@ -476,10 +476,20 @@ namespace EatMeLibrary
         /// <summary>
         /// True if a bot with a buff that fires on the action button (Sword Swing, Fireball) should fire now: the
         /// nearest pac or ghost in line ahead of it, within WeaponRules.FIRE_DISTANCE and before any wall, is an enemy
-        /// pac that isn't invincible or a ghost. A teammate in the way holds its fire.
+        /// pac that isn't invincible or a ghost. A teammate in the way holds its fire. With Gotcha, poke balls find
+        /// ghosts by themselves, so it throws whenever any ghost is alive.
         /// </summary>
         public static bool ShouldFire(BotWorld world, Player me)
         {
+            if (me.PowerUpEffect == ePowerUpEffect.Gotcha)
+            {
+                foreach (var ghost in world.Ghosts)
+                    if (ghost.Alive)
+                        return true;
+
+                return false;
+            }
+
             if (me.PowerUpEffect != ePowerUpEffect.SwordSwing && me.PowerUpEffect != ePowerUpEffect.FireFlower)
                 return false;
 

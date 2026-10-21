@@ -2,11 +2,6 @@ using System;
 
 namespace EatMeLibrary
 {
-    /// <summary>
-    /// Bonus items that can appear in a level: every bonus item from the Pac-Man and Ms. Pac-Man arcade games,
-    /// plus power ups from other classic games. Each level introduces exactly one item (see Levels).
-    /// Power pills are also on every level's map; the PowerPill item is a power pill that moves like any other item.
-    /// </summary>
     [Flags]
     public enum ePowerUp : uint
     {

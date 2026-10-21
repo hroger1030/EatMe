@@ -86,6 +86,9 @@
         public const string STRING_PEPPER = "Pepper";
         public const string STRING_SPREAD_SHOT = "Spread Shot";
         public const string STRING_FORCE_FIELD = "Force Field";
+        public const string STRING_POW = "POW";
+        public const string STRING_FULL_HEAL = "Full Heal";
+        public const string STRING_GOTCHA = "Gotcha";
 
         // Respawn countdown, shown while the own pac is dead
         public const string STRING_RESPAWNING_IN = "Respawning in";
@@ -94,6 +97,7 @@
 
         // Game screen stats bar
         public const string STRING_SIZE = "Size";
+        public const string STRING_STUNNED = "Stunned!";
         public const string STRING_FLAGS = "Flags";
         public const string STRING_GHOSTS = "Ghosts";
         public const string STRING_CHOMPS = "Chomps";
@@ -103,5 +107,12 @@
         public const string STRING_PING_UNKNOWN = "--";
         public const string STRING_MS = "ms";
         public const string STRING_PLAYER_LIST_BOT = "<bot>";
+
+        // Performance overlay (F1), string.Format templates filled in by ClientPerf
+        public const string STRING_PERF_FPS = "FPS {0:0.0}  frame avg {1:0.00} max {2:0.00} ms";
+        public const string STRING_PERF_UPDATE = "Update avg {0:0.00} p99 {1:0.00} max {2:0.00} ms";
+        public const string STRING_PERF_DRAW = "Draw avg {0:0.00} p99 {1:0.00} max {2:0.00} ms";
+        public const string STRING_PERF_MEMORY = "GC {0}  alloc {1:0.00} MB/s  heap {2:0.0} MB";
+        public const string STRING_PERF_NETWORK = "Snapshots {0:0.0}/s  in {1:0.0} KB/s  out {2:0.0} KB/s";
     }
 }

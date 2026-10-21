@@ -92,6 +92,12 @@ namespace EatMeLibrary
         /// </summary>
         public SnapshotMessage Snapshot { get; private set; }
 
+        /// <summary>
+        /// How many snapshots have arrived since this state was made, stale ones included; the perf overlay's
+        /// snapshot rate.
+        /// </summary>
+        public long SnapshotsReceived { get; private set; }
+
         public eRejectReason? RejectReason { get; private set; }
 
         /// <summary>
@@ -240,6 +246,8 @@ namespace EatMeLibrary
                     break;
 
                 case SnapshotMessage snapshot:
+                    SnapshotsReceived++;
+
                     // TCP keeps order, but a snapshot from before a level change is still stale
                     if (Snapshot == null || snapshot.Tick > Snapshot.Tick)
                     {
@@ -396,6 +404,15 @@ namespace EatMeLibrary
         {
             var ownPac = GetOwnPac();
             return ownPac.HasValue && ownPac.Value.Alive && ownPac.Value.Powered;
+        }
+
+        /// <summary>
+        /// True while our own pac is alive and stunned.
+        /// </summary>
+        public bool IsOwnPacStunned()
+        {
+            var ownPac = GetOwnPac();
+            return ownPac.HasValue && ownPac.Value.Alive && ownPac.Value.Stunned;
         }
 
         /// <summary>

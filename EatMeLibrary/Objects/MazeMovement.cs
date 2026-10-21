@@ -83,15 +83,15 @@ namespace EatMeLibrary
         public const eGridDef GHOST_BLOCKED = eGridDef.Wall | eGridDef.SpawnPointRed | eGridDef.SpawnPointBlue;
 
         /// <summary>
-        /// What a pac on this team can't enter: walls and the other team's spawn room.
+        /// What a pac on this team can't enter: walls, the ghost generator and the other team's spawn room.
         /// </summary>
         public static eGridDef GetPacBlocked(eTeam team)
         {
             return team switch
             {
-                eTeam.Red => eGridDef.Wall | eGridDef.SpawnPointBlue,
-                eTeam.Blue => eGridDef.Wall | eGridDef.SpawnPointRed,
-                _ => eGridDef.Wall,
+                eTeam.Red => eGridDef.Wall | eGridDef.GhostGenerator | eGridDef.SpawnPointBlue,
+                eTeam.Blue => eGridDef.Wall | eGridDef.GhostGenerator | eGridDef.SpawnPointRed,
+                _ => eGridDef.Wall | eGridDef.GhostGenerator,
             };
         }
 

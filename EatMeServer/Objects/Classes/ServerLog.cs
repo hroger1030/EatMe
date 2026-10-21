@@ -103,6 +103,9 @@ namespace EatMeServer
                     // the closest console color, used when the console can't show ANSI_HELP_COLOR
                     return ConsoleColor.DarkYellow;
 
+                case eLogType.Perf:
+                    return ConsoleColor.DarkCyan;
+
                 case eLogType.Warning:
                     return ConsoleColor.Yellow;
 

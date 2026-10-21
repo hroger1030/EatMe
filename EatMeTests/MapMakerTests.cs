@@ -317,6 +317,121 @@ namespace EatMeTests
             Assert.That(IsAllReachable(map), Is.True);
         }
 
+        [TestCase(false, 1)]
+        [TestCase(true, 2)]
+        [TestCase(false, 3)]
+        [TestCase(true, 4)]
+        public void AddSolidAreas_AreasAreSolidInRangeCopiedAndValid(bool rotate, int seed)
+        {
+            const int SIZE = 42;
+            var maze = new MapMaker.Maze(SIZE / 2 - 1, rotate);
+            maze.AddWalls(new Random(seed), MapMaker.MAZE_JUNCTION_PERCENT);
+            var map = MapMaker.Expand(maze.ToCells());
+
+            var areas = MapMaker.AddSolidAreas(map, rotate, new Random(seed), MapMaker.MAX_SOLID_AREAS);
+
+            Assert.That(areas, Has.Count.InRange(MapMaker.MIN_SOLID_AREAS, MapMaker.MAX_SOLID_AREAS));
+            foreach (var (ax, ay, width, height) in areas)
+            {
+                Assert.That(width, Is.InRange(MapMaker.MIN_SOLID_SIZE, MapMaker.MAX_SOLID_SIZE));
+                Assert.That(height, Is.InRange(MapMaker.MIN_SOLID_SIZE, MapMaker.MAX_SOLID_SIZE));
+                Assert.That(ax, Is.GreaterThanOrEqualTo(1));
+                Assert.That(ay, Is.GreaterThanOrEqualTo(1));
+                Assert.That(ax + width - 1, Is.LessThanOrEqualTo(SIZE / 2 - 1));
+                Assert.That(ay + height - 1, Is.LessThanOrEqualTo(SIZE - 2));
+
+                for (int x = ax; x < ax + width; x++)
+                    for (int y = ay; y < ay + height; y++)
+                    {
+                        var copy = MapMaker.GetCopy(x, y, SIZE, rotate);
+                        Assert.That(IsOpen(map, x, y), Is.False, $"({x}, {y})");
+                        Assert.That(IsOpen(map, copy.X, copy.Y), Is.False, $"copy of ({x}, {y})");
+                    }
+            }
+
+            Assert.That(MapMaker.IsValidLayout(map), Is.True);
+        }
+
+        [Test]
+        public void AddSolidAreas_NoValidSpot_LeavesMapAlone()
+        {
+            // one open ring round a 3x3 block: filling any of it makes dead ends
+            var map = new eGridDef[7, 7];
+            for (int x = 0; x < 7; x++)
+                for (int y = 0; y < 7; y++)
+                    if (x == 0 || y == 0 || x == 6 || y == 6 || (x >= 2 && x <= 4 && y >= 2 && y <= 4))
+                        map[x, y] = eGridDef.Wall;
+            var before = (eGridDef[,])map.Clone();
+
+            var areas = MapMaker.AddSolidAreas(map, false, new Random(1), MapMaker.MAX_SOLID_AREAS);
+
+            Assert.That(areas, Is.Empty);
+            Assert.That(map, Is.EqualTo(before));
+        }
+
+        [Test]
+        public void FillArea_FillsAreaAndCopy()
+        {
+            var map = new eGridDef[10, 10];
+
+            MapMaker.FillArea(map, true, 1, 2, 2, 3);
+
+            for (int x = 1; x < 3; x++)
+                for (int y = 2; y < 5; y++)
+                {
+                    var copy = MapMaker.GetCopy(x, y, 10, true);
+                    Assert.That(IsOpen(map, x, y), Is.False);
+                    Assert.That(IsOpen(map, copy.X, copy.Y), Is.False);
+                }
+            Assert.That(IsOpen(map, 3, 2), Is.True);
+        }
+
+        [Test]
+        public void IsValidLayout_DeadEnd_IsFalse()
+        {
+            // open ring with a stub poking into the middle
+            var map = new eGridDef[7, 7];
+            for (int x = 0; x < 7; x++)
+                for (int y = 0; y < 7; y++)
+                    if (x == 0 || y == 0 || x == 6 || y == 6 || (x >= 2 && x <= 4 && y >= 2 && y <= 4))
+                        map[x, y] = eGridDef.Wall;
+            map[3, 2] = 0;
+
+            Assert.That(MapMaker.IsValidLayout(map), Is.False);
+        }
+
+        [Test]
+        public void IsValidLayout_SplitInTwo_IsFalse()
+        {
+            // two open rings, one above the other, each crossing the center line, no way between them
+            var map = new eGridDef[10, 10];
+            for (int x = 0; x < 10; x++)
+                for (int y = 0; y < 10; y++)
+                    map[x, y] = eGridDef.Wall;
+            foreach (int top in new[] { 1, 5 })
+                for (int x = 2; x <= 7; x++)
+                    for (int y = top; y <= top + 2; y++)
+                        if (y != top + 1 || x == 2 || x == 7)
+                            map[x, y] = 0;
+
+            Assert.That(MapMaker.IsValidLayout(map), Is.False);
+
+            map[2, 4] = 0;
+            map[7, 4] = 0;
+            Assert.That(MapMaker.IsValidLayout(map), Is.True);
+        }
+
+        [Test]
+        public void TouchesWall_OnlyCountsSidesNotCorners()
+        {
+            var map = new eGridDef[6, 6];
+            map[0, 0] = eGridDef.Wall;
+            Assert.That(MapMaker.TouchesWall(map, 1, 1, 2, 2), Is.False);
+
+            map[1, 0] = eGridDef.Wall;
+            Assert.That(MapMaker.TouchesWall(map, 1, 1, 2, 2), Is.True);
+        }
+
         [Test]
         public void AddRandomRooms_NothingOpenToTouch_AddsNone()
         {
@@ -414,7 +529,7 @@ namespace EatMeTests
         }
 
         [TestCaseSource(nameof(Maps))]
-        public void Generate_EachSpawnIsAnOpen3x3Room(int size, int seed)
+        public void Generate_EachSpawnIsAnOpenSquareRoom(int size, int seed)
         {
             var map = Generate(size, seed);
 
@@ -422,9 +537,9 @@ namespace EatMeTests
             {
                 var cells = FindCells(map, spawn);
 
-                Assert.That(cells, Has.Count.EqualTo(9), spawn.ToString());
-                Assert.That(cells.Max(c => c.X) - cells.Min(c => c.X), Is.EqualTo(2), spawn.ToString());
-                Assert.That(cells.Max(c => c.Y) - cells.Min(c => c.Y), Is.EqualTo(2), spawn.ToString());
+                Assert.That(cells, Has.Count.EqualTo(MapMaker.SPAWN_AREA_SIZE * MapMaker.SPAWN_AREA_SIZE), spawn.ToString());
+                Assert.That(cells.Max(c => c.X) - cells.Min(c => c.X), Is.EqualTo(MapMaker.SPAWN_AREA_SIZE - 1), spawn.ToString());
+                Assert.That(cells.Max(c => c.Y) - cells.Min(c => c.Y), Is.EqualTo(MapMaker.SPAWN_AREA_SIZE - 1), spawn.ToString());
 
                 foreach (var (x, y) in cells)
                 {

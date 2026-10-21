@@ -85,7 +85,7 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// One item picked at random from a level's set (LevelInfo.PowerUps), or None if the set is empty.
+        /// One item picked at random from a set of items (ePowerUp.Any for every item), or None if the set is empty.
         /// </summary>
         public static ePowerUp PickItem(ePowerUp items, Random random)
         {

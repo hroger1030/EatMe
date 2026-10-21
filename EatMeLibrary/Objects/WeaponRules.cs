@@ -32,6 +32,11 @@ namespace EatMeLibrary
         public const int ACTION_COOLDOWN_MS = 500;
 
         /// <summary>
+        /// Gotcha (poke ball) throws at most one ball this often, instead of ACTION_COOLDOWN_MS.
+        /// </summary>
+        public const int POKE_BALL_COOLDOWN_MS = 1000;
+
+        /// <summary>
         /// A spread shot moves this many times PacSpeed.
         /// </summary>
         public const float SPREAD_SHOT_SPEED_SCALE = 1.5f;

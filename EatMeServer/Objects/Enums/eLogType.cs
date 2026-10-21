@@ -14,6 +14,7 @@ namespace EatMeServer
         PowerUp,
         Command,
         Help,
+        Perf,
         Warning,
         Error,
     }

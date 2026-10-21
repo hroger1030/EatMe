@@ -32,7 +32,7 @@ namespace EatMeClient
 
         // The player's own pac: lighter shades of the team colors so it stands out in a crowd.
 
-        public static readonly Color COLOR_PAC_RED_OWN = new(255, 85, 85);
+        public static readonly Color COLOR_PAC_RED_OWN = new(255, 75, 20);
         public static readonly Color COLOR_PAC_BLUE_OWN = new(95, 170, 255);
 
         // Spawn floors: darker shades of the team colors, a burgundy and a navy.
@@ -66,6 +66,11 @@ namespace EatMeClient
         // Player state panel: the meter's empty part, and the size bar (SizeBar) green up to 100, bright orange above it, bright red above 150.
 
         public static readonly Color COLOR_POWER_UP_BAR_EMPTY = new(70, 70, 70);
+
+        // Player state panel's "Stunned!": barely visible normally, bright red while the own pac is stunned.
+
+        public static readonly Color COLOR_STUNNED_OFF = new(40, 40, 40);
+        public static readonly Color COLOR_STUNNED_ON = new(255, 30, 30);
         public static readonly Color COLOR_SIZE_BAR_NORMAL = new(40, 220, 60);
         public static readonly Color COLOR_SIZE_BAR_BIG = new(255, 150, 0);
         public static readonly Color COLOR_SIZE_BAR_HUGE = new(255, 30, 30);

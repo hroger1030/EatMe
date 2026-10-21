@@ -44,6 +44,9 @@ namespace EatMeLibrary
                 ePowerUpEffect.Pepper => Const.STRING_PEPPER,
                 ePowerUpEffect.SpreadShot => Const.STRING_SPREAD_SHOT,
                 ePowerUpEffect.ForceField => Const.STRING_FORCE_FIELD,
+                ePowerUpEffect.Pow => Const.STRING_POW,
+                ePowerUpEffect.FullHeal => Const.STRING_FULL_HEAL,
+                ePowerUpEffect.Gotcha => Const.STRING_GOTCHA,
                 _ => Const.STRING_POWER_UP_NONE,
             };
         }
@@ -79,35 +82,43 @@ namespace EatMeLibrary
         public const float SUPER_SIZE = 300f;
 
         /// <summary>
-        /// A pac's size while Energy Tank works.
+        /// While Energy Tank works, dots can grow a pac to this many times PacMaxSize.
         /// </summary>
-        public const float ENERGY_TANK_SIZE = 150f;
+        public const float ENERGY_TANK_CAPACITY_SCALE = 2f;
 
         /// <summary>
-        /// The size an effect sets the pac to when it starts (Super Size, Energy Tank), or null if it doesn't set one.
+        /// The size an effect sets the pac to when it starts (Super Size), or null if it doesn't set one.
         /// </summary>
         public static float? GetStartSize(ePowerUpEffect effect)
         {
             return effect switch
             {
                 ePowerUpEffect.SuperSize => SUPER_SIZE,
-                ePowerUpEffect.EnergyTank => ENERGY_TANK_SIZE,
                 _ => null,
             };
         }
 
         /// <summary>
-        /// The size an effect puts the pac back to when it ends (Super Size: PacRules.START_SIZE; Energy Tank, when another
-        /// buff replaces it: maxSize, the normal PacMaxSize), or null if it leaves the size alone.
+        /// The size an effect puts the pac back to when it ends (Super Size: PacRules.START_SIZE; Energy Tank: maxSize,
+        /// the normal PacMaxSize, if the pac is bigger), or null if it leaves the size alone.
         /// </summary>
-        public static float? GetEndSize(ePowerUpEffect effect, float maxSize)
+        public static float? GetEndSize(ePowerUpEffect effect, float size, float maxSize)
         {
             return effect switch
             {
                 ePowerUpEffect.SuperSize => PacRules.START_SIZE,
-                ePowerUpEffect.EnergyTank => maxSize,
+                ePowerUpEffect.EnergyTank => MathF.Min(size, maxSize),
                 _ => null,
             };
+        }
+
+        /// <summary>
+        /// The most dots (and the spawn) can grow a pac with this effect: maxSize (PacMaxSize) times
+        /// ENERGY_TANK_CAPACITY_SCALE for Energy Tank, otherwise maxSize.
+        /// </summary>
+        public static float GetMaxSize(ePowerUpEffect effect, float maxSize)
+        {
+            return effect == ePowerUpEffect.EnergyTank ? maxSize * ENERGY_TANK_CAPACITY_SCALE : maxSize;
         }
 
         /// <summary>
@@ -325,21 +336,21 @@ namespace EatMeLibrary
         public const int ROCKET_SCIENCE_SCORE_SCALE = 2;
 
         /// <summary>
-        /// True if an effect never runs out: its timer stays full and it lasts until the pac dies or another effect
-        /// replaces it. Vitamin C, Doctor Away and Energy Tank.
+        /// True if a pac with this effect kills every ghost within EFFECT_RADIUS each tick while it lasts. Doctor Away.
         /// </summary>
-        public static bool IsPermanent(ePowerUpEffect effect)
+        public static bool KillsGhostsInRange(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.EnergyTank;
+            return effect == ePowerUpEffect.DoctorAway;
         }
 
         /// <summary>
-        /// True if a pac with this effect never gets hungry: its time since eating stays at 0. Vitamin C, Melon Belly and
-        /// Energy Tank (so it stays ENERGY_TANK_SIZE).
+        /// True if a pac with this effect never gets hungry: its time since eating stays at 0. Vitamin C, Melon Belly,
+        /// Energy Tank and Full Heal.
         /// </summary>
         public static bool PreventsStarving(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank;
+            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank
+                || effect == ePowerUpEffect.FullHeal;
         }
 
         /// <summary>

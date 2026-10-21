@@ -12,9 +12,9 @@ namespace EatMeLibrary
     public static class MapMaker
     {
         /// <summary>
-        /// Smallest map with room for the ghost pen and the flag rooms beside it. Map sizes must be even.
+        /// Smallest map with room for the ghost pen, the flag rooms and the spawn rooms. Map sizes must be even.
         /// </summary>
-        public const int MIN_MAZE_SIZE = 20;
+        public const int MIN_MAZE_SIZE = 22;
 
         /// <summary>
         /// Walls are added until this share of the maze's open cells are junctions (3 or 4 ways out).
@@ -35,6 +35,18 @@ namespace EatMeLibrary
         public const int MAX_RANDOM_ROOMS = 4;
 
         /// <summary>
+        /// Fewest and most solid areas per half. Each map gets a random number in this range.
+        /// </summary>
+        public const int MIN_SOLID_AREAS = 2;
+        public const int MAX_SOLID_AREAS = 4;
+
+        /// <summary>
+        /// Smallest and largest side of a solid area, in cells. Areas can be any rectangle in this range.
+        /// </summary>
+        public const int MIN_SOLID_SIZE = 2;
+        public const int MAX_SOLID_SIZE = 4;
+
+        /// <summary>
         /// Smallest and largest flag room side, in cells. The base sits in the middle with open cells all round.
         /// </summary>
         public const int MIN_FLAG_ROOM_SIZE = 3;
@@ -43,12 +55,12 @@ namespace EatMeLibrary
         /// <summary>
         /// Spawn room side, in cells: the spawn tiles with an open ring one cell wide all round them.
         /// </summary>
-        public const int SPAWN_ROOM_SIZE = 5;
+        public const int SPAWN_ROOM_SIZE = 6;
 
         /// <summary>
         /// Side of the square of spawn tiles in the middle of each spawn room, in cells.
         /// </summary>
-        public const int SPAWN_AREA_SIZE = 3;
+        public const int SPAWN_AREA_SIZE = 4;
 
         /// <summary>
         /// Side of the ghost generator block in the middle of the map, in cells.
@@ -72,7 +84,7 @@ namespace EatMeLibrary
 
         /// <summary>
         /// Generates a map. The same config and seed always produce the same map. The steps are: the maze,
-        /// random rooms, the outer wall, the warp tunnels, the special rooms (ghost pen, flags, spawns), the items, then the
+        /// solid areas, random rooms, the outer wall, the warp tunnels, the special rooms (ghost pen, flags, spawns), the items, then the
         /// power up spawn points.
         /// </summary>
         public static eGridDef[,] Generate(GameConfiguration config, int seed)
@@ -91,6 +103,7 @@ namespace EatMeLibrary
             var output = Expand(maze.ToCells());
 
             // 2-4.
+            AddSolidAreas(output, rotate, random, random.Next(MIN_SOLID_AREAS, MAX_SOLID_AREAS + 1));
             AddRandomRooms(output, rotate, random, random.Next(MAX_RANDOM_ROOMS + 1));
             AddOuterWall(output);
             OpenWarpTunnels(output, config.WarpTunnelCount, rotate, random);
@@ -219,6 +232,214 @@ namespace EatMeLibrary
             }
 
             return rooms;
+        }
+
+        /// <summary>
+        /// Fills count random solid areas in the left half (and their copies), each MIN_SOLID_SIZE to MAX_SOLID_SIZE
+        /// cells on a side. Areas stay off the outer ring, must have an open cell to fill and must touch a wall, so they
+        /// join the maze's walls. Each spot is tried in random order: the area is filled, and undone again unless
+        /// IsValidLayout still holds. An area with no valid spot is skipped. Returns the areas added.
+        /// </summary>
+        public static List<(int X, int Y, int Width, int Height)> AddSolidAreas(eGridDef[,] grid, bool rotate, Random random, int count)
+        {
+            int size = grid.GetLength(0);
+            int lastX = (int)(size * 0.5f) - 1;
+            var areas = new List<(int X, int Y, int Width, int Height)>(count);
+            var spots = new List<(int X, int Y)>();
+            var saved = new List<(int X, int Y, eGridDef Cell)>();
+
+            for (int i = 0; i < count; i++)
+            {
+                int width = random.Next(MIN_SOLID_SIZE, MAX_SOLID_SIZE + 1);
+                int height = random.Next(MIN_SOLID_SIZE, MAX_SOLID_SIZE + 1);
+
+                spots.Clear();
+                for (int x = 1; x + width - 1 <= lastX; x++)
+                    for (int y = 1; y + height - 1 <= size - 2; y++)
+                        if (!IsSolid(grid, x, y, width, height) && TouchesWall(grid, x, y, width, height))
+                            spots.Add((x, y));
+
+                Shuffle(spots, random);
+
+                foreach (var (ax, ay) in spots)
+                {
+                    saved.Clear();
+                    for (int cx = ax; cx < ax + width; cx++)
+                        for (int cy = ay; cy < ay + height; cy++)
+                        {
+                            var copy = GetCopy(cx, cy, size, rotate);
+                            saved.Add((cx, cy, grid[cx, cy]));
+                            saved.Add((copy.X, copy.Y, grid[copy.X, copy.Y]));
+                        }
+
+                    FillArea(grid, rotate, ax, ay, width, height);
+
+                    var copyCorner = GetCopy(ax + width - 1, rotate ? ay + height - 1 : ay, size, rotate);
+
+                    if (!HasDeadEndAround(grid, ax, ay, width, height) &&
+                        !HasDeadEndAround(grid, copyCorner.X, copyCorner.Y, width, height) &&
+                        IsValidLayout(grid))
+                    {
+                        areas.Add((ax, ay, width, height));
+                        break;
+                    }
+
+                    foreach (var (cx, cy, cell) in saved)
+                        grid[cx, cy] = cell;
+                }
+            }
+
+            return areas;
+        }
+
+        /// <summary>
+        /// Makes every cell of the area and of its copy on the other half a wall.
+        /// </summary>
+        public static void FillArea(eGridDef[,] grid, bool rotate, int x, int y, int width, int height)
+        {
+            int size = grid.GetLength(0);
+
+            for (int cx = x; cx < x + width; cx++)
+                for (int cy = y; cy < y + height; cy++)
+                {
+                    var copy = GetCopy(cx, cy, size, rotate);
+                    grid[cx, cy] |= eGridDef.Wall;
+                    grid[copy.X, copy.Y] |= eGridDef.Wall;
+                }
+        }
+
+        /// <summary>
+        /// True if every cell of the area is a wall.
+        /// </summary>
+        public static bool IsSolid(eGridDef[,] grid, int x, int y, int width, int height)
+        {
+            for (int cx = x; cx < x + width; cx++)
+                for (int cy = y; cy < y + height; cy++)
+                    if (IsOpen(grid, cx, cy))
+                        return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// True if any cell beside one of the area's sides (not its corners) is a wall.
+        /// </summary>
+        public static bool TouchesWall(eGridDef[,] grid, int x, int y, int width, int height)
+        {
+            int size = grid.GetLength(0);
+
+            for (int cx = x - 1; cx <= x + width; cx++)
+                for (int cy = y - 1; cy <= y + height; cy++)
+                {
+                    bool inside = cx >= x && cx < x + width && cy >= y && cy < y + height;
+                    bool corner = (cx == x - 1 || cx == x + width) && (cy == y - 1 || cy == y + height);
+
+                    if (!inside && !corner && cx >= 0 && cy >= 0 && cx < size && cy < size && !IsOpen(grid, cx, cy))
+                        return true;
+                }
+
+            return false;
+        }
+
+        /// <summary>
+        /// True if an open cell beside one of the area's sides has fewer than two open neighbours. A quick check before
+        /// IsValidLayout, since filling an area can only make dead ends next to it.
+        /// </summary>
+        public static bool HasDeadEndAround(eGridDef[,] grid, int x, int y, int width, int height)
+        {
+            int size = grid.GetLength(0);
+
+            for (int cx = x - 1; cx <= x + width; cx++)
+                for (int cy = y - 1; cy <= y + height; cy++)
+                {
+                    bool inside = cx >= x && cx < x + width && cy >= y && cy < y + height;
+
+                    if (!inside && cx >= 0 && cy >= 0 && cx < size && cy < size && IsOpen(grid, cx, cy) &&
+                        CountOpenNeighbours(grid, cx, cy) < 2)
+                        return true;
+                }
+
+            return false;
+        }
+
+        /// <summary>
+        /// True if the map has open cells, none of them a dead end (fewer than two open neighbours), every open cell
+        /// reachable from every other, and at least Maze.MIN_CENTER_CROSSINGS rows open on both sides of the center line.
+        /// </summary>
+        public static bool IsValidLayout(eGridDef[,] grid)
+        {
+            int size = grid.GetLength(0);
+            int half = (int)(size * 0.5f);
+            int open = 0;
+            int crossings = 0;
+            var start = (X: -1, Y: -1);
+
+            for (int x = 0; x < size; x++)
+                for (int y = 0; y < size; y++)
+                {
+                    if (!IsOpen(grid, x, y))
+                        continue;
+
+                    if (CountOpenNeighbours(grid, x, y) < 2)
+                        return false;
+
+                    if (open++ == 0)
+                        start = (x, y);
+                }
+
+            for (int y = 0; y < size; y++)
+                if (IsOpen(grid, half - 1, y) && IsOpen(grid, half, y))
+                    crossings++;
+
+            if (open == 0 || crossings < Maze.MIN_CENTER_CROSSINGS)
+                return false;
+
+            var seen = new bool[size, size];
+            var queue = new Queue<(int X, int Y)>();
+            int reached = 0;
+
+            seen[start.X, start.Y] = true;
+            queue.Enqueue(start);
+
+            while (queue.Count > 0)
+            {
+                var (cx, cy) = queue.Dequeue();
+                reached++;
+
+                foreach (var (dx, dy) in NEIGHBOURS)
+                {
+                    int nx = cx + dx;
+                    int ny = cy + dy;
+
+                    if (nx < 0 || ny < 0 || nx >= size || ny >= size || seen[nx, ny] || !IsOpen(grid, nx, ny))
+                        continue;
+
+                    seen[nx, ny] = true;
+                    queue.Enqueue((nx, ny));
+                }
+            }
+
+            return reached == open;
+        }
+
+        /// <summary>
+        /// Counts the open cells beside a cell. Off the map counts as a wall.
+        /// </summary>
+        public static int CountOpenNeighbours(eGridDef[,] grid, int x, int y)
+        {
+            int size = grid.GetLength(0);
+            int count = 0;
+
+            foreach (var (dx, dy) in NEIGHBOURS)
+            {
+                int nx = x + dx;
+                int ny = y + dy;
+
+                if (nx >= 0 && ny >= 0 && nx < size && ny < size && IsOpen(grid, nx, ny))
+                    count++;
+            }
+
+            return count;
         }
 
         /// <summary>

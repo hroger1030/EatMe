@@ -184,7 +184,7 @@ namespace EatMeTests
         }
 
         [Test]
-        public void SpawnPowerUp_OnASpawnPoint_HeadingForAnExit_WithALevelItem()
+        public void SpawnPowerUp_OnASpawnPoint_HeadingForAnExit_WithAnyItem()
         {
             var server = MakeServer();
 
@@ -195,7 +195,7 @@ namespace EatMeTests
 
                 Assert.That(server.PowerUpSpawns, Does.Contain(cell));
                 Assert.That(MazeMovement.IsWarpCell(server.Map, powerUp.Exit.X, powerUp.Exit.Y), Is.True);
-                Assert.That(server.CurrentLevel.PowerUps.HasFlag(powerUp.Item), Is.True);
+                Assert.That(ePowerUp.Any.HasFlag(powerUp.Item) && powerUp.Item != ePowerUp.None, Is.True);
             }
 
             Assert.That(server.PowerUps.Select(p => p.Id), Is.Unique);
