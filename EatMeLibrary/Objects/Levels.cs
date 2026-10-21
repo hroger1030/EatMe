@@ -42,7 +42,7 @@ namespace EatMeLibrary
             new(27, "Frost Bite", FastColor.FromRgb(220, 240, 255), FastColor.FromRgb(110, 150, 190), FastColor.FromRgb(0, 32, 80), ePowerUp.ScrewAttack | ePowerUp.MorphBall | ePowerUp.EnergyTank | ePowerUp.Cherry),
             new(28, "Peach Pier", FastColor.FromRgb(255, 200, 150), FastColor.FromRgb(170, 120, 85), FastColor.FromRgb(0, 52, 64), ePowerUp.PepperShaker | ePowerUp.Mushroom | ePowerUp.SuperLeaf | ePowerUp.Orange),
             new(29, "Olive Oasis", FastColor.FromRgb(150, 180, 0), FastColor.FromRgb(85, 100, 0), FastColor.FromRgb(40, 48, 0), ePowerUp.SpreadGun | ePowerUp.BFG | ePowerUp.MegaManOneUp | ePowerUp.Apple),
-            new(30, "Ghost Town", FastColor.FromRgb(150, 150, 170), FastColor.FromRgb(60, 60, 72), FastColor.FromRgb(10, 10, 16), ePowerUp.OneUpMushroom | ePowerUp.HolyWater | ePowerUp.Triforce | ePowerUp.PokeBall | ePowerUp.Melon),
+            new(30, "Ghost Town", FastColor.FromRgb(150, 150, 170), FastColor.FromRgb(60, 60, 72), FastColor.FromRgb(10, 10, 16), ePowerUp.PowerPill | ePowerUp.HolyWater | ePowerUp.Triforce | ePowerUp.PokeBall | ePowerUp.Melon),
             new(31, "Galaxy Gate", FastColor.FromRgb(110, 80, 255), FastColor.FromRgb(50, 30, 130), FastColor.FromRgb(20, 0, 40), ePowerUp.BlueShell | ePowerUp.Galaxian | ePowerUp.Tetromino | ePowerUp.ScrewAttack | ePowerUp.SpreadGun | ePowerUp.HeartContainer),
             new(32, "Pac Paradise", FastColor.FromRgb(255, 255, 0), FastColor.TRANSPARENT, FastColor.FromRgb(0, 0, 0), ePowerUp.Any, isRainbow: true,
                 backgroundImage: Const.IMAGE_SPACE_FILL),

@@ -9,11 +9,8 @@ namespace EatMeLibrary
         // White triangle pointing right, magenta color-keyed to transparent
         public const string IMAGE_POINTER = "Images/pointer";
         public const string IMAGE_DOT = "Images/dot0";
-        public const string IMAGE_POWER_PILL = "Images/powerpill0";
-        // Floor tile drawn under the spawn rooms (team colors)
-        public const string IMAGE_PAC_BASE = "Images/Pacbase0.png (48x48x4)";
-        // Floor tile drawn under the ghost generator (yellow)
-        public const string IMAGE_GHOST_BASE = "Images/GhostBase0";
+        // Floor tiles drawn under the spawn rooms (team colors) and the ghost pen
+        public const string IMAGE_PAC_BASE = "Images/base0.png (48x48x6)";
         public const string IMAGE_FLAG0 = "Images/flag0";
         public const string IMAGE_FLAG_BASE = "Images/flagbase0";
         public const string IMAGE_PAC_SHEET = "Images/pac(60x60x4)";

@@ -494,7 +494,7 @@
 /processorParam:TextureFormat=Color
 /build:Images/ghost(60x60x4).png
 
-#begin Images/powerpill0.png
+#begin Images/base0.png (48x48x6).png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -504,31 +504,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Images/powerpill0.png
-
-#begin Images/Pacbase0.png (48x48x4).png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:Images/Pacbase0.png (48x48x4).png
-
-#begin Images/GhostBase0.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:Images/GhostBase0.png
+/build:Images/base0.png (48x48x6).png
 
 #begin Images/flagbase0.png
 /importer:TextureImporter

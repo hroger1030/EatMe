@@ -121,6 +121,21 @@ namespace EatMeLibrary
         public List<PlayerResult> RedResults { get; private set; } = [];
 
         /// <summary>
+        /// True once the server has answered the last PlayerListRequest, until ClearPlayerList.
+        /// </summary>
+        public bool HasPlayerList { get; private set; }
+
+        /// <summary>
+        /// Blue players and bots in the last PlayerList, alphabetical (PlayerListRules.SortTeam).
+        /// </summary>
+        public List<PlayerListEntry> BluePlayerList { get; private set; } = [];
+
+        /// <summary>
+        /// Red players and bots in the last PlayerList, alphabetical (PlayerListRules.SortTeam).
+        /// </summary>
+        public List<PlayerListEntry> RedPlayerList { get; private set; } = [];
+
+        /// <summary>
         /// Client clock time (ms) the next level is due to start, while the results are shown.
         /// </summary>
         public long IntermissionEndMs { get; private set; }
@@ -166,6 +181,16 @@ namespace EatMeLibrary
         public bool IsJoined => PlayerId != NO_PLAYER;
 
         public IReadOnlyDictionary<int, PlayerInfo> Players => _Players;
+
+        /// <summary>
+        /// Forgets the last player list, so nothing stale shows while a new PlayerListRequest is answered.
+        /// </summary>
+        public void ClearPlayerList()
+        {
+            HasPlayerList = false;
+            BluePlayerList = [];
+            RedPlayerList = [];
+        }
 
         /// <summary>
         /// Updates the state from one server message. nowMs is the client clock, used to time pings.
@@ -256,6 +281,12 @@ namespace EatMeLibrary
 
                 case HighScoresMessage highScores:
                     HighScores = highScores.Scores;
+                    break;
+
+                case PlayerListMessage playerList:
+                    BluePlayerList = PlayerListRules.SortTeam(playerList.Entries, eTeam.Blue);
+                    RedPlayerList = PlayerListRules.SortTeam(playerList.Entries, eTeam.Red);
+                    HasPlayerList = true;
                     break;
             }
         }

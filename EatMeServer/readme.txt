@@ -5,6 +5,8 @@ The headless server for Eat Me, a multiplayer capture-the-flag Pac-Man game.
 Players join it with the Eat Me client; the client and server versions must
 match.
 
+Eat Me is free and open source. The source code is available at:
+https://github.com/hroger1030/EatMe
 
 REQUIREMENTS
 ------------

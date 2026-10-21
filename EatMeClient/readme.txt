@@ -31,12 +31,16 @@ CONTROLS
                     Keyboard                Gamepad
 Move                Arrow keys or WASD      D-pad or left stick
 Action (power up)   Space                   A
+Player list (hold)  Tab                     Left or right shoulder
 Menu / pause        Esc                     Back
 Menu select         Enter or Space          A
 Menu back           Esc                     B or Back
 
 Text boxes (such as your name) are moved between with the arrow keys only,
 since W, A, S and D can be typed.
+
+The name and server address boxes take Ctrl+V (or Shift+Insert) to paste,
+Ctrl+C to copy the whole box and Ctrl+X to cut it (Command on a Mac).
 
 
 HOW TO PLAY

@@ -321,6 +321,10 @@ namespace EatMeServer
                     HandleAction(serverPlayer.Player);
                     break;
 
+                case PlayerListRequestMessage:
+                    Send(connection, BuildPlayerList());
+                    break;
+
                 case LeaveMessage:
                     RemovePlayer(connection);
                     connection.Close();
@@ -392,7 +396,7 @@ namespace EatMeServer
             {
                 var player = serverPlayer.Player;
                 var respawnMsLeft = player.Alive ? 0 : Math.Max(0, player.RespawnTimer);
-                var spawnLocked = !player.Alive && !player.ExtraLifePending && (player.Team == eTeam.Red ? redLocked : blueLocked);
+                var spawnLocked = !player.Alive && (player.Team == eTeam.Red ? redLocked : blueLocked);
 
                 snapshot.Pacs.Add(new PacState(player.Id, player.Team, player.Location.X, player.Location.Y, player.Size, player.Facing, player.Alive, player.HasFlag, player.Eating,
                     player.FlagCaps, player.GhostKills, player.PlayerKills, player.FlagRescues, player.PowerUpEffect, player.PowerUpMs, player.TotalScore, player.MsSinceEaten, player.IsStunned,
@@ -505,9 +509,7 @@ namespace EatMeServer
 
         /// <summary>
         /// Counts down dead pacs and brings them back when their time is up:
-        /// - one with Extra Life (1-up) when it died comes back after PowerUpEffects.EXTRA_LIFE_RESPAWN_MS where it
-        ///   died, at its size, whatever else is going on (its own buff wins);
-        /// - otherwise, while a living teammate has Reinforcements, at once at base, hearing the angelic chorus;
+        /// - while a living teammate has Reinforcements, at once at base, hearing the angelic chorus;
         /// - otherwise at base when its timer runs out, unless its team's spawn is locked (IsSpawnLocked); then it waits,
         ///   and comes back as soon as the lock is lifted.
         /// </summary>
@@ -526,14 +528,6 @@ namespace EatMeServer
                     continue;
 
                 player.RespawnTimer -= elapsedMs;
-
-                if (player.ExtraLifePending)
-                {
-                    if (player.RespawnTimer <= 0)
-                        RespawnFromExtraLife(player);
-
-                    continue;
-                }
 
                 if (player.Team == eTeam.Red ? redReinforced : blueReinforced)
                 {
@@ -573,21 +567,6 @@ namespace EatMeServer
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Brings a pac back from its Extra Life: alive where it died, at the size it was, with no buff.
-        /// </summary>
-        private void RespawnFromExtraLife(Player player)
-        {
-            var location = player.ExtraLifeLocation;
-            var size = player.ExtraLifeSize;
-            var facing = player.Facing;
-
-            Respawn(player);
-            player.Location = location;
-            player.Size = size;
-            player.Facing = facing;
         }
 
         /// <summary>
@@ -1199,24 +1178,13 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Kills a pac: drops any flag where it is, tells everyone, and starts its respawn timer. Death removes its buff;
-        /// with Extra Life (1-up) it comes back PowerUpEffects.EXTRA_LIFE_RESPAWN_MS later in the cell where it died,
-        /// at the size it was (UpdateRespawns).
+        /// Kills a pac: drops any flag where it is, tells everyone, and starts its respawn timer. Death removes its buff.
         /// </summary>
         private void KillPac(Player player, eGameEvent cause, int actorId)
         {
             DropFlag(player);
             player.Alive = false;
             player.RespawnTimer = _Settings.GameConfig.PlayerRespawnTimeMs;
-
-            if (player.PowerUpEffect == ePowerUpEffect.ExtraLife && player.PowerUpMs > 0)
-            {
-                var (x, y) = MazeMovement.GetCell(player.Location);
-                player.ExtraLifePending = true;
-                player.ExtraLifeLocation = new Point2(x + CELL_CENTER, y + CELL_CENTER);
-                player.ExtraLifeSize = player.Size;
-                player.RespawnTimer = PowerUpEffects.EXTRA_LIFE_RESPAWN_MS;
-            }
 
             player.PowerUpEffect = ePowerUpEffect.None;
             player.PowerUpMs = 0;
@@ -2485,8 +2453,8 @@ namespace EatMeServer
                     StartPowerUpEffect(player, ePowerUpEffect.Invincible);
                     break;
 
-                case ePowerUp.OneUpMushroom:
-                    StartPowerUpEffect(player, ePowerUpEffect.ExtraLife);
+                case ePowerUp.PowerPill:
+                    StartPowerUpEffect(player, ePowerUpEffect.PowerPill);
                     break;
 
                 case ePowerUp.MegaManOneUp:
@@ -2683,6 +2651,21 @@ namespace EatMeServer
             var message = new HighScoresMessage();
             foreach (var entry in _HighScores)
                 message.Scores.Add(new HighScoreEntry { Name = entry.Name, Score = entry.Score, Date = entry.Date });
+            return message;
+        }
+
+        /// <summary>
+        /// Every player and bot with its team and ping as they are now, for a PlayerListRequest (the TAB list). A human's
+        /// ping is its smoothed lag (ServerPlayer.Lag); bots have none.
+        /// </summary>
+        public PlayerListMessage BuildPlayerList()
+        {
+            var message = new PlayerListMessage();
+            foreach (var serverPlayer in _Players.Values)
+            {
+                var player = serverPlayer.Player;
+                message.Entries.Add(new PlayerListEntry(player.Id, player.Name, player.Team, serverPlayer.IsBot, serverPlayer.Lag.SmoothedMs));
+            }
             return message;
         }
 
@@ -3260,7 +3243,6 @@ namespace EatMeServer
             player.Eating = false;
             player.LastCellX = -1;
             player.LastCellY = -1;
-            player.ExtraLifePending = false;
             player.ActionCooldownMs = 0;
             player.SpreadShotMs = 0;
             player.HolyFireCell = null;

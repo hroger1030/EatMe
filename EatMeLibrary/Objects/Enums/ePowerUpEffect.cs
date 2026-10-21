@@ -61,12 +61,6 @@ namespace EatMeLibrary
         Invincible = 11,
 
         /// <summary>
-        /// 1-up mushroom (permanent): the next time the pac dies it comes back PowerUpEffects.EXTRA_LIFE_RESPAWN_MS
-        /// later where it died, at the size it was.
-        /// </summary>
-        ExtraLife = 12,
-
-        /// <summary>
         /// Mega Man 1-up: while the pac lives, its team's dead pacs respawn at once (no respawn timer).
         /// </summary>
         Reinforcements = 13,

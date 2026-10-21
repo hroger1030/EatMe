@@ -5,7 +5,7 @@ using FastG;
 namespace EatMeTests
 {
     /// <summary>
-    /// The 1-up, Mega Man 1-up, Morph Ball, Super Leaf, White Sword, Fire Flower, Holy Water, Blue Shell and Poke Ball.
+    /// The power pill item, Mega Man 1-up, Morph Ball, Super Leaf, White Sword, Fire Flower, Holy Water, Blue Shell and Poke Ball.
     /// </summary>
     public class BuffAndWeaponTests
     {
@@ -71,57 +71,19 @@ namespace EatMeTests
                 server.UpdateWeaponEffects(TICK_SECONDS, TICK_MS);
         }
 
-        // 1-up
+        // Power pill item
 
         [Test]
-        public void OneUp_IsPermanent_AndBringsThePacBackWhereItDied()
+        public void PowerPillItem_StartsThePowerPillEffect()
         {
-            var server = MakeServer(ghosts: 1);
+            var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.ApplyPowerUp(red, ePowerUp.OneUpMushroom);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.ExtraLife));
+            var size = red.Size;
+            server.ApplyPowerUp(red, ePowerUp.PowerPill);
 
-            server.UpdateEating(Config.PowerUpDurationMs * 3);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.ExtraLife), "permanent");
-
-            red.Size = 60f;
-            red.Location = server.Ghosts[0].Location;
-            var deathCell = MazeMovement.GetCell(red.Location);
-            server.UpdateGhosts(0f, 0);
-            Assert.That(red.Alive, Is.False);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None), "death removes the buff");
-
-            server.UpdateRespawns(PowerUpEffects.EXTRA_LIFE_RESPAWN_MS - 1);
-            Assert.That(red.Alive, Is.False);
-
-            server.UpdateRespawns(1);
-            Assert.That(red.Alive, Is.True);
-            Assert.That(MazeMovement.GetCell(red.Location), Is.EqualTo(deathCell));
-            Assert.That(red.Size, Is.EqualTo(60f));
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None), "used up");
-        }
-
-        [Test]
-        public void OneUp_WinsOverLockdownAndReinforcements()
-        {
-            var server = MakeServer(ghosts: 1);
-            var (red, _) = Join(server, 1, eTeamPreference.Red);
-            var (mate, _) = Join(server, 2, eTeamPreference.Red);
-            mate.Team = eTeam.Red; // teams are kept even on join
-            var (blue, _) = Join(server, 3, eTeamPreference.Blue);
-            server.StartPowerUpEffect(blue, ePowerUpEffect.Lockdown);
-            server.StartPowerUpEffect(mate, ePowerUpEffect.Reinforcements);
-            server.StartPowerUpEffect(red, ePowerUpEffect.ExtraLife);
-            red.Location = server.Ghosts[0].Location;
-            var deathCell = MazeMovement.GetCell(red.Location);
-
-            server.UpdateGhosts(0f, 0);
-            server.UpdateRespawns(1);
-            Assert.That(red.Alive, Is.False, "not at once from the teammate's Reinforcements");
-
-            server.UpdateRespawns(PowerUpEffects.EXTRA_LIFE_RESPAWN_MS);
-            Assert.That(red.Alive, Is.True, "Lockdown doesn't stop it");
-            Assert.That(MazeMovement.GetCell(red.Location), Is.EqualTo(deathCell));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.PowerPill));
+            Assert.That(red.IsPowered, Is.True);
+            Assert.That(red.Size, Is.EqualTo(size + Config.PowerPillSizeGain));
         }
 
         // Mega Man 1-up
@@ -585,7 +547,7 @@ namespace EatMeTests
         [Test]
         public void EveryNewEffect_HasAName()
         {
-            foreach (var effect in new[] { ePowerUpEffect.ExtraLife, ePowerUpEffect.Reinforcements, ePowerUpEffect.MorphBall,
+            foreach (var effect in new[] { ePowerUpEffect.Reinforcements, ePowerUpEffect.MorphBall,
                 ePowerUpEffect.RaccoonTail, ePowerUpEffect.SwordSwing, ePowerUpEffect.HolyFire, ePowerUpEffect.FireFlower })
                 Assert.That(PowerUpEffects.GetName(effect), Is.Not.EqualTo(Const.STRING_POWER_UP_NONE), effect.ToString());
         }

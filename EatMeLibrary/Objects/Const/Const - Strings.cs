@@ -69,7 +69,6 @@
         public const string STRING_LOCKDOWN = "Lockdown";
         public const string STRING_TWISTER = "Twister";
         public const string STRING_INVINCIBLE = "Invincible";
-        public const string STRING_EXTRA_LIFE = "Extra Life";
         public const string STRING_REINFORCEMENTS = "Reinforce";
         public const string STRING_MORPH_BALL = "Morph Ball";
         public const string STRING_RACCOON_TAIL = "Raccoon Tail";
@@ -103,5 +102,6 @@
         public const string STRING_PING = "Ping";
         public const string STRING_PING_UNKNOWN = "--";
         public const string STRING_MS = "ms";
+        public const string STRING_PLAYER_LIST_BOT = "<bot>";
     }
 }

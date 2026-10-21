@@ -35,7 +35,7 @@ dotnet build EatMe.sln
 dotnet run --project EatMeServer
 ```
 
-The server loads `server.cfg` from its output directory, prints the loaded settings, then runs its tick loop until Ctrl+C or `quit`. Type `help` in its window for the console commands; the prompt shows how long the server has been up, as `[Uptime: h:mm]`. If `server.cfg` is missing or invalid, it prints an error and exits with code 1.
+The server loads `server.cfg` from its output directory, prints the loaded settings, then runs its tick loop until Ctrl+C or `quit`. Type `help` in its window for the console commands; the prompt shows how long the server has been up, as `[up hh.mm.ss]`, and stays on the bottom row with the log scrolling above it, so a busy log never breaks into what you are typing (Up/Down bring back earlier commands, Esc clears the line). If `server.cfg` is missing or invalid, it prints an error and exits with code 1.
 
 ### Console commands
 

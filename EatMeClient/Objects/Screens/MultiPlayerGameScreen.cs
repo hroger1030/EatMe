@@ -19,6 +19,12 @@ namespace EatMeClient
         /// </summary>
         public const int CELL_PIXELS = 48;
 
+        /// <summary>
+        /// The power pill's cell on the power up sheet, used for the map's power pills too (tinted the dot color).
+        /// </summary>
+        private static readonly Rectangle POWER_PILL_SOURCE = new Rectangle(PowerUpSprites.GetCellX(ePowerUp.PowerPill), PowerUpSprites.GetCellY(ePowerUp.PowerPill),
+            PowerUpSprites.CELL_PIXELS, PowerUpSprites.CELL_PIXELS);
+
         private const float PING_INTERVAL_SECONDS = 2f;
         private const float PAC_FRAME_SECONDS = 0.08f;
 
@@ -99,9 +105,7 @@ namespace EatMeClient
         private SpriteFont _NameFont;
         private Texture2D _Pixel;
         private Texture2D _DotTexture;
-        private Texture2D _PowerPillTexture;
         private Texture2D _PacBaseTexture;
-        private Texture2D _GhostBaseTexture;
         private eGridDef[,] _FloorBoxesMap;
         private List<CellBox> _GhostPenBoxes = new List<CellBox>();
         private List<CellBox> _RedSpawnBoxes = new List<CellBox>();
@@ -167,6 +171,12 @@ namespace EatMeClient
         private bool _LevelStartedWhilePaused;
         private readonly MiniMap _MiniMap = new();
         private PlayerState _PlayerState;
+        private PlayerList _PlayerList;
+
+        /// <summary>
+        /// True while TAB or a gamepad shoulder button is held, showing the player list.
+        /// </summary>
+        private bool _PlayerListHeld;
 
         // Game Elements
         private Camera _Camera = new();
@@ -211,10 +221,9 @@ namespace EatMeClient
             _Font = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48);
             _NameFont = AssetCache.GetFont(Const.FONT_ARIAL20);
             _PlayerState = new PlayerState(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30));
+            _PlayerList = new PlayerList(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30));
             _DotTexture = AssetCache.GetTexture(Const.IMAGE_DOT);
-            _PowerPillTexture = AssetCache.GetTexture(Const.IMAGE_POWER_PILL);
             _PacBaseTexture = AssetCache.GetTexture(Const.IMAGE_PAC_BASE);
-            _GhostBaseTexture = AssetCache.GetTexture(Const.IMAGE_GHOST_BASE);
             _FlagBaseTexture = AssetCache.GetTexture(Const.IMAGE_FLAG_BASE);
             _WinBlueTexture = AssetCache.GetTexture(Const.IMAGE_WIN_BLUE);
             _WinRedTexture = AssetCache.GetTexture(Const.IMAGE_WIN_RED);
@@ -374,6 +383,7 @@ namespace EatMeClient
             // paused, the game is silent: only the menus' own sounds play
             if (ConfigManager.Settings.Paused)
             {
+                _PlayerListHeld = false;
                 StopLoopSounds();
 
                 if (_SettingsOpen)
@@ -389,6 +399,7 @@ namespace EatMeClient
             if (IsStopped)
             {
                 StopLoopSounds();
+                _PlayerListHeld = false;
 
                 if (InputManager.KeyPressed(Keys.Escape) || InputManager.GamePadButtonPressed(Buttons.Back) || InputManager.GamePadButtonPressed(Buttons.B))
                     QuitToTitle();
@@ -400,6 +411,8 @@ namespace EatMeClient
                 PauseGame();
 
             SendInput();
+
+            UpdatePlayerList();
 
             // the action button triggers whatever the player's power up effect does on action
             if (InputManager.KeyPressed(Keys.Space) || InputManager.GamePadButtonPressed(Buttons.A))
@@ -805,6 +818,10 @@ namespace EatMeClient
                         var ownSize = ownPac.HasValue ? (int)Math.Round(ownPac.Value.Size) : 0;
                         _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill());
                         DrawRespawnCountdown(spriteBatch, viewport);
+
+                        if (_PlayerListHeld && _State.HasPlayerList)
+                            _PlayerList.Draw(spriteBatch, GetBoardViewport(viewport).Bounds, _State.BluePlayerList, _State.RedPlayerList, _State.PlayerId);
+
                         spriteBatch.End();
                     }
 
@@ -866,6 +883,25 @@ namespace EatMeClient
         /// (ClientGameState.GetOwnRespawnText), in white in the game font, centred on the board on a half-transparent
         /// panel with rounded corners.
         /// </summary>
+        /// <summary>
+        /// Shows the player list while TAB or a gamepad shoulder button is held (not during the results). Each press asks
+        /// the server for a fresh list, which then stays as it was until the button is let go.
+        /// </summary>
+        private void UpdatePlayerList()
+        {
+            var gamePad = InputManager.GamePadState[(int)PlayerIndex.One];
+            var held = !_State.IsIntermission
+                && (InputManager.KeyboardState.IsKeyDown(Keys.Tab) || gamePad.IsButtonDown(Buttons.LeftShoulder) || gamePad.IsButtonDown(Buttons.RightShoulder));
+
+            if (held && !_PlayerListHeld)
+            {
+                _State.ClearPlayerList();
+                _Client.Send(new PlayerListRequestMessage());
+            }
+
+            _PlayerListHeld = held;
+        }
+
         private void DrawRespawnCountdown(SpriteBatch spriteBatch, Viewport viewport)
         {
             var text = _State.GetOwnRespawnText();
@@ -1003,7 +1039,9 @@ namespace EatMeClient
             var title = winner == eTeam.Blue ? Const.STRING_BLUE_WINS : Const.STRING_RED_WINS;
             var titleTop = RESULTS_GAP;
             var titleHeight = _Font.LineSpacing * RESULTS_TITLE_SCALE;
-            DrawCentredString(spriteBatch, title, viewport.Width * 0.5f, titleTop, RESULTS_TITLE_SCALE, ClientColors.GetTeamColor(winner));
+            var titleWidth = _Font.MeasureString(title).X * RESULTS_TITLE_SCALE;
+            var titlePosition = new Vector2((float)Math.Round(viewport.Width * 0.5f - titleWidth * 0.5f), (float)Math.Round(titleTop));
+            TextHelper.DrawShadowedString(spriteBatch, _Font, title, titlePosition, ClientColors.COLOR_PAC_WHITE, RESULTS_TITLE_SCALE);
 
             var countdown = $"{Const.STRING_NEXT_LEVEL_IN} {_State.GetIntermissionSecondsLeft(_Clock.ElapsedMilliseconds)}";
             var countdownHeight = _Font.LineSpacing * RESULTS_COUNTDOWN_SCALE;
@@ -1227,7 +1265,7 @@ namespace EatMeClient
                     if (cell.HasFlag(eGridDef.Food))
                         spriteBatch.Draw(_DotTexture, bounds, ClientColors.ToColor(dotColors[x, y]));
                     else if (cell.HasFlag(eGridDef.PowerPill) && showPowerPills)
-                        spriteBatch.Draw(_PowerPillTexture, bounds, ClientColors.ToColor(dotColors[x, y]));
+                        spriteBatch.Draw(_PowerUpSheet, bounds, POWER_PILL_SOURCE, ClientColors.ToColor(dotColors[x, y]));
                 }
             }
         }
@@ -1246,41 +1284,30 @@ namespace EatMeClient
                 _FloorBoxesMap = map;
             }
 
-            foreach (var box in _GhostPenBoxes)
-                DrawFloor(spriteBatch, viewport, box, _GhostBaseTexture, Color.White);
-
             var frame = PacBaseSprites.GetFrame(_AnimationTime);
+            var ghostSource = GetPacBaseSource(PacBaseSprites.GetGhostCellY(), frame);
+            var redSource = GetPacBaseSource(PacBaseSprites.GetCellY(eTeam.Red), frame);
+            var blueSource = GetPacBaseSource(PacBaseSprites.GetCellY(eTeam.Blue), frame);
+
+            foreach (var box in _GhostPenBoxes)
+                DrawFloor(spriteBatch, viewport, box, _PacBaseTexture, ghostSource, Color.White);
 
             foreach (var box in _RedSpawnBoxes)
-                DrawSpawnTiles(spriteBatch, viewport, box, eTeam.Red, frame);
+                DrawFloor(spriteBatch, viewport, box, _PacBaseTexture, redSource, Color.White);
 
             foreach (var box in _BlueSpawnBoxes)
-                DrawSpawnTiles(spriteBatch, viewport, box, eTeam.Blue, frame);
+                DrawFloor(spriteBatch, viewport, box, _PacBaseTexture, blueSource, Color.White);
         }
 
         /// <summary>
-        /// Draws one pac base sprite on every cell of a spawn area, its team's row at the current blink frame.
+        /// The base sheet cell in the row at cellY (a team's spawn area or the ghost pen) at the current blink frame.
         /// </summary>
-        private void DrawSpawnTiles(SpriteBatch spriteBatch, Viewport viewport, CellBox box, eTeam team, int frame)
+        private static Rectangle GetPacBaseSource(int cellY, int frame)
         {
-            var source = new Rectangle(PacBaseSprites.GetCellX(frame), PacBaseSprites.GetCellY(team), PacBaseSprites.CELL_PIXELS, PacBaseSprites.CELL_PIXELS);
-
-            for (var y = box.Y; y < box.Y + box.Height; y++)
-            {
-                for (var x = box.X; x < box.X + box.Width; x++)
-                {
-                    var screen = _Camera.ToScreenPosition(CellToWorld(x, y), viewport);
-                    var bounds = new Rectangle((int)screen.X, (int)screen.Y, CELL_PIXELS, CELL_PIXELS);
-
-                    if (bounds.Right < 0 || bounds.Bottom < 0 || bounds.Left > viewport.Width || bounds.Top > viewport.Height)
-                        continue;
-
-                    spriteBatch.Draw(_PacBaseTexture, bounds, source, Color.White);
-                }
-            }
+            return new Rectangle(PacBaseSprites.GetCellX(frame), cellY, PacBaseSprites.CELL_PIXELS, PacBaseSprites.CELL_PIXELS);
         }
 
-        private void DrawFloor(SpriteBatch spriteBatch, Viewport viewport, CellBox box, Texture2D texture, Color tint)
+        private void DrawFloor(SpriteBatch spriteBatch, Viewport viewport, CellBox box, Texture2D texture, Rectangle? source, Color tint)
         {
             var screen = _Camera.ToScreenPosition(CellToWorld(box.X, box.Y), viewport);
             var bounds = new Rectangle((int)screen.X, (int)screen.Y, box.Width * CELL_PIXELS, box.Height * CELL_PIXELS);
@@ -1288,7 +1315,7 @@ namespace EatMeClient
             if (bounds.Right < 0 || bounds.Bottom < 0 || bounds.Left > viewport.Width || bounds.Top > viewport.Height)
                 return;
 
-            spriteBatch.Draw(texture, bounds, tint);
+            spriteBatch.Draw(texture, bounds, source, tint);
         }
 
         /// <summary>

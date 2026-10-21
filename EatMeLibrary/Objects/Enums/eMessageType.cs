@@ -12,6 +12,7 @@ namespace EatMeLibrary
         Leave = 4,
         ServerPong = 5,
         Action = 6,
+        PlayerListRequest = 7,
 
         // server to client
         Welcome = 20,
@@ -27,6 +28,7 @@ namespace EatMeLibrary
         HighScores = 30,
         ServerPing = 31,
         GameConfig = 32,
+        PlayerList = 33,
 
         // LAN discovery over UDP
         DiscoveryRequest = 40,

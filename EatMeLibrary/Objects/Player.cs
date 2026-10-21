@@ -96,16 +96,6 @@
         public bool PassesThroughWalls => PowerUpEffects.PassesThroughWalls(PowerUpEffect) && PowerUpMs > 0;
 
         /// <summary>
-        /// True while the pac is dead and its Extra Life (1-up) will bring it back at ExtraLifeLocation and
-        /// ExtraLifeSize when its RespawnTimer runs out.
-        /// </summary>
-        public bool ExtraLifePending { get; set; }
-
-        public FastG.Point2 ExtraLifeLocation { get; set; }
-
-        public float ExtraLifeSize { get; set; }
-
-        /// <summary>
         /// ms before the action button does anything again (WeaponRules.ACTION_COOLDOWN_MS after every press that did something).
         /// </summary>
         public int ActionCooldownMs { get; set; }

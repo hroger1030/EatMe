@@ -8,7 +8,7 @@ namespace EatMeServer
     /// <summary>
     /// Writes server console lines colored by what they are about (eLogType). Safe to call from any thread, since
     /// network tasks log too; errors go to standard error. Once EnablePrompt is called the console's last line is
-    /// always the typing prompt, "[Up:h:mm] " (GetPrompt), followed by the line being typed (ConsoleInput), which
+    /// always the typing prompt, "[up hh.mm.ss] " (GetPrompt), followed by the line being typed (ConsoleInput), which
     /// the server draws itself from the keys HandleKey is given. With ANSI on, a scroll region keeps the prompt on
     /// the window's bottom row and the log scrolls above it; without, the prompt line is wiped before each logged
     /// line and drawn again after it. Either way logged lines never break into what is being typed.
@@ -152,11 +152,11 @@ namespace EatMeServer
         private static extern bool SetConsoleMode(IntPtr handle, uint mode);
 
         /// <summary>
-        /// The typing prompt for how long the server has been up: whole hours, then minutes as two digits.
+        /// The typing prompt for how long the server has been up: whole hours, minutes and seconds, each at least two digits.
         /// </summary>
         public static string GetPrompt(TimeSpan uptime)
         {
-            return $"[Up:{(int)uptime.TotalHours}:{uptime.Minutes:00}] ";
+            return $"[up {(int)uptime.TotalHours:00}.{uptime.Minutes:00}.{uptime.Seconds:00}] ";
         }
 
         /// <summary>

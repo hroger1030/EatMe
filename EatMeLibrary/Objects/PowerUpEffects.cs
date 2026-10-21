@@ -27,7 +27,6 @@ namespace EatMeLibrary
                 ePowerUpEffect.Lockdown => Const.STRING_LOCKDOWN,
                 ePowerUpEffect.Twister => Const.STRING_TWISTER,
                 ePowerUpEffect.Invincible => Const.STRING_INVINCIBLE,
-                ePowerUpEffect.ExtraLife => Const.STRING_EXTRA_LIFE,
                 ePowerUpEffect.Reinforcements => Const.STRING_REINFORCEMENTS,
                 ePowerUpEffect.MorphBall => Const.STRING_MORPH_BALL,
                 ePowerUpEffect.RaccoonTail => Const.STRING_RACCOON_TAIL,
@@ -48,11 +47,6 @@ namespace EatMeLibrary
                 _ => Const.STRING_POWER_UP_NONE,
             };
         }
-
-        /// <summary>
-        /// A pac with Extra Life (1-up) that dies comes back this long after, where it died.
-        /// </summary>
-        public const int EXTRA_LIFE_RESPAWN_MS = 1000;
 
         /// <summary>
         /// True if a pac with this effect passes through enemy pacs and ghosts (no fights, no ghost contact either
@@ -332,12 +326,11 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if an effect never runs out: its timer stays full and it lasts until the pac dies or another effect
-        /// replaces it. Vitamin C, Doctor Away, Extra Life and Energy Tank.
+        /// replaces it. Vitamin C, Doctor Away and Energy Tank.
         /// </summary>
         public static bool IsPermanent(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.ExtraLife
-                || effect == ePowerUpEffect.EnergyTank;
+            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.DoctorAway || effect == ePowerUpEffect.EnergyTank;
         }
 
         /// <summary>

@@ -244,13 +244,14 @@ namespace EatMeTests
             Assert.That(ServerCommands.GetOutputType(line), Is.EqualTo(type));
         }
 
-        [TestCase(0, 0, "[Up:0:00] ")]
-        [TestCase(0, 5, "[Up:0:05] ")]
-        [TestCase(2, 45, "[Up:2:45] ")]
-        [TestCase(30, 7, "[Up:30:07] ")]
-        public void ServerLog_PromptShowsHoursAndMinutes(int hours, int minutes, string prompt)
+        [TestCase(0, 0, 0, "[up 00.00.00] ")]
+        [TestCase(0, 5, 9, "[up 00.05.09] ")]
+        [TestCase(2, 45, 59, "[up 02.45.59] ")]
+        [TestCase(30, 7, 3, "[up 30.07.03] ")]
+        [TestCase(125, 0, 0, "[up 125.00.00] ")]
+        public void ServerLog_PromptShowsHoursMinutesAndSeconds(int hours, int minutes, int seconds, string prompt)
         {
-            Assert.That(ServerLog.GetPrompt(new TimeSpan(hours, minutes, 59)), Is.EqualTo(prompt));
+            Assert.That(ServerLog.GetPrompt(new TimeSpan(hours, minutes, seconds)), Is.EqualTo(prompt));
         }
     }
 }

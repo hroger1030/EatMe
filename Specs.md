@@ -27,6 +27,11 @@ This is the feature manifest for the SRG client and server application. It will 
 - power pill needs to be an effect, pow didn't remove effect. 
 - print game effect 'stunned' in middle of screen
 - main pac still to pinkish. more orange?
+- all based to 4x4 size?
+- publishing signing?
+- consolidate ePowerUpEffect and ePowerUp, both arent really needed.
+- reconsider the 
+- cannot return friendly flag with power up?
 
 
 ## Game Client 
@@ -36,6 +41,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Edit player profile: name and preferred team are set on the join screen and remembered between games.
 - Search for and join local games. The list only shows servers running the same game version.
 - Join games via IP address, typed as host or host:port (port defaults to 7777). The last address used is remembered.
+- The name and address boxes support cut, copy and paste (Ctrl+X, Ctrl+C, Ctrl+V or Shift+Insert; Command on a Mac). Copy and cut take the whole box. A paste is added on the end, keeping only the characters the box allows, up to its length limit.
 - Settings screen with music volume level, sound level, input type and a brightness fader (50% to 100%, default 100%). Brightness dims the whole screen (menus and game) as soon as it is moved, so players can soften the game's bright colours; black stays black. Below it, a colour bloom fader (0% to 100%, default 0%, off) makes the bright colours glow on every screen, also as soon as it is moved. A Display toggle switches between full screen (the default, at the desktop's resolution) and a window 80% of the desktop's size, as soon as it is changed; the window can be maximized or resized. The settings screen can also be opened during a game from the in-game menu, without leaving the server: the game is hidden and silent while it is open (and while the in-game menu is), the game carries on on the server, and Back returns to the in-game menu.
 - The game board is drawn with a sharp bilinear filter: pixel art stays crisp, but scaled, turned and moving sprites get smooth edges. Pacs with Sugar Rush (cherry) leave a short fading speed trail; a power pill leaves none.
 - Supports keyboard (WASD-style control mapping or arrow keys) or gamepad controllers.
@@ -113,7 +119,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: TickRate (int) defaults to 60, times per second the server updates the game.
 - Server setting: TargetFps (int) defaults to 30, times per second the server sends the game state to clients.
 - The server console takes typed commands (case doesn't matter). Nothing a command changes is saved to server.cfg.
-- The typing prompt, `[Up:h:mm] ` (how long the server has been up), stays on the console's bottom row with the line being typed, and everything the server logs scrolls above it, so it never breaks into a half typed command. Left/Right, Home/End, Backspace and Delete edit the line, Up/Down bring back earlier lines, Esc clears it.
+- The typing prompt, `[up hh.mm.ss] ` (how long the server has been up), stays on the console's bottom row with the line being typed, and everything the server logs scrolls above it, so it never breaks into a half typed command. Left/Right, Home/End, Backspace and Delete edit the line, Up/Down bring back earlier lines, Esc clears it.
 
 | Command | Does |
 |---|---|
@@ -212,6 +218,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
   - When two effects seem to conflict, the pac's own buff wins over an effect from someone else.
   - Enemy pacs and ghosts killed by an effect count as normal kills: the pac whose effect it was scores the usual points and kill counts. Killing a teammate or itself scores nothing.
 - The action button is space on the keyboard (A on a gamepad). Pressing it triggers whatever the pac's buff does on action; with a buff that does nothing on action, or none, it does nothing. After a press that does something, the button does nothing for half a second, whatever the buff, so it can't be spammed.
+- Holding TAB on the keyboard (either shoulder button on a gamepad) shows the player list over the middle of the board, on a half-transparent panel with rounded corners. It lists every player and bot in the game: blue on the left and red on the right, each team under a heading with its player count ("Blue (4)"), alphabetical (ignoring case), each name in its team's color (the player's own in its lighter own shade) with its ping on the right, or `<bot>` for a bot (`--` for a player not measured yet). The list is what the server sent when the button was pressed; it doesn't change while it is held, and pressing again gets a fresh one. A team too long to fit the board in one column is split into as many columns as it needs, side by side, filled top to bottom then left to right. It isn't shown while paused or during the results.
 - Under the mini map is the player state panel, with the same yellow outline. It shows the name of the player's power up effect (at most 12 characters, so it fits), left aligned, above a greyed out meter, with a yellow bar that counts down the time left until the effect runs out. With no effect, the label says "No power up" and the meter is empty. Under the meter it shows the player's own size ("Size n"), also left aligned, then a size bar that fills green from size 0 to 100, turns bright orange above 100 and bright red above 150, and under that a hunger meter that fills up red as the player gets closer to starving (MsUntilStarvation since they last ate). It is full while they shrink and empties whenever they eat a dot or power pill.
 - Each player's name is displayed below their pac.
 
@@ -266,7 +273,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 | Pear | Warp | The action button teleports the pac to a random cell with a dot that no pac or ghost is in. |
 | Banana | Banana Peel | The action button drops a banana peel on the pac's cell, at most one peel per cell. A peel stays, even after the buff ends, until something touches it: any pac (the one that dropped it once it has stepped off) or ghost, which is stunned. Then the peel is gone. |
 | Mushroom | Super Size | The pac's size becomes 300 and it moves through walls, smashing every wall its body covers for good (its reach matches its size, so a 4 cell wide pac wrecks walls up to 2 cells from its centre); each cell becomes an open cell with a dot. The outer wall is never smashed (the pac passes through it and wraps to the other side). Whenever walls are smashed every player hears the POW boom and sees their board shake. It kills any ghost or enemy pac it touches, whatever the sizes, and ghosts touching it don't kill it; an invincible enemy beats it, and it bounces off a screw attacker or another Super Size pac. Weapons still kill it. When the effect ends the pac's size goes back to 0, and if it is inside a wall it is put in the nearest open cell. |
-| 1-up mushroom | Extra Life | Permanent. The next time the pac dies (it still drops any flag it carries, and its killer still scores), it comes back 1 second later in the cell where it died, at the size it was, and the buff is used up. Lockdown doesn't stop it, and it wins over a teammate's Reinforcements. Another 1-up while it has one changes nothing. |
+| Power pill | Power Pill | The same as eating a power pill from the maze (see above). |
 | Fire flower | Fireball | The pac flashes white rapidly. The action button fires a fireball the way the pac faces, at most one every half second, as many in flight as you like. Fireballs fly straight on much faster than a pac (3.75 times PacSpeed), stop at walls, and kill the first pac (either team, the shooter too once the fireball has left it) or ghost they hit unless it is invincible; either way the fireball is gone. |
 | Starman | Invincible | Moves 25% faster, can't be killed, and kills any ghost or enemy pac it touches, whatever its size (scoring as usual). Two invincible enemies bounce off each other. Ghosts run from it as from a power pill. It leaves a fading speed trail and blinks between its team color and yellow. |
 | POW block | POW | Instant: stuns every ghost and every pac of either team within the effect radius of the pac, except the pac itself, for 3 seconds. It goes off with a low boom (heard like other sounds in the maze), and every player whose pac is inside the radius, the one who set it off included, sees the board bounce for a moment, like a shockwave. |
@@ -314,7 +321,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Spawn rooms are kept at least one cell clear of flag rooms and the ghost pen, so a flag base is always at least 3 cells from a spawn tile.
 - There are two power up spawn points on each half, near the ghost pen: on the left half, the plain dot cells outside the pen nearest its centre above and below its middle, copied to the right half like everything else. They look like normal cells with a dot.
 - Dots and power pills on blue's half of the map are drawn in a light blue, and on red's half in a light red.
-- Every spawn tile is drawn with its team's spawn sprite, blinking slowly between two frames (half a second each). The ghost pen floor over the ghost generator is drawn in its own colors (untinted), as one image stretched over the whole area (GhostBase0.png). The spawn sprites come from Pacbase0.png (48x48x4).png, a 2x2 grid with blue's two frames on top and red's below.
+- Each spawn area (its 3x3 square of spawn tiles) is drawn as one image of its team's spawn sprite stretched over the whole area, blinking slowly between two frames (half a second each). The ghost pen floor over the ghost generator is drawn the same way, in its own colors (untinted), as one image stretched over the whole area, blinking between its two frames. The spawn and ghost pen sprites come from base0.png (48x48x6).png, a 2x3 grid with red's two frames on top, blue's in the middle and the ghost pen's at the bottom.
 
 ## Performance
 - Use multiplies over divides.

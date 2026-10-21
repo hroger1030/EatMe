@@ -75,9 +75,11 @@ namespace EatMeClient
             _NameInput.LabelWidth = labelWidth;
             _NameInput.ShowBox = true;
             _NameInput.PlayTypingSound = true;
+            _NameInput.AllowClipboard = true;
             _TeamToggle.LabelWidth = labelWidth;
             _TeamToggle.IsInline = true;
             _AddressInput.LabelWidth = labelWidth;
+            _AddressInput.AllowClipboard = true;
         }
 
         public void Activate()

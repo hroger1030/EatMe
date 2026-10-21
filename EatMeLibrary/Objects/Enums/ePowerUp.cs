@@ -5,7 +5,7 @@ namespace EatMeLibrary
     /// <summary>
     /// Bonus items that can appear in a level: every bonus item from the Pac-Man and Ms. Pac-Man arcade games,
     /// plus power ups from other classic games. Each level introduces exactly one item (see Levels).
-    /// Power pills are on every level, so they aren't listed here.
+    /// Power pills are also on every level's map; the PowerPill item is a power pill that moves like any other item.
     /// </summary>
     [Flags]
     public enum ePowerUp : uint
@@ -24,7 +24,7 @@ namespace EatMeLibrary
         Pear = 1u << 9,
         Banana = 1u << 10,
         Mushroom = 1u << 11,
-        OneUpMushroom = 1u << 12,
+        PowerPill = 1u << 12,
         FireFlower = 1u << 13,
         Starman = 1u << 14,
         PowBlock = 1u << 15,
@@ -47,7 +47,7 @@ namespace EatMeLibrary
 
         // Every bonus item
         Any = Cherry | Strawberry | Orange | Apple | Melon | Galaxian | Bell | Key | Pretzel | Pear | Banana
-            | Mushroom | OneUpMushroom | FireFlower | Starman | PowBlock | SuperLeaf | Hammer
+            | Mushroom | PowerPill | FireFlower | Starman | PowBlock | SuperLeaf | Hammer
             | Triforce | HeartContainer | WhiteSword | EnergyTank | MorphBall | ScrewAttack
             | HolyWater | SpreadGun | BlueShell | Tetromino | BFG | MegaManOneUp | PepperShaker | PokeBall,
     }

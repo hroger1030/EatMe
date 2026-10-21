@@ -1,6 +1,7 @@
 using EatMeLibrary;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using System;
 
 namespace EatMeClient
@@ -41,6 +42,12 @@ namespace EatMeClient
         /// Plays a tick for every key typed while focused, backspace included.
         /// </summary>
         public bool PlayTypingSound { get; set; }
+
+        /// <summary>
+        /// While focused, Ctrl+V (or Shift+Insert) pastes, Ctrl+C copies the whole value and Ctrl+X cuts it
+        /// (Command instead of Ctrl works too, for macOS).
+        /// </summary>
+        public bool AllowClipboard { get; set; }
 
         /// <summary>
         /// Which characters may be typed. Anything else is ignored.
@@ -120,6 +127,41 @@ namespace EatMeClient
                 foreach (var _ in InputManager.TypedCharacters)
                     SoundManager.PlaySound(Const.SFX_TICK);
             }
+
+            if (AllowClipboard && UpdateClipboard() && PlayTypingSound)
+                SoundManager.PlaySound(Const.SFX_TICK);
+        }
+
+        /// <summary>
+        /// Handles paste, copy and cut; true if one was pressed this frame.
+        /// </summary>
+        private bool UpdateClipboard()
+        {
+            var keyboard = InputManager.KeyboardState;
+            var control = keyboard.IsKeyDown(Keys.LeftControl) || keyboard.IsKeyDown(Keys.RightControl) ||
+                          keyboard.IsKeyDown(Keys.LeftWindows) || keyboard.IsKeyDown(Keys.RightWindows);
+            var shift = keyboard.IsKeyDown(Keys.LeftShift) || keyboard.IsKeyDown(Keys.RightShift);
+
+            if ((control && InputManager.KeyPressed(Keys.V)) || (shift && InputManager.KeyPressed(Keys.Insert)))
+            {
+                Value = TextEditRules.ApplyPaste(Value, ClipboardHelper.GetText().Trim(), MaxLength, AllowCharacter);
+                return true;
+            }
+
+            if (control && InputManager.KeyPressed(Keys.C))
+            {
+                ClipboardHelper.SetText(Value);
+                return true;
+            }
+
+            if (control && InputManager.KeyPressed(Keys.X))
+            {
+                ClipboardHelper.SetText(Value);
+                Value = string.Empty;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
