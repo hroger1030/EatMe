@@ -8,7 +8,7 @@ namespace EatMeTests
     {
         private static GameServer MakeServer(int maxScore = 100)
         {
-            var settings = new ServerSettings { ServerName = "Flags", TargetFps = 30, AutoBalanceTeams = false, GameConfig = new GameConfiguration { MaxScore = maxScore } };
+            var settings = new ServerSettings { ServerName = "Flags", ClientUpdatesPerSecond = 30, AutoBalanceTeams = false, GameConfig = new GameConfiguration { MaxScore = maxScore } };
             return new GameServer(settings, []);
         }
 

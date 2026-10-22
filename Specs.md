@@ -30,7 +30,11 @@ This is the feature manifest for the SRG client and server application. It will 
 - remove power pill from random power ups?
 - megam man PU lame, metroid roll can go.
 - level should have start and end step
-
+- TAB button overlay needs help
+- AI doesnt find dropped flags
+- stunned things should not kill you.
+- AI should try to use power ups
+- hammer doesnt kill ghosts. Hammer should be at 45%
 
 ## Game Client 
 - Dumb game client; relies upon the server to process all packets and messages. The server decides everything that happens; the client only sends the direction the player is holding and draws what the server tells it.
@@ -114,7 +118,7 @@ This is the feature manifest for the SRG client and server application. It will 
 - Server setting: Port (int) defaults to 7777, the TCP port players connect to.
 - Server setting: DiscoveryPort (int) defaults to 7778, the UDP port that answers LAN game searches.
 - Server setting: TickRate (int) defaults to 60, times per second the server updates the game.
-- Server setting: TargetFps (int) defaults to 30, times per second the server sends the game state to clients.
+- Server setting: ClientUpdatesPerSecond (int) defaults to 30, times per second the server sends the game state to clients.
 - The server console takes typed commands (case doesn't matter). Nothing a command changes is saved to server.cfg.
 - The typing prompt, `[up hh.mm.ss] ` (how long the server has been up), stays on the console's bottom row with the line being typed, and everything the server logs scrolls above it, so it never breaks into a half typed command. Left/Right, Home/End, Backspace and Delete edit the line, Up/Down bring back earlier lines, Esc clears it.
 
@@ -137,7 +141,7 @@ This is the feature manifest for the SRG client and server application. It will 
 | `clear` | Clears the console. |
 | `quit` | Stops the server, as Ctrl+C does. |
 
-- Every other server.cfg setting has its own command, named after the setting in lower case (`servername`, `tickrate`, `targetfps`, `startinglevel`, `randomlevels`, `maxplayers`, and one for every GameConfig setting, e.g. `pacspeed`, `mazesize`, `ghostcount`). Typed alone it shows the setting's value; typed with a value it changes it. MinPlayers, AutoBalanceTeams and MessageOfTheDay are `bots`, `autobalance` and `motd`. Port and DiscoveryPort can't be changed, since they only count at startup.
+- Every other server.cfg setting has its own command, named after the setting in lower case (`servername`, `tickrate`, `clientupdatespersecond`, `startinglevel`, `randomlevels`, `maxplayers`, and one for every GameConfig setting, e.g. `pacspeed`, `mazesize`, `ghostcount`). Typed alone it shows the setting's value; typed with a value it changes it. MinPlayers, AutoBalanceTeams and MessageOfTheDay are `bots`, `autobalance` and `motd`. Port and DiscoveryPort can't be changed, since they only count at startup.
 - A setting command checks a value like server.cfg is checked when it loads: a bad MazeSize is refused and the setting keeps its value, and out of range values are clamped. Game rule changes are sent to every player at once. The settings a map is built from (MazeSize, WarpTunnelCount, GhostCount, PowerPillCount, FlagCount, PlayerBaseCount, ServerSeed) count from the next level (or `restart`), so everyone keeps playing the same map until then; StartingLevel counts on the next `new game`; everything else counts at once.
 
 - Server setting: MessageOfTheDay (string) in server.cfg, sent to every player who joins and shown on the scroller at the bottom of their title screen. Empty or missing means the default, "Find Friends, Play Games. Visit https://GamrTable.com".

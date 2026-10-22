@@ -10,7 +10,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Command Server",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = autoBalanceTeams,
                 StartingLevel = startingLevel,
                 GameConfig = new GameConfiguration { MinPlayers = minPlayers, MaxPlayers = 128 },

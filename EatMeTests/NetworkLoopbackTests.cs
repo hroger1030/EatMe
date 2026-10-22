@@ -20,7 +20,7 @@ namespace EatMeTests
         [SetUp]
         public void StartServer()
         {
-            var settings = new ServerSettings { ServerName = "Loopback", TargetFps = 30, AutoBalanceTeams = false, GameConfig = new GameConfiguration() };
+            var settings = new ServerSettings { ServerName = "Loopback", ClientUpdatesPerSecond = 30, AutoBalanceTeams = false, GameConfig = new GameConfiguration() };
             _Shutdown = new CancellationTokenSource();
             _Game = new GameServer(settings, ["Hello from loopback"]);
             _Network = new NetworkServer();

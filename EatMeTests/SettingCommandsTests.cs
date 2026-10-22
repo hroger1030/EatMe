@@ -11,7 +11,7 @@ namespace EatMeTests
             {
                 ServerName = "Settings Server",
                 TickRate = 60,
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { MaxPlayers = 128, ServerSeed = 7 },
             };

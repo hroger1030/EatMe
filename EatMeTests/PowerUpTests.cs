@@ -38,7 +38,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Power ups",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { PowerUpSpawnTimerMs = spawnTimer },
             };

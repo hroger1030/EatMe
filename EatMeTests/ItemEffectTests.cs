@@ -18,7 +18,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Items",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { GhostCount = ghosts },
             };

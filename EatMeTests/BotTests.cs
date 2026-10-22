@@ -11,7 +11,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Bot Server",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = autoBalanceTeams,
                 GameConfig = new GameConfiguration { MinPlayers = minPlayers, MaxPlayers = maxPlayers },
             };

@@ -13,7 +13,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Sim",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { GhostCount = ghosts, MaxScore = maxScore, IntermissionTimeMs = intermissionTimeMs },
             };
@@ -67,7 +67,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Sim",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { GhostCount = 0, MinPlayers = 0, DotRegenPercent = percent },
             };

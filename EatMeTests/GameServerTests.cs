@@ -5,14 +5,14 @@ namespace EatMeTests
 {
     public class GameServerTests
     {
-        private const int TARGET_FPS = 30;
+        private const int CLIENT_UPDATES_PER_SECOND = 30;
 
         private static GameServer MakeServer(int maxPlayers = 128)
         {
             var settings = new ServerSettings
             {
                 ServerName = "Test Server",
-                TargetFps = TARGET_FPS,
+                ClientUpdatesPerSecond = CLIENT_UPDATES_PER_SECOND,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { MaxPlayers = maxPlayers },
             };
@@ -209,7 +209,7 @@ namespace EatMeTests
         }
 
         [Test]
-        public void Update_SendsSnapshotsAtTargetFps()
+        public void Update_SendsSnapshotsAtClientUpdatesPerSecond()
         {
             var server = MakeServer();
             var connection = Join(server, 1, "Pac");
@@ -218,7 +218,7 @@ namespace EatMeTests
             for (var i = 0; i < 50; i++)
                 server.Update(20);
 
-            Assert.That(connection.ReceivedOf<SnapshotMessage>().Count, Is.InRange(TARGET_FPS - 1, TARGET_FPS));
+            Assert.That(connection.ReceivedOf<SnapshotMessage>().Count, Is.InRange(CLIENT_UPDATES_PER_SECOND - 1, CLIENT_UPDATES_PER_SECOND));
         }
 
         [Test]

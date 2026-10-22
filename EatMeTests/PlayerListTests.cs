@@ -10,7 +10,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Test Server",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { MaxPlayers = 16 },
             };

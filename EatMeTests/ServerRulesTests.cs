@@ -96,7 +96,7 @@ namespace EatMeTests
         [Test]
         public void GameServer_StartsOnGivenLevel()
         {
-            var settings = new ServerSettings { ServerName = "Start", TargetFps = 30, AutoBalanceTeams = false };
+            var settings = new ServerSettings { ServerName = "Start", ClientUpdatesPerSecond = 30, AutoBalanceTeams = false };
             var server = new GameServer(settings, [], level: 7);
 
             Assert.That(server.CurrentLevel.Level, Is.EqualTo(7));
@@ -105,7 +105,7 @@ namespace EatMeTests
         [Test]
         public void GetNextLevel_RandomLevelsOff_IsTheNextLevel()
         {
-            var settings = new ServerSettings { ServerName = "Next", TargetFps = 30, AutoBalanceTeams = false };
+            var settings = new ServerSettings { ServerName = "Next", ClientUpdatesPerSecond = 30, AutoBalanceTeams = false };
             var server = new GameServer(settings, [], level: 7);
 
             Assert.That(server.GetNextLevel(), Is.EqualTo(8));
@@ -114,7 +114,7 @@ namespace EatMeTests
         [Test]
         public void GetNextLevel_RandomLevelsOn_IsAnotherLevel()
         {
-            var settings = new ServerSettings { ServerName = "Next", TargetFps = 30, AutoBalanceTeams = false, RandomLevels = true };
+            var settings = new ServerSettings { ServerName = "Next", ClientUpdatesPerSecond = 30, AutoBalanceTeams = false, RandomLevels = true };
             var server = new GameServer(settings, [], level: 7);
             var seen = new HashSet<int>();
 

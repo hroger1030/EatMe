@@ -36,7 +36,7 @@ ServerLog.Write(eLogType.Info, $"  MinPlayers:    {settings.GameConfig.MinPlayer
 ServerLog.Write(eLogType.Info, $"  AutoBalance:   {settings.AutoBalanceTeams}");
 ServerLog.Write(eLogType.Info, $"  RandomLevels:  {settings.RandomLevels}");
 ServerLog.Write(eLogType.Info, $"  TickRate:      {settings.TickRate}");
-ServerLog.Write(eLogType.Info, $"  TargetFps:     {settings.TargetFps}");
+ServerLog.Write(eLogType.Info, $"  ClientUpdates: {settings.ClientUpdatesPerSecond}");
 ServerLog.Write(eLogType.Info, $"  Tips:          {LoadingScreenTipsManager.Tips.Count}");
 ServerLog.Write(eLogType.Info, $"  MOTD:          {settings.MessageOfTheDay}");
 ServerLog.Write(eLogType.Info, $"  Bot names:     {BotNameManager.Names.Count}");

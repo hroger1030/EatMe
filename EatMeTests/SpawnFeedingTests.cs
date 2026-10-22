@@ -17,7 +17,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Feeding",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { GhostCount = 0 },
             };

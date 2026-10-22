@@ -16,7 +16,7 @@ namespace EatMeServer
     {
         public const string SERVER_NAME = "servername";
         public const string TICK_RATE = "tickrate";
-        public const string TARGET_FPS = "targetfps";
+        public const string CLIENT_UPDATES_PER_SECOND = "clientupdatespersecond";
         public const string STARTING_LEVEL = "startinglevel";
         public const string RANDOM_LEVELS = "randomlevels";
         public const string MAX_PLAYERS = "maxplayers";
@@ -62,7 +62,7 @@ namespace EatMeServer
         {
             { SERVER_NAME, "servername [text]", "Server name shown in the LAN game list" },
             { TICK_RATE, "tickrate [n]", "Game updates per second (1 or more)" },
-            { TARGET_FPS, "targetfps [n]", "Game state sends to clients per second" },
+            { CLIENT_UPDATES_PER_SECOND, "clientupdatespersecond [n]", "Game state sends to clients per second" },
             { STARTING_LEVEL, "startinglevel [n]", "Level a new game starts on (1 or more)" },
             { RANDOM_LEVELS, "randomlevels [on|off]", "Pick every level after the first at random" },
             { MAX_PLAYERS, "maxplayers [n]", "Most players (humans plus bots) the server takes" },
@@ -133,8 +133,8 @@ namespace EatMeServer
                 case TICK_RATE:
                     return SetInt(game, command, argument, nameof(ServerSettings.TickRate), () => settings.TickRate, value => settings.TickRate = value, isGameRule: false);
 
-                case TARGET_FPS:
-                    return SetInt(game, command, argument, nameof(ServerSettings.TargetFps), () => settings.TargetFps, value => settings.TargetFps = value, isGameRule: false);
+                case CLIENT_UPDATES_PER_SECOND:
+                    return SetInt(game, command, argument, nameof(ServerSettings.ClientUpdatesPerSecond), () => settings.ClientUpdatesPerSecond, value => settings.ClientUpdatesPerSecond = value, isGameRule: false);
 
                 case STARTING_LEVEL:
                     return SetInt(game, command, argument, nameof(ServerSettings.StartingLevel), () => settings.StartingLevel, value => settings.StartingLevel = value, isGameRule: false, NEW_GAME_NOTE);
@@ -286,7 +286,7 @@ namespace EatMeServer
                 new[] { nameof(ServerSettings.ServerName), SERVER_NAME, settings.ServerName },
                 new[] { nameof(ServerSettings.MessageOfTheDay), ServerCommands.MOTD, settings.MessageOfTheDay },
                 new[] { nameof(ServerSettings.TickRate), TICK_RATE, Format(settings.TickRate) },
-                new[] { nameof(ServerSettings.TargetFps), TARGET_FPS, Format(settings.TargetFps) },
+                new[] { nameof(ServerSettings.ClientUpdatesPerSecond), CLIENT_UPDATES_PER_SECOND, Format(settings.ClientUpdatesPerSecond) },
                 new[] { nameof(ServerSettings.AutoBalanceTeams), ServerCommands.AUTO_BALANCE, settings.AutoBalanceTeams ? "on" : "off" },
                 new[] { nameof(ServerSettings.StartingLevel), STARTING_LEVEL, Format(settings.StartingLevel) },
                 new[] { nameof(ServerSettings.RandomLevels), RANDOM_LEVELS, FormatOnOff(settings.RandomLevels) },

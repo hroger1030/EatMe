@@ -135,7 +135,7 @@ namespace EatMeTests
         [Test]
         public void ServerUpdateTimesItsSteps()
         {
-            var settings = new ServerSettings { ServerName = "Perf", TargetFps = 30, AutoBalanceTeams = false, GameConfig = new GameConfiguration { MinPlayers = 2, MaxPlayers = 8 } };
+            var settings = new ServerSettings { ServerName = "Perf", ClientUpdatesPerSecond = 30, AutoBalanceTeams = false, GameConfig = new GameConfiguration { MinPlayers = 2, MaxPlayers = 8 } };
             var server = new GameServer(settings, []);
             var connection = new FakeConnection(1);
             server.HandleEvent(new NetworkEvent(eNetworkEventType.Connected, connection));

@@ -67,7 +67,7 @@ Every other `server.cfg` setting has its own command, its name in lower case: ty
 |---|---|
 | `servername [text]` | ServerName |
 | `tickrate [n]` | TickRate |
-| `targetfps [n]` | TargetFps |
+| `clientupdatespersecond [n]` | ClientUpdatesPerSecond |
 | `startinglevel [n]` | StartingLevel |
 | `randomlevels [on\|off]` | RandomLevels |
 | `maxplayers [n]` | MaxPlayers |
@@ -116,7 +116,7 @@ JSON, deserialized into `ServerSettings`. Edit `EatMeServer/server.cfg`; it is c
 | `Port` | int | 7777 | TCP port players connect to. |
 | `DiscoveryPort` | int | 7778 | UDP port that answers LAN game searches. |
 | `TickRate` | int | 60 | Simulation ticks per second. |
-| `TargetFps` | int | 30 | Times per second the game state is sent to clients. |
+| `ClientUpdatesPerSecond` | int | 30 | Times per second the game state is sent to clients. |
 | `GameConfig.MaxPlayers` | int | 128 | Maximum connected players. |
 | `GameConfig.MaxScore` | int | 100 | Team score needed to win the level. |
 | `GameConfig.FlagScore` | int | 20 | Points for capturing a flag. |

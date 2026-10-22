@@ -24,7 +24,7 @@ namespace EatMeServer
         /// <summary>
         /// Times per second the server sends game state to clients.
         /// </summary>
-        public int TargetFps { get; set; } = 30;
+        public int ClientUpdatesPerSecond { get; set; } = 30;
 
         /// <summary>
         /// When true, bots are added to or removed from each team so both teams always have the same number of players.

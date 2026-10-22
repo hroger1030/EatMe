@@ -76,7 +76,7 @@ namespace EatMeServer
         private readonly Dictionary<(int X, int Y), PathMap> _RedBasePaths = [];
         private readonly Dictionary<(int X, int Y), PathMap> _BlueBasePaths = [];
         private readonly Dictionary<(int X, int Y), PathMap> _CarrierBasePaths = [];
-        // ms since the last snapshot, times TargetFps, so a snapshot is due at exactly MS_PER_SECOND with no rounding
+        // ms since the last snapshot, times ClientUpdatesPerSecond, so a snapshot is due at exactly MS_PER_SECOND with no rounding
         private int _SnapshotTimer;
         private int _PlayerCount;
         private int _BotCount;
@@ -397,7 +397,7 @@ namespace EatMeServer
             CheckLevelWon();
             start = Perf.Record(ePerfSection.Win, start);
 
-            _SnapshotTimer += elapsedMs * Math.Max(1, _Settings.TargetFps);
+            _SnapshotTimer += elapsedMs * Math.Max(1, _Settings.ClientUpdatesPerSecond);
 
             if (_SnapshotTimer >= MS_PER_SECOND)
             {

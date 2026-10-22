@@ -20,7 +20,7 @@ namespace EatMeTests
             var settings = new ServerSettings
             {
                 ServerName = "Scores",
-                TargetFps = 30,
+                ClientUpdatesPerSecond = 30,
                 AutoBalanceTeams = false,
                 GameConfig = new GameConfiguration { MinPlayers = minPlayers, MaxScore = maxScore, IntermissionTimeMs = 0 },
             };

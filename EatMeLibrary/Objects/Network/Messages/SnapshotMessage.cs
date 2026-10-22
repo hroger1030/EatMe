@@ -4,7 +4,7 @@ using System.IO;
 namespace EatMeLibrary
 {
     /// <summary>
-    /// Server to client: where everything is right now. Sent TargetFps times a second.
+    /// Server to client: where everything is right now. Sent ClientUpdatesPerSecond times a second.
     /// </summary>
     public class SnapshotMessage : INetworkMessage
     {
