@@ -62,14 +62,15 @@ namespace EatMeLibrary
         Invincible = 11,
 
         /// <summary>
-        /// Mega Man 1-up: while the pac lives, its team's dead pacs respawn at once (no respawn timer).
+        /// Reinforcements (fairy): while the pac lives, its team's dead pacs respawn at once (no respawn timer).
         /// </summary>
         Reinforcements = 13,
 
         /// <summary>
-        /// Morph ball: the pac rolls as it moves and passes through enemy pacs and ghosts (Player.PassesThrough).
+        /// Bomb: the action button drops one bomb (once per buff) on the pac's cell. It goes off
+        /// WeaponRules.BOMB_FUSE_MS later, stunning every enemy pac and ghost within PowerUpEffects.EFFECT_RADIUS.
         /// </summary>
-        MorphBall = 14,
+        Bomb = 14,
 
         /// <summary>
         /// Super leaf: the pac passes through enemy pacs, ghosts and walls (Player.PassesThroughWalls).

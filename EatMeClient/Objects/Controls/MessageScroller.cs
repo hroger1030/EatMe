@@ -10,7 +10,7 @@ namespace EatMeClient
     /// </summary>
     public class MessageScroller
     {
-        private const float SCROLL_PIXELS_PER_SECOND = 150f;
+        private const float SCROLL_PIXELS_PER_SECOND = 200f;
         private const int SCROLLER_PADDING = 8;
 
         private SpriteFont _font;

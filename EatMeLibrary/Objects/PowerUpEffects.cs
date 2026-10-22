@@ -28,7 +28,7 @@ namespace EatMeLibrary
                 ePowerUpEffect.Twister => Const.STRING_TWISTER,
                 ePowerUpEffect.Invincible => Const.STRING_INVINCIBLE,
                 ePowerUpEffect.Reinforcements => Const.STRING_REINFORCEMENTS,
-                ePowerUpEffect.MorphBall => Const.STRING_MORPH_BALL,
+                ePowerUpEffect.Bomb => Const.STRING_BOMB,
                 ePowerUpEffect.RaccoonTail => Const.STRING_RACCOON_TAIL,
                 ePowerUpEffect.SwordSwing => Const.STRING_SWORD_SWING,
                 ePowerUpEffect.HolyFire => Const.STRING_HOLY_FIRE,
@@ -53,11 +53,11 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if a pac with this effect passes through enemy pacs and ghosts (no fights, no ghost contact either
-        /// way): Morph Ball and Raccoon Tail.
+        /// way): Raccoon Tail.
         /// </summary>
         public static bool PassesThrough(ePowerUpEffect effect)
         {
-            return effect == ePowerUpEffect.MorphBall || effect == ePowerUpEffect.RaccoonTail;
+            return effect == ePowerUpEffect.RaccoonTail;
         }
 
         /// <summary>
@@ -170,21 +170,6 @@ namespace EatMeLibrary
         public const int STUN_MS = 2000;
 
         /// <summary>
-        /// A rolling (Morph Ball) pac turns this many full turns for every cell it moves.
-        /// </summary>
-        public const float ROLL_TURNS_PER_CELL = 0.25f;
-
-        /// <summary>
-        /// The angle (radians, 0 to 2 pi) a rolling pac at (x, y) is turned to: it turns ROLL_TURNS_PER_CELL for each
-        /// cell it moves, so it only spins while moving, clockwise moving right or down and counter clockwise moving left or up.
-        /// </summary>
-        public static float GetRollAngle(float x, float y)
-        {
-            var turns = (x + y) * ROLL_TURNS_PER_CELL;
-            return (turns - MathF.Floor(turns)) * MathF.PI * 2f;
-        }
-
-        /// <summary>
         /// A pac with Fireball (fire flower) flashes white this often.
         /// </summary>
         public const float FIRE_FLASH_SECONDS = 0.05f;
@@ -249,11 +234,11 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True for area effect events that shake the screen of everyone inside the standard radius, whether or not
-        /// the effect does anything else to them: the POW block.
+        /// the effect does anything else to them: a Blast (the POW block, a bomb).
         /// </summary>
         public static bool ShakesScreen(eGameEvent eventType)
         {
-            return eventType == eGameEvent.Pow;
+            return eventType == eGameEvent.Blast;
         }
 
         /// <summary>

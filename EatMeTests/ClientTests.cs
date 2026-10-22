@@ -254,6 +254,19 @@ namespace EatMeTests
         }
 
         [Test]
+        public void ClientState_PlayerJoined_KeepsPacShape()
+        {
+            var state = JoinedState();
+
+            state.Apply(new PlayerJoinedMessage { PlayerId = 4, Name = "Inky", Team = eTeam.Red, PacShape = ePacShape.Boxie }, 0);
+            state.Apply(new PlayerJoinedMessage { PlayerId = 5, Name = "Pinky", Team = eTeam.Red, PacShape = (ePacShape)200 }, 0);
+
+            Assert.That(state.GetPacShape(4), Is.EqualTo(ePacShape.Boxie));
+            Assert.That(state.GetPacShape(5), Is.EqualTo(PacShapes.DEFAULT));
+            Assert.That(state.GetPacShape(99), Is.EqualTo(PacShapes.DEFAULT));
+        }
+
+        [Test]
         public void ClientState_Pong_SetsPing()
         {
             var state = JoinedState();
@@ -310,13 +323,13 @@ namespace EatMeTests
         public void IsOwnPacInEffectRange_EveryoneInsideTheSquare()
         {
             var state = JoinedState(playerId: 3);
-            var pow = new GameEventMessage { EventType = eGameEvent.Pow, ActorId = 7, X = 10.5f, Y = 10.5f };
+            var pow = new GameEventMessage { EventType = eGameEvent.Blast, ActorId = 7, X = 10.5f, Y = 10.5f };
 
             Assert.That(state.IsOwnPacInEffectRange(pow), Is.False, "no snapshot yet");
 
             state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f + PowerUpEffects.EFFECT_RADIUS, 10.5f + PowerUpEffects.EFFECT_RADIUS, 50f, eFacing.Left, true, false, false)] }, 0);
             Assert.That(state.IsOwnPacInEffectRange(pow), Is.True, "the square's corner");
-            Assert.That(state.IsOwnPacInEffectRange(new GameEventMessage { EventType = eGameEvent.Pow, ActorId = 3, X = 10.5f, Y = 10.5f }), Is.True, "the pac that set it off too");
+            Assert.That(state.IsOwnPacInEffectRange(new GameEventMessage { EventType = eGameEvent.Blast, ActorId = 3, X = 10.5f, Y = 10.5f }), Is.True, "the pac that set it off too");
 
             state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 10.5f + PowerUpEffects.EFFECT_RADIUS + 1f, 50f, eFacing.Left, true, false, false)] }, 0);
             Assert.That(state.IsOwnPacInEffectRange(pow), Is.False, "out of range");
@@ -326,10 +339,10 @@ namespace EatMeTests
         }
 
         [Test]
-        public void ShakesScreen_OnlyPow()
+        public void ShakesScreen_OnlyBlast()
         {
             foreach (var eventType in Enum.GetValues<eGameEvent>())
-                Assert.That(PowerUpEffects.ShakesScreen(eventType), Is.EqualTo(eventType == eGameEvent.Pow), eventType.ToString());
+                Assert.That(PowerUpEffects.ShakesScreen(eventType), Is.EqualTo(eventType == eGameEvent.Blast), eventType.ToString());
         }
 
         [Test]

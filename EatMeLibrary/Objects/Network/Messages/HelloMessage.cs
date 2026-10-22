@@ -12,12 +12,14 @@ namespace EatMeLibrary
         public float ClientVersion { get; set; } = NetworkConstants.APP_VERSION;
         public string PlayerName { get; set; } = string.Empty;
         public eTeamPreference PreferredTeam { get; set; } = eTeamPreference.Either;
+        public ePacShape PacShape { get; set; } = PacShapes.DEFAULT;
 
         public void Write(BinaryWriter writer)
         {
             writer.Write(ClientVersion);
             writer.Write(PlayerName);
             writer.Write((byte)PreferredTeam);
+            writer.Write((byte)PacShape);
         }
 
         public void Read(BinaryReader reader)
@@ -25,6 +27,7 @@ namespace EatMeLibrary
             ClientVersion = reader.ReadSingle();
             PlayerName = reader.ReadString();
             PreferredTeam = (eTeamPreference)reader.ReadByte();
+            PacShape = (ePacShape)reader.ReadByte();
         }
     }
 }

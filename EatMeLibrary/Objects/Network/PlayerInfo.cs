@@ -8,12 +8,14 @@ namespace EatMeLibrary
         public int Id { get; }
         public string Name { get; }
         public eTeam Team { get; }
+        public ePacShape PacShape { get; }
 
-        public PlayerInfo(int id, string name, eTeam team)
+        public PlayerInfo(int id, string name, eTeam team, ePacShape pacShape = PacShapes.DEFAULT)
         {
             Id = id;
             Name = name;
             Team = team;
+            PacShape = pacShape;
         }
     }
 }

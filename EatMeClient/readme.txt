@@ -25,6 +25,9 @@ GETTING STARTED
 3. Pick a game from the LAN games list, or type a server's address
    (add :port if it doesn't use 7777, e.g. 203.0.113.5:7777).
 
+Leave the title screen alone for 10 seconds to see the story, the ghosts and
+the power ups. Press any key or button to go back.
+
 
 CONTROLS
 --------
@@ -60,7 +63,9 @@ HOW TO PLAY
 SETTINGS
 --------
 The Settings screen sets music and sound volume, brightness, color bloom,
-controls and full screen or windowed display. In a game, Esc opens a menu
+controls, full screen or windowed display, and your pac: nine shapes, shown
+chomping as you cycle through them. Your pac shape is used from the next game
+you join. In a game, Esc opens a menu
 with the same settings; the game keeps running while it is open.
 
 

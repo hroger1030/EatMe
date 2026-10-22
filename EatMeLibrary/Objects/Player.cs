@@ -4,6 +4,11 @@
     {
         public string Name { get; set; }
 
+        /// <summary>
+        /// The pac sprite the player picked, sent to every client in PlayerJoined. Bots keep the default.
+        /// </summary>
+        public ePacShape PacShape { get; set; } = PacShapes.DEFAULT;
+
         public bool HasFlag { get; set; }
 
         public int FlagCaps { get; set; }
@@ -80,7 +85,7 @@
         public bool RepelsGhosts => IsPowered || IsInvincible || (PowerUpEffect == ePowerUpEffect.DoctorAway && PowerUpMs > 0);
 
         /// <summary>
-        /// True while Morph Ball or Raccoon Tail is working: the pac passes through enemy pacs and ghosts.
+        /// True while Raccoon Tail is working: the pac passes through enemy pacs and ghosts.
         /// </summary>
         public bool PassesThrough => PowerUpEffects.PassesThrough(PowerUpEffect) && PowerUpMs > 0;
 
@@ -109,5 +114,10 @@
         /// The cell a pac with Holy Fire was in last tick, so a flame goes down in each cell it leaves.
         /// </summary>
         public (int X, int Y)? HolyFireCell { get; set; }
+
+        /// <summary>
+        /// True once a pac with Bomb has dropped its one bomb; a new Bomb buff gives it another.
+        /// </summary>
+        public bool BombDropped { get; set; }
     }
 }

@@ -243,6 +243,40 @@ namespace EatMeTests
         }
 
         [Test]
+        public void AnyBot_GoesForADroppedEnemyFlag_BeforePowerPills()
+        {
+            var map = MakeMap(["#########", "#O......#", "#########"]);
+            var me = MakePac(1, eTeam.Red, 4, 1);
+            var dropped = new GameFlag(1, eTeam.Blue, 7.5f, 1.5f) { X = 6.5f, Y = 1.5f };
+            var world = MakeWorld(map, [me], flags: [dropped]);
+
+            Assert.That(PacBrain.IsAttacker(me), Is.False, "a defender goes for it too");
+            Assert.That(PacBrain.PickGoal(world, me, 4, 1, Fill(map, me), out var target), Is.EqualTo(eBotGoal.LooseFlag));
+            Assert.That(target, Is.EqualTo((6, 1)));
+
+            // with a power up working it can't pick a flag up, so it doesn't go for it
+            me.PowerUpEffect = ePowerUpEffect.SugarRush;
+            me.PowerUpMs = 1000;
+            Assert.That(PacBrain.PickGoal(world, me, 4, 1, Fill(map, me), out _), Is.Not.EqualTo(eBotGoal.LooseFlag));
+        }
+
+        [Test]
+        public void DroppedEnemyFlag_InterruptsAKeptGoal()
+        {
+            var map = MakeMap(["#########", "#O......#", "#########"]);
+            var me = MakePac(1, eTeam.Red, 4, 1);
+            var dropped = new GameFlag(1, eTeam.Blue, 7.5f, 1.5f) { X = 6.5f, Y = 1.5f };
+            var world = MakeWorld(map, [me], flags: [dropped]);
+
+            Assert.That(PacBrain.InterruptsGoal(world, me, 4, 1, Fill(map, me), eBotGoal.Dot), Is.True);
+            Assert.That(PacBrain.InterruptsGoal(world, me, 4, 1, Fill(map, me), eBotGoal.LooseFlag), Is.False);
+
+            dropped.X = dropped.BaseX;
+            dropped.Y = dropped.BaseY;
+            Assert.That(PacBrain.InterruptsGoal(world, me, 4, 1, Fill(map, me), eBotGoal.Dot), Is.False, "a flag at its base isn't loose");
+        }
+
+        [Test]
         public void PrefersNearbyPowerPill_OverHunting()
         {
             var map = MakeMap(["#########", "#O......#", "#########"]);

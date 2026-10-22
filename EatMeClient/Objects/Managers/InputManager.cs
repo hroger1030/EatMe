@@ -25,6 +25,8 @@ namespace EatMeClient
         public static GamePadState[] PreviousGamePadState { get; private set; } = new GamePadState[MAX_INPUTS];
 
         private static readonly List<char> _PendingCharacters = [];
+        private static readonly Buttons[] ALL_GAME_PAD_BUTTONS = Enum.GetValues<Buttons>();
+        private static readonly MouseButton[] ALL_MOUSE_BUTTONS = Enum.GetValues<MouseButton>();
 
         /// <summary>
         /// Characters typed since the last frame, in order, from the window's text input.
@@ -79,6 +81,25 @@ namespace EatMeClient
                 if (!PreviousKeyboardState.IsKeyDown(key))
                     return true;
             }
+
+            return false;
+        }
+
+        /// <summary>
+        /// True if any key, gamepad button or mouse button went down this frame (not the cursor moving).
+        /// </summary>
+        public static bool AnyButtonPressed()
+        {
+            if (AnyKeyPressed())
+                return true;
+
+            foreach (var button in ALL_GAME_PAD_BUTTONS)
+                if (GamePadButtonPressed(button))
+                    return true;
+
+            foreach (var button in ALL_MOUSE_BUTTONS)
+                if (MouseButtonPressed(button))
+                    return true;
 
             return false;
         }

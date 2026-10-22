@@ -894,7 +894,7 @@ namespace EatMeTests
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Pow));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
             Assert.That(blue.IsStunned, Is.False);
-            Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.Pow), Is.False);
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.Blast), Is.False);
         }
 
         [Test]
@@ -910,11 +910,11 @@ namespace EatMeTests
             red.ActionCooldownMs = 0;
             server.HandleAction(red);
 
-            Assert.That(connection.ReceivedOf<GameEventMessage>().Count(e => e.EventType == eGameEvent.Pow), Is.EqualTo(2), "the second press is in the cooldown");
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Count(e => e.EventType == eGameEvent.Blast), Is.EqualTo(2), "the second press is in the cooldown");
         }
 
         [Test]
-        public void PowBlock_BroadcastsPowEvent()
+        public void PowBlock_BroadcastsBlast()
         {
             var server = MakeServer();
             var (red, connection) = Join(server, 1, eTeamPreference.Red);
@@ -923,7 +923,7 @@ namespace EatMeTests
             server.ApplyPowerUp(red, ePowerUp.PowBlock);
             server.HandleAction(red);
 
-            var pow = connection.ReceivedOf<GameEventMessage>().Single(e => e.EventType == eGameEvent.Pow);
+            var pow = connection.ReceivedOf<GameEventMessage>().Single(e => e.EventType == eGameEvent.Blast);
             Assert.That(pow.ActorId, Is.EqualTo(red.Id));
             Assert.That((pow.X, pow.Y), Is.EqualTo((10.5f, 12.5f)));
         }
@@ -955,7 +955,7 @@ namespace EatMeTests
         }
 
         [Test]
-        public void StunnedGhost_StillKillsPacThatTouchesIt()
+        public void StunnedGhost_DoesNotKillPacThatTouchesIt()
         {
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
@@ -964,7 +964,24 @@ namespace EatMeTests
 
             server.UpdateGhosts(0f, 0);
 
-            Assert.That(red.Alive, Is.False);
+            Assert.That(red.Alive, Is.True);
+            Assert.That(server.Ghosts[0].Alive, Is.True);
+        }
+
+        [Test]
+        public void StunnedGhost_IsStillKilledByAPacThatCanKillGhosts()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.Ghosts[0].StunMs = PowerUpEffects.POW_STUN_MS;
+            red.Location = server.Ghosts[0].Location;
+            red.PowerUpEffect = ePowerUpEffect.Invincible;
+            red.PowerUpMs = 1000;
+
+            server.UpdateGhosts(0f, 0);
+
+            Assert.That(red.Alive, Is.True);
+            Assert.That(server.Ghosts[0].Alive, Is.False);
         }
 
         [Test]

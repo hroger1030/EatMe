@@ -5,7 +5,7 @@ using FastG;
 namespace EatMeTests
 {
     /// <summary>
-    /// The power pill item, Mega Man 1-up, Morph Ball, Super Leaf, White Sword, Fire Flower, Holy Water, Blue Shell and Poke Ball.
+    /// The power pill item, Reinforcements, Bomb, Super Leaf, White Sword, Fire Flower, Holy Water, Blue Shell and Poke Ball.
     /// </summary>
     public class BuffAndWeaponTests
     {
@@ -86,7 +86,7 @@ namespace EatMeTests
             Assert.That(red.Size, Is.EqualTo(size + Config.PowerPillSizeGain));
         }
 
-        // Mega Man 1-up
+        // Reinforcements (fairy)
 
         [Test]
         public void Reinforcements_TeamRespawnsAtOnce_WithTheChorus_EvenUnderLockdown()
@@ -96,7 +96,7 @@ namespace EatMeTests
             var (mate, mateConnection) = Join(server, 2, eTeamPreference.Red);
             mate.Team = eTeam.Red; // teams are kept even on join
             var (blue, _) = Join(server, 3, eTeamPreference.Blue);
-            server.ApplyPowerUp(red, ePowerUp.MegaManOneUp);
+            server.ApplyPowerUp(red, ePowerUp.Reinforcements);
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Reinforcements));
             server.StartPowerUpEffect(blue, ePowerUpEffect.Lockdown);
 
@@ -126,27 +126,85 @@ namespace EatMeTests
             Assert.That(server.IsReinforced(eTeam.Red), Is.False);
         }
 
-        // Morph Ball and Super Leaf
+        // Bomb
 
         [Test]
-        public void MorphBall_PassesThroughEnemiesAndGhosts()
+        public void Bomb_DropsOneBombPerBuff()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.Bomb);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Bomb));
+
+            server.HandleAction(red);
+            var bomb = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Bomb);
+            var (x, y) = MazeMovement.GetCell(red.Location);
+            Assert.That(bomb.Location, Is.EqualTo(new Point2(x + 0.5f, y + 0.5f)), "on the centre of its cell");
+            Assert.That(bomb.FuseMs, Is.EqualTo(WeaponRules.BOMB_FUSE_MS));
+
+            red.ActionCooldownMs = 0;
+            server.HandleAction(red);
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.Bomb), Is.EqualTo(1), "only one per buff");
+
+            server.ApplyPowerUp(red, ePowerUp.Bomb);
+            red.ActionCooldownMs = 0;
+            server.HandleAction(red);
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.Bomb), Is.EqualTo(2), "a new buff gives a new bomb");
+        }
+
+        [Test]
+        public void Bomb_GoesOffAfterItsFuse_StunningEnemiesAndGhostsInRange_WithABlast()
         {
             var server = MakeServer(ghosts: 1);
-            var (red, _) = Join(server, 1, eTeamPreference.Red);
-            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
-            server.ApplyPowerUp(red, ePowerUp.MorphBall);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.MorphBall));
-            red.Size = 10f;
-            blue.Size = 90f;
-            blue.Location = red.Location;
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            var (mate, _) = Join(server, 2, eTeamPreference.Red);
+            mate.Team = eTeam.Red; // teams are kept even on join
+            var (blue, _) = Join(server, 3, eTeamPreference.Blue);
+            var (farBlue, _) = Join(server, 4, eTeamPreference.Blue);
+            farBlue.Team = eTeam.Blue;
+            var ghost = server.Ghosts[0];
+            ghost.Alive = true;
+            server.ApplyPowerUp(red, ePowerUp.Bomb);
+            server.HandleAction(red);
+            var at = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Bomb).Location;
+            mate.Location = at;
+            blue.Location = new Point2(at.X + 1f, at.Y);
+            ghost.Location = new Point2(at.X, at.Y + 1f);
+            farBlue.Location = new Point2(at.X + PowerUpEffects.EFFECT_RADIUS + 2f, at.Y);
+            server.EndPowerUpEffect(red);
+            red.PowerUpEffect = ePowerUpEffect.None;
 
-            server.UpdatePacFights();
-            Assert.That(red.Alive && blue.Alive, Is.True, "no fight");
+            server.UpdateWeaponEffects(0f, WeaponRules.BOMB_FUSE_MS - 1);
+            Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.Bomb), Is.True, "still burning, buff or not");
+            Assert.That(blue.IsStunned, Is.False);
 
-            red.Location = server.Ghosts[0].Location;
-            server.UpdateGhosts(0f, 0);
-            Assert.That(red.Alive && server.Ghosts[0].Alive, Is.True, "no ghost contact");
+            server.UpdateWeaponEffects(0f, 1);
+            Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.Bomb), Is.False, "gone");
+            Assert.That(blue.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
+            Assert.That(ghost.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
+            Assert.That(red.IsStunned || mate.IsStunned, Is.False, "not its own team");
+            Assert.That(farBlue.IsStunned, Is.False, "out of range");
+
+            var blast = connection.ReceivedOf<GameEventMessage>().Single(e => e.EventType == eGameEvent.Blast);
+            Assert.That(blast.ActorId, Is.EqualTo(red.Id));
+            Assert.That((blast.X, blast.Y), Is.EqualTo((at.X, at.Y)));
         }
+
+        [Test]
+        public void ShouldUseAction_DropsTheBombWithSomethingInRange_Once()
+        {
+            var map = MazeMovementTests.MakeMap(["#########", "#.......#", "#########"]);
+            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, PowerUpEffect = ePowerUpEffect.Bomb, PowerUpMs = 1000 };
+            var enemy = new Player { Id = 2, Team = eTeam.Blue, Location = new Point2(6.5f, 1.5f), Alive = true };
+            var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, enemy] };
+
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.True);
+
+            me.BombDropped = true;
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "already dropped");
+        }
+
+        // Super Leaf
 
         [Test]
         public void SuperLeaf_PassesThroughWalls_AndEndsInAnOpenCell()
@@ -522,7 +580,7 @@ namespace EatMeTests
         // bots
 
         [Test]
-        public void ShouldFire_AtAnEnemyOrGhostAhead_NotATeammate()
+        public void ShouldUseAction_AtAnEnemyOrGhostAhead_NotATeammate()
         {
             var map = MazeMovementTests.MakeMap(["#########", "#.......#", "#########"]);
             var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Facing = eFacing.Right, Alive = true, PowerUpEffect = ePowerUpEffect.SwordSwing, PowerUpMs = 1000 };
@@ -530,21 +588,21 @@ namespace EatMeTests
             var mate = new Player { Id = 3, Team = eTeam.Red, Location = new Point2(3.5f, 1.5f), Alive = true };
             var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, enemy] };
 
-            Assert.That(PacBrain.ShouldFire(world, me), Is.True);
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.True);
 
             world.Pacs = [me, enemy, mate];
-            Assert.That(PacBrain.ShouldFire(world, me), Is.False, "a teammate is in the way");
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "a teammate is in the way");
 
             world.Pacs = [me];
             world.Ghosts = [new Ghost { Location = new Point2(4.5f, 1.5f), Alive = true }];
-            Assert.That(PacBrain.ShouldFire(world, me), Is.True);
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.True);
 
             me.Facing = eFacing.Left;
-            Assert.That(PacBrain.ShouldFire(world, me), Is.False, "nothing behind it before the wall");
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "nothing behind it before the wall");
 
             me.Facing = eFacing.Right;
             me.PowerUpEffect = ePowerUpEffect.SugarRush;
-            Assert.That(PacBrain.ShouldFire(world, me), Is.False, "nothing to fire");
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "nothing to fire");
         }
 
         [Test]
@@ -557,13 +615,174 @@ namespace EatMeTests
 
             Assert.That(PacBrain.IsThreat(world, me, big), Is.True);
 
-            me.PowerUpEffect = ePowerUpEffect.MorphBall;
+            me.PowerUpEffect = ePowerUpEffect.RaccoonTail;
             me.PowerUpMs = 1000;
             Assert.That(PacBrain.IsThreat(world, me, big), Is.False);
             Assert.That(PacBrain.IsPrey(world, big, me), Is.False);
         }
 
+        [Test]
+        public void ShouldUseAction_FiresTheBfgAtSomethingAhead_EvenAtCloseRange()
+        {
+            var map = MazeMovementTests.MakeMap(["#########", "#.......#", "#########"]);
+            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Facing = eFacing.Right, Alive = true, PowerUpEffect = ePowerUpEffect.Bfg, PowerUpMs = 1000 };
+            var enemy = new Player { Id = 2, Team = eTeam.Blue, Location = new Point2(2.5f, 1.5f), Alive = true };
+            var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, enemy] };
+
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.True, "the burst will catch it too, but it fires anyway");
+
+            me.Facing = eFacing.Left;
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False);
+        }
+
+        [Test]
+        public void ShouldUseAction_Pow_WhenAnUnstunnedEnemyOrGhostIsInRange()
+        {
+            var map = MazeMovementTests.MakeMap(["#########", "#.......#", "#########"]);
+            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, PowerUpEffect = ePowerUpEffect.Pow, PowerUpMs = 1000 };
+            var enemy = new Player { Id = 2, Team = eTeam.Blue, Location = new Point2(6.5f, 1.5f), Alive = true };
+            var mate = new Player { Id = 3, Team = eTeam.Red, Location = new Point2(4.5f, 1.5f), Alive = true };
+            var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, mate] };
+
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "a teammate isn't worth it");
+
+            world.Pacs = [me, mate, enemy];
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.True);
+
+            enemy.StunMs = 1000;
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "already stunned");
+
+            world.Ghosts = [new Ghost { Location = new Point2(5.5f, 1.5f), Alive = true }];
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.True);
+        }
+
+        [Test]
+        public void ShouldUseAction_PeelBlockAndWarp_WhenSomethingIsClose()
+        {
+            var map = MazeMovementTests.MakeMap(["####################", "#..................#", "####################"]);
+            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, Size = 10f, PowerUpMs = 1000 };
+            var enemy = new Player { Id = 2, Team = eTeam.Blue, Location = new Point2(1.5f + PacBrain.DANGER_DISTANCE + 5, 1.5f), Alive = true, Size = 90f };
+            var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, enemy] };
+
+            foreach (var effect in new[] { ePowerUpEffect.BananaPeel, ePowerUpEffect.BlockDrop, ePowerUpEffect.Warp })
+            {
+                me.PowerUpEffect = effect;
+                enemy.Location = new Point2(1.5f + PacBrain.DANGER_DISTANCE + 5, 1.5f);
+                Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, $"{effect}: nothing close");
+
+                enemy.Location = new Point2(1.5f + PacBrain.DANGER_DISTANCE, 1.5f);
+                Assert.That(PacBrain.ShouldUseAction(world, me), Is.True, $"{effect}: enemy close");
+            }
+
+            // warping is only for getting away from something that can kill it
+            me.PowerUpEffect = ePowerUpEffect.Warp;
+            enemy.Size = 1f;
+            me.Size = 90f;
+            Assert.That(PacBrain.ShouldUseAction(world, me), Is.False);
+        }
+
+        [Test]
+        public void StunnedPac_CannotEatAnEnemy()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            red.Size = 90f;
+            blue.Size = 10f;
+            blue.Location = red.Location;
+            red.StunMs = 1000;
+
+            server.UpdatePacFights();
+            Assert.That(blue.Alive, Is.True);
+            Assert.That(red.Alive, Is.True);
+
+            red.StunMs = 0;
+            server.UpdatePacFights();
+            Assert.That(blue.Alive, Is.False);
+        }
+
+        [Test]
+        public void StunnedPac_IsNoThreatToBots()
+        {
+            var map = MazeMovementTests.MakeMap(["#########", "#.......#", "#########"]);
+            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, Size = 10f };
+            var big = new Player { Id = 2, Team = eTeam.Blue, Location = new Point2(3.5f, 1.5f), Alive = true, Size = 90f, StunMs = 1000 };
+            var ghost = new Ghost { Location = new Point2(5.5f, 1.5f), Alive = true, StunMs = 1000 };
+            var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, big], Ghosts = [ghost] };
+            var paths = new PathMap();
+            paths.Fill(map, 1, 1);
+
+            Assert.That(PacBrain.IsThreat(world, me, big), Is.False);
+            Assert.That(PacBrain.FindThreats(world, me, paths), Is.Empty);
+
+            big.StunMs = 0;
+            ghost.StunMs = 0;
+            Assert.That(PacBrain.FindThreats(world, me, paths), Has.Count.EqualTo(2));
+        }
+
+        [Test]
+        public void Hammer_SitsPastTheEdgeOfThePac_AndKillsGhostsBeforeTheyReachIt()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.Hammer);
+            red.Size = 200f;
+            red.Facing = eFacing.Right;
+
+            server.UpdateWeaponEffects(0f, 0);
+            var hammer = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Hammer);
+            var expected = WeaponRules.GetHammerLocation(red.Location, eFacing.Right, PacRules.GetRadius(red.Size), server.Map.GetLength(0), server.Map.GetLength(1));
+            Assert.That(hammer.Location, Is.EqualTo(expected));
+
+            server.Ghosts[0].Location = hammer.Location;
+            server.UpdateGhosts(0f, 0);
+
+            Assert.That(server.Ghosts[0].Alive, Is.False);
+            Assert.That(red.Alive, Is.True);
+            Assert.That(red.GhostKills, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Hammer_DoesNothingWhileItsPacIsStunned()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            server.ApplyPowerUp(red, ePowerUp.Hammer);
+            red.Facing = eFacing.Right;
+            server.UpdateWeaponEffects(0f, 0);
+            red.StunMs = 1000;
+
+            server.Ghosts[0].Location = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Hammer).Location;
+            server.UpdateGhosts(0f, 0);
+            server.UpdateWeaponEffects(0f, 0);
+
+            Assert.That(server.Ghosts[0].Alive, Is.True);
+        }
+
+        [Test]
+        public void SpawnPowerUp_NeverPicksThePowerPill()
+        {
+            var server = MakeServer();
+            Join(server, 1, eTeamPreference.Red);
+
+            for (var i = 0; i < 300; i++)
+                Assert.That(server.SpawnPowerUp()?.Item, Is.Not.EqualTo(ePowerUp.PowerPill));
+
+            Assert.That(PowerUpRules.SPAWNABLE.HasFlag(ePowerUp.PowerPill), Is.False);
+            Assert.That(PowerUpRules.SPAWNABLE | ePowerUp.PowerPill, Is.EqualTo(ePowerUp.Any));
+        }
+
         // library
+
+        [Test]
+        public void GetHammerLocation_MovesOutAsThePacGrows()
+        {
+            var at = new Point2(5.5f, 5.5f);
+
+            Assert.That(WeaponRules.GetHammerLocation(at, eFacing.Right, PacRules.GetRadius(0f), 20, 20), Is.EqualTo(new Point2(5.5f + PacRules.GetRadius(0f) + WeaponRules.HAMMER_GAP, 5.5f)));
+            Assert.That(WeaponRules.GetHammerLocation(at, eFacing.Up, 2f, 20, 20), Is.EqualTo(new Point2(5.5f, 5.5f - 2f - WeaponRules.HAMMER_GAP)));
+            Assert.That(WeaponRules.GetHammerLocation(new Point2(19.5f, 5.5f), eFacing.Right, 0.5f, 20, 20), Is.EqualTo(new Point2(0.5f, 5.5f)), "wraps round the map");
+        }
 
         [Test]
         public void FindNearestOpenCell_StepsOutOfWalls()
@@ -588,14 +807,10 @@ namespace EatMeTests
         [Test]
         public void EffectHelpers()
         {
-            Assert.That(PowerUpEffects.PassesThrough(ePowerUpEffect.MorphBall), Is.True);
             Assert.That(PowerUpEffects.PassesThrough(ePowerUpEffect.RaccoonTail), Is.True);
             Assert.That(PowerUpEffects.PassesThrough(ePowerUpEffect.Invincible), Is.False);
             Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUpEffect.RaccoonTail), Is.True);
-            Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUpEffect.MorphBall), Is.False);
-
-            Assert.That(PowerUpEffects.GetRollAngle(3.5f, 1.5f), Is.EqualTo(PowerUpEffects.GetRollAngle(3.5f, 1.5f)));
-            Assert.That(PowerUpEffects.GetRollAngle(3.5f, 1.5f), Is.Not.EqualTo(PowerUpEffects.GetRollAngle(3.7f, 1.5f)), "turns as it moves");
+            Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUpEffect.Bomb), Is.False);
 
             Assert.That(PowerUpEffects.IsFireFlashWhite(0f), Is.True);
             Assert.That(PowerUpEffects.IsFireFlashWhite(PowerUpEffects.FIRE_FLASH_SECONDS * 1.5f), Is.False);
@@ -608,7 +823,7 @@ namespace EatMeTests
         [Test]
         public void EveryNewEffect_HasAName()
         {
-            foreach (var effect in new[] { ePowerUpEffect.Reinforcements, ePowerUpEffect.MorphBall,
+            foreach (var effect in new[] { ePowerUpEffect.Reinforcements, ePowerUpEffect.Bomb,
                 ePowerUpEffect.RaccoonTail, ePowerUpEffect.SwordSwing, ePowerUpEffect.HolyFire, ePowerUpEffect.FireFlower })
                 Assert.That(PowerUpEffects.GetName(effect), Is.Not.EqualTo(Const.STRING_POWER_UP_NONE), effect.ToString());
         }

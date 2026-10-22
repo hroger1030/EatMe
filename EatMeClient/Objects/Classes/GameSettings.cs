@@ -34,6 +34,11 @@ namespace EatMeClient
         public eTeamPreference PreferredTeam { get; set; } = eTeamPreference.Either;
 
         /// <summary>
+        /// The pac sprite the player picked, sent to the server when joining.
+        /// </summary>
+        public ePacShape PacShape { get; set; } = PacShapes.DEFAULT;
+
+        /// <summary>
         /// Last server joined by address, as "host" or "host:port".
         /// </summary>
         public string ServerAddress { get; set; } = "127.0.0.1";

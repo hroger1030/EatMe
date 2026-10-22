@@ -422,7 +422,7 @@
 /processorParam:TextureFormat=Color
 /build:Images/flag0.png
 
-#begin Images/pac(60x60x4).png
+#begin Images/Pacs (60x60x9).png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -432,7 +432,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Images/pac(60x60x4).png
+/build:Images/Pacs (60x60x9).png
 
 #begin Images/powerups(60x60x32).png
 /importer:TextureImporter
@@ -446,7 +446,7 @@
 /processorParam:TextureFormat=Color
 /build:Images/powerups(60x60x32).png
 
-#begin Images/WeaponEffects(60x60x20).png
+#begin Images/WeaponEffects(60x60x22).png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -456,7 +456,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Images/WeaponEffects(60x60x20).png
+/build:Images/WeaponEffects(60x60x22).png
 
 #begin Images/MiniMapIcons(16x16x10).png
 /importer:TextureImporter

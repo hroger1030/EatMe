@@ -67,6 +67,32 @@ namespace EatMeTests
         }
 
         [Test]
+        public void Hello_PacShape_SentToEveryPlayer()
+        {
+            var server = MakeServer();
+            var first = new FakeConnection(1);
+            server.HandleEvent(new NetworkEvent(eNetworkEventType.Connected, first));
+            server.HandleMessage(first, new HelloMessage { PlayerName = "First", PacShape = ePacShape.Doc });
+
+            var second = Join(server, 2, "Second");
+
+            Assert.That(second.ReceivedOf<PlayerJoinedMessage>().Select(m => m.PacShape), Is.EqualTo(new[] { ePacShape.Doc, PacShapes.DEFAULT }));
+            Assert.That(first.ReceivedOf<PlayerJoinedMessage>().Select(m => m.PacShape), Is.EqualTo(new[] { ePacShape.Doc, PacShapes.DEFAULT }));
+        }
+
+        [Test]
+        public void Hello_BadPacShape_GetsDefault()
+        {
+            var server = MakeServer();
+            var connection = new FakeConnection(1);
+            server.HandleEvent(new NetworkEvent(eNetworkEventType.Connected, connection));
+
+            server.HandleMessage(connection, new HelloMessage { PlayerName = "Pac", PacShape = (ePacShape)200 });
+
+            Assert.That(connection.ReceivedOf<PlayerJoinedMessage>().Single().PacShape, Is.EqualTo(PacShapes.DEFAULT));
+        }
+
+        [Test]
         public void Hello_PreferredTeamFull_BalancesToOtherTeam()
         {
             var server = MakeServer();

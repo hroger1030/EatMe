@@ -34,13 +34,13 @@ namespace EatMeClient
             AlphaDestinationBlend = Blend.One,
         };
 
-        private static readonly string[] MENU_OPTIONS = [Const.STRING_JOIN_GAME, Const.STRING_STORY, Const.STRING_GAME_SETTINGS, Const.STRING_HIGH_SCORES, Const.STRING_QUIT];
+        private static readonly string[] MENU_OPTIONS = [Const.STRING_JOIN_GAME, Const.STRING_GAME_SETTINGS, Const.STRING_HIGH_SCORES, Const.STRING_QUIT];
 
         private GraphicsDeviceManager _Graphics;
 
         // Screens
         private SettingsScreen _GameSettingsScreen;
-        private StoryScreen _StoryScreen;
+        private AttractScreen _AttractScreen;
         private HighScoresScreen _HighScoresScreen;
         private MultiPlayerGameScreen _GameScreen;
         private JoinGameScreen _JoinGameScreen;
@@ -62,6 +62,11 @@ namespace EatMeClient
         private int _SelectedMenuIndex;
         private float? _ExitTimeRemaining;
         private float _DisplayStableSeconds;
+        private Texture2D _Pixel;
+
+        // seconds the title menu has had no input, and how long it has been fading to the attract screen (null if not)
+        private float _IdleSeconds;
+        private float? _FadeSeconds;
 
         public TitleScreen()
         {
@@ -107,13 +112,13 @@ namespace EatMeClient
             _Bloom.Parameters["Weights"].SetValue(DisplayAdjust.GetBlurWeights());
 
             _GameSettingsScreen = new SettingsScreen(ReturnToTitleMenu);
-            _StoryScreen = new StoryScreen(ReturnToTitleMenu);
+            _AttractScreen = new AttractScreen(ReturnToTitleMenu);
             _HighScoresScreen = new HighScoresScreen(ReturnToTitleMenu);
             _GameScreen = new MultiPlayerGameScreen(ReturnFromGame);
             _JoinGameScreen = new JoinGameScreen(StartGame, ReturnToTitleMenu);
 
             _GameSettingsScreen.LoadContent();
-            _StoryScreen.LoadContent();
+            _AttractScreen.LoadContent();
             _HighScoresScreen.LoadContent();
             _GameScreen.LoadContent();
             _JoinGameScreen.LoadContent();
@@ -127,6 +132,8 @@ namespace EatMeClient
 
             _PerfOverlay = new PerfOverlay();
             _PerfOverlay.LoadContent(GraphicsDevice);
+
+            _Pixel = TextureHelper.GetPixel(GraphicsDevice);
 
             ActivateTitleMenu();
         }
@@ -197,6 +204,8 @@ namespace EatMeClient
         private void ActivateTitleMenu()
         {
             _SelectedMenuIndex = 0;
+            _IdleSeconds = 0f;
+            _FadeSeconds = null;
 
             // Loops until a game starts; Play is a no-op if the theme is already playing
             MusicManager.Play(Const.SONG_TITLE_THEME);
@@ -270,9 +279,9 @@ namespace EatMeClient
                 return;
             }
 
-            if (_CurrentScreen == eScreenState.Story)
+            if (_CurrentScreen == eScreenState.Attract)
             {
-                _StoryScreen.Update(gameTime, GraphicsDevice.Viewport);
+                _AttractScreen.Update(gameTime, GraphicsDevice.Viewport);
                 base.Update(gameTime);
                 return;
             }
@@ -280,6 +289,12 @@ namespace EatMeClient
             if (_CurrentScreen == eScreenState.HighScores)
             {
                 _HighScoresScreen.Update(gameTime, GraphicsDevice.Viewport);
+                base.Update(gameTime);
+                return;
+            }
+
+            if (UpdateIdle((float)gameTime.ElapsedGameTime.TotalSeconds))
+            {
                 base.Update(gameTime);
                 return;
             }
@@ -314,6 +329,35 @@ namespace EatMeClient
             _MessageScroller.Update(gameTime);
 
             base.Update(gameTime);
+        }
+
+        /// <summary>
+        /// Counts how long the title menu has had no input (no key, gamepad button, mouse button or mouse move): after
+        /// AttractMath.IDLE_SECONDS it fades to black over AttractMath.FADE_SECONDS and then shows the attract screen.
+        /// Any input starts the count again and cancels a fade. Returns true once the attract screen has started.
+        /// </summary>
+        private bool UpdateIdle(float deltaSeconds)
+        {
+            if (InputManager.AnyButtonPressed() || InputManager.MouseMoved())
+            {
+                _IdleSeconds = 0f;
+                _FadeSeconds = null;
+                return false;
+            }
+
+            _IdleSeconds += deltaSeconds;
+
+            if (_IdleSeconds < AttractMath.IDLE_SECONDS)
+                return false;
+
+            _FadeSeconds = (_FadeSeconds ?? 0f) + deltaSeconds;
+
+            if (AttractMath.GetFadeAlpha(_FadeSeconds.Value) < 1f)
+                return false;
+
+            _CurrentScreen = eScreenState.Attract;
+            _AttractScreen.Activate();
+            return true;
         }
 
         /// <summary>
@@ -458,11 +502,6 @@ namespace EatMeClient
                 case Const.STRING_JOIN_GAME:
                     _CurrentScreen = eScreenState.JoinGame;
                     _JoinGameScreen.Activate();
-                    break;
-
-                case Const.STRING_STORY:
-                    _CurrentScreen = eScreenState.Story;
-                    _StoryScreen.Activate(GraphicsDevice.Viewport);
                     break;
 
                 case Const.STRING_HIGH_SCORES:
@@ -627,8 +666,9 @@ namespace EatMeClient
         /// </summary>
         private void DrawScreens(Viewport viewport)
         {
-            // Background behind every screen except the game, point sampled so the pixel art stays crisp
-            if (_CurrentScreen != eScreenState.Game)
+            // Background behind every screen except the game and the attract screen (on black), point sampled so the
+            // pixel art stays crisp
+            if (_CurrentScreen != eScreenState.Game && _CurrentScreen != eScreenState.Attract)
             {
                 _SpriteBatch.Begin(samplerState: SamplerState.PointClamp);
                 _SpriteBatch.Draw(_Background, GetCoverRectangle(_Background.Width, _Background.Height, viewport.Bounds), Color.White);
@@ -658,9 +698,9 @@ namespace EatMeClient
                 return;
             }
 
-            if (_CurrentScreen == eScreenState.Story)
+            if (_CurrentScreen == eScreenState.Attract)
             {
-                _StoryScreen.Draw(_SpriteBatch, viewport);
+                _AttractScreen.Draw(_SpriteBatch, viewport);
                 return;
             }
 
@@ -691,6 +731,10 @@ namespace EatMeClient
 
             // message scroller along the bottom
             _MessageScroller.Draw(_SpriteBatch, viewport);
+
+            // fading to black on the way to the attract screen
+            if (_FadeSeconds.HasValue)
+                _SpriteBatch.Draw(_Pixel, viewport.Bounds, Color.Black * AttractMath.GetFadeAlpha(_FadeSeconds.Value));
 
             _SpriteBatch.End();
         }

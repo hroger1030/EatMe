@@ -29,21 +29,21 @@ namespace EatMeLibrary
         HeartContainer = 1u << 19,
         WhiteSword = 1u << 20,
         EnergyTank = 1u << 21,
-        MorphBall = 1u << 22,
+        Reinforcements = 1u << 22,
         ScrewAttack = 1u << 23,
         HolyWater = 1u << 24,
         SpreadGun = 1u << 25,
         BlueShell = 1u << 26,
         Tetromino = 1u << 27,
         BFG = 1u << 28,
-        MegaManOneUp = 1u << 29,
+        Bomb = 1u << 29,
         PepperShaker = 1u << 30,
         PokeBall = 1u << 31,
 
         // Every bonus item
         Any = Cherry | Strawberry | Orange | Apple | Melon | Galaxian | Bell | Key | Pretzel | Pear | Banana
             | Mushroom | PowerPill | FireFlower | Starman | PowBlock | SuperLeaf | Hammer
-            | Triforce | HeartContainer | WhiteSword | EnergyTank | MorphBall | ScrewAttack
-            | HolyWater | SpreadGun | BlueShell | Tetromino | BFG | MegaManOneUp | PepperShaker | PokeBall,
+            | Triforce | HeartContainer | WhiteSword | EnergyTank | Reinforcements | ScrewAttack
+            | HolyWater | SpreadGun | BlueShell | Tetromino | BFG | Bomb | PepperShaker | PokeBall,
     }
 }

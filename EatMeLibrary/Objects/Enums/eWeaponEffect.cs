@@ -35,5 +35,8 @@ namespace EatMeLibrary
 
         /// <summary>Spread gun's shot.</summary>
         SpreadShot,
+
+        /// <summary>Bomb, upright, its fuse burning.</summary>
+        Bomb,
     }
 }

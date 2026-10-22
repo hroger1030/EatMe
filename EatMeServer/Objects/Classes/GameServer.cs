@@ -580,7 +580,7 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// True while a living pac on the team has Reinforcements (Mega Man 1-up), so its dead teammates respawn at once.
+        /// True while a living pac on the team has Reinforcements (fairy), so its dead teammates respawn at once.
         /// </summary>
         public bool IsReinforced(eTeam team)
         {
@@ -618,11 +618,11 @@ namespace EatMeServer
         /// <summary>
         /// The POW block's action (ePowerUpEffect.Pow): stuns every living pac (either team) and ghost within
         /// PowerUpEffects.EFFECT_RADIUS cells of the pac, except that pac, for POW_STUN_MS. A stun already running starts
-        /// over. Broadcasts a Pow event so clients play the boom and shake.
+        /// over. Broadcasts a Blast so clients play the boom and shake.
         /// </summary>
         public void PowStun(Player player)
         {
-            Broadcast(new GameEventMessage { EventType = eGameEvent.Pow, ActorId = player.Id, X = player.Location.X, Y = player.Location.Y, Team = player.Team });
+            BroadcastBlast(player.Id, player.Team, player.Location);
 
             foreach (var serverPlayer in _Players.Values)
             {
@@ -637,6 +637,16 @@ namespace EatMeServer
                 if (ghost.Alive && PowerUpEffects.IsInEffectRange(player.Location, ghost.Location))
                     ghost.StunMs = PowerUpEffects.POW_STUN_MS;
             }
+        }
+
+        /// <summary>
+        /// Tells every client something blew up at location (a Blast event, actorId and team being who set it off):
+        /// each plays the boom in-world, and the board shakes for everyone inside PowerUpEffects.EFFECT_RADIUS. Use it
+        /// for anything that explodes.
+        /// </summary>
+        public void BroadcastBlast(int actorId, eTeam team, Point2 location)
+        {
+            Broadcast(new GameEventMessage { EventType = eGameEvent.Blast, ActorId = actorId, X = location.X, Y = location.Y, Team = team });
         }
 
         /// <summary>
@@ -746,8 +756,8 @@ namespace EatMeServer
                     }
                 }
 
-                // bots with a sword or fireballs press the action button at an enemy or ghost straight ahead
-                if (PacBrain.ShouldFire(world, pac))
+                // bots press the action button whenever their buff has a use, even when it may kill them too
+                if (PacBrain.ShouldUseAction(world, pac))
                     HandleAction(pac);
             }
         }
@@ -1140,7 +1150,7 @@ namespace EatMeServer
                     if (!a.Alive || !b.Alive || a.Team == b.Team || !PacRules.IsTouchingPac(a.Location, a.Size, b.Location, b.Size))
                         continue;
 
-                    // Morph Ball and Raccoon Tail pass straight through enemy pacs
+                    // Raccoon Tail passes straight through enemy pacs
                     if (a.PassesThrough || b.PassesThrough)
                         continue;
 
@@ -1156,6 +1166,11 @@ namespace EatMeServer
 
                     var aWins = aRank != bRank ? aRank > bRank : a.Size > b.Size;
                     var (eater, eaten) = aWins ? (a, b) : (b, a);
+
+                    // a stunned pac can't hurt anyone, so the two pass through each other
+                    if (eater.IsStunned)
+                        continue;
+
                     eater.PlayerKills++;
                     AddScore(eater, _Settings.GameConfig.PlayerKill);
                     KillPac(eaten, eGameEvent.PacEaten, eater.Id);
@@ -1347,7 +1362,7 @@ namespace EatMeServer
 
                 ghost.LifeMs += elapsedMs;
 
-                // a stunned ghost stays put, but still kills a pac that runs into it
+                // a stunned ghost stays put and can't hurt anyone, but a pac that can kill ghosts still kills it
                 if (ghost.IsStunned)
                 {
                     ResolveGhostContacts(ghost);
@@ -1604,9 +1619,13 @@ namespace EatMeServer
             var config = _Settings.GameConfig;
             var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
 
+            // a hammer gets the ghost before the ghost can reach its pac
+            if (HitByHammer(ghost, ghostRadius))
+                return;
+
             foreach (var player in _Living)
             {
-                // a pac passing through ghosts (Morph Ball, Raccoon Tail) neither kills nor is killed
+                // a pac passing through ghosts (Raccoon Tail) neither kills nor is killed
                 if (!player.Alive || player.PassesThrough || !PacRules.IsTouchingGhost(player.Location, player.Size, ghost.Location, ghostRadius))
                     continue;
 
@@ -1624,6 +1643,10 @@ namespace EatMeServer
                     continue;
                 }
 
+                // a stunned ghost can't hurt anyone
+                if (ghost.IsStunned)
+                    continue;
+
                 ghost.PlayerKills++;
 
                 if (player.Id == ghost.GrudgeId)
@@ -1632,6 +1655,28 @@ namespace EatMeServer
                 KillPac(player, eGameEvent.PacEaten, GameEventMessage.NO_ID);
                 ServerLog.Write(eLogType.Kill, $"{ghost.Name} got {player.Name}");
             }
+        }
+
+        /// <summary>
+        /// Kills the ghost if a hammer whose pac isn't stunned is touching it. Returns true if it did.
+        /// </summary>
+        private bool HitByHammer(Ghost ghost, float ghostRadius)
+        {
+            foreach (var effect in _WeaponEffects)
+            {
+                if (effect.Kind != eWeaponEffect.Hammer || !WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius))
+                    continue;
+
+                var owner = FindPlayer(effect.OwnerId);
+
+                if (owner == null || !owner.Alive || owner.IsStunned)
+                    continue;
+
+                KillGhost(ghost, owner);
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -1697,15 +1742,15 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Puts a power up on a random spawn point, heading for a random warp exit, holding a random item (any item, on
-        /// every level). Does nothing if the map has no spawn points or exits. Returns it, or null.
+        /// Puts a power up on a random spawn point, heading for a random warp exit, holding a random item (any of
+        /// PowerUpRules.SPAWNABLE, on every level). Does nothing if the map has no spawn points or exits. Returns it, or null.
         /// </summary>
         public PowerUp SpawnPowerUp()
         {
             if (_PowerUpSpawns.Count == 0 || _PowerUpExits.Count == 0)
                 return null;
 
-            var item = PowerUpRules.PickItem(ePowerUp.Any, _Random);
+            var item = PowerUpRules.PickItem(PowerUpRules.SPAWNABLE, _Random);
             if (item == ePowerUp.None)
                 return null;
 
@@ -1768,6 +1813,8 @@ namespace EatMeServer
         ///   that isn't invincible.
         /// - A pac with Spread Shot fires a shot each way every WeaponRules.SPREAD_SHOT_INTERVAL_MS; a shot flies straight
         ///   on until a wall stops it or it touches a pac (the owner once clear) or ghost, which is stunned for STUN_MS.
+        /// - A bomb lies where it was dropped for WeaponRules.BOMB_FUSE_MS, then goes off, stunning every enemy pac and
+        ///   ghost within PowerUpEffects.EFFECT_RADIUS for STUN_MS.
         /// </summary>
         public void UpdateWeaponEffects(float deltaSeconds, int elapsedMs)
         {
@@ -1802,6 +1849,7 @@ namespace EatMeServer
                     eWeaponEffect.Hammer => UpdateHammer(effect),
                     eWeaponEffect.BfgShot => UpdateBfgShot(effect, deltaSeconds),
                     eWeaponEffect.SpreadShot => UpdateSpreadShot(effect, deltaSeconds),
+                    eWeaponEffect.Bomb => UpdateBomb(effect, elapsedMs),
                     _ => false,
                 };
 
@@ -1874,7 +1922,7 @@ namespace EatMeServer
                     continue;
 
                 var facing = MazeMovement.ToFacing(serverPlayer.Input) ?? player.Facing;
-                var location = WeaponRules.GetHammerLocation(player.Location, facing, width, height);
+                var location = WeaponRules.GetHammerLocation(player.Location, facing, PacRules.GetRadius(player.Size), width, height);
                 var hammer = FindWeaponEffect(player.Id, eWeaponEffect.Hammer) ?? AddWeaponEffect(eWeaponEffect.Hammer, player, location, facing);
 
                 hammer.Location = location;
@@ -1894,11 +1942,14 @@ namespace EatMeServer
 
         /// <summary>
         /// The hammer kills every enemy pac and ghost it touches (KillPacBy spares the invincible) and smashes the wall
-        /// its centre is in. It stays as long as its pac's Hammer Time works.
+        /// its centre is in. It stays as long as its pac's Hammer Time works, and does nothing while its pac is stunned.
         /// </summary>
         private bool UpdateHammer(WeaponEffect effect)
         {
             var owner = FindPlayer(effect.OwnerId);
+
+            if (owner != null && owner.IsStunned)
+                return true;
 
             foreach (var pac in _Living)
                 if (pac.Alive && pac.Team != effect.Team && WeaponRules.IsTouchingPac(effect.Location, pac.Location, pac.Size))
@@ -1986,6 +2037,35 @@ namespace EatMeServer
                 ghost.StunMs = PowerUpEffects.STUN_MS;
             else
                 return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// A bomb's fuse burns down, whether or not its pac still has the buff or is alive; when it runs out the bomb
+        /// goes off (a Blast) and is gone, stunning every living pac not on the bomb's team and every living ghost within
+        /// PowerUpEffects.EFFECT_RADIUS for STUN_MS. A stun already running starts over.
+        /// </summary>
+        private bool UpdateBomb(WeaponEffect effect, int elapsedMs)
+        {
+            effect.FuseMs -= elapsedMs;
+
+            if (effect.FuseMs > 0)
+                return true;
+
+            BroadcastBlast(effect.OwnerId, effect.Team, effect.Location);
+
+            foreach (var serverPlayer in _Players.Values)
+            {
+                var pac = serverPlayer.Player;
+
+                if (pac.Alive && pac.Team != effect.Team && PowerUpEffects.IsInEffectRange(effect.Location, pac.Location))
+                    pac.StunMs = PowerUpEffects.STUN_MS;
+            }
+
+            foreach (var ghost in _Ghosts)
+                if (ghost.Alive && PowerUpEffects.IsInEffectRange(effect.Location, ghost.Location))
+                    ghost.StunMs = PowerUpEffects.STUN_MS;
 
             return false;
         }
@@ -2377,6 +2457,10 @@ namespace EatMeServer
                     acted = DropTetrisBlock(player);
                     break;
 
+                case ePowerUpEffect.Bomb:
+                    acted = DropBomb(player);
+                    break;
+
                 // BFG 9000: a slow ball the way the pac faces
                 case ePowerUpEffect.Bfg:
                     AddWeaponEffect(eWeaponEffect.BfgShot, player, player.Location, player.Facing);
@@ -2440,6 +2524,22 @@ namespace EatMeServer
                     return false;
 
             AddWeaponEffect(eWeaponEffect.BananaPeel, player, new Point2(cell.X + CELL_CENTER, cell.Y + CELL_CENTER), player.Facing);
+            return true;
+        }
+
+        /// <summary>
+        /// Bomb: drops the pac's one bomb on the centre of its cell, lit to go off in WeaponRules.BOMB_FUSE_MS. Returns
+        /// false if the pac has dropped it already.
+        /// </summary>
+        public bool DropBomb(Player player)
+        {
+            if (player.BombDropped)
+                return false;
+
+            var (x, y) = MazeMovement.GetCell(player.Location);
+            var bomb = AddWeaponEffect(eWeaponEffect.Bomb, player, new Point2(x + CELL_CENTER, y + CELL_CENTER), player.Facing);
+            bomb.FuseMs = WeaponRules.BOMB_FUSE_MS;
+            player.BombDropped = true;
             return true;
         }
 
@@ -2519,12 +2619,14 @@ namespace EatMeServer
                     StartPowerUpEffect(player, ePowerUpEffect.PowerPill);
                     break;
 
-                case ePowerUp.MegaManOneUp:
-                    StartPowerUpEffect(player, ePowerUpEffect.Reinforcements);
+                // Bomb: one bomb to drop with the action button, a new one with every Bomb eaten
+                case ePowerUp.Bomb:
+                    StartPowerUpEffect(player, ePowerUpEffect.Bomb);
+                    player.BombDropped = false;
                     break;
 
-                case ePowerUp.MorphBall:
-                    StartPowerUpEffect(player, ePowerUpEffect.MorphBall);
+                case ePowerUp.Reinforcements:
+                    StartPowerUpEffect(player, ePowerUpEffect.Reinforcements);
                     break;
 
                 case ePowerUp.SuperLeaf:
@@ -2984,6 +3086,7 @@ namespace EatMeServer
                 Id = connection.Id,
                 Name = hello.PlayerName,
                 Team = TeamBalancer.AssignTeam(hello.PreferredTeam, redCount, blueCount),
+                PacShape = PacShapes.Clamp(hello.PacShape),
             };
             Respawn(player);
 
@@ -3319,7 +3422,7 @@ namespace EatMeServer
 
         private static PlayerJoinedMessage BuildPlayerJoined(Player player)
         {
-            return new PlayerJoinedMessage { PlayerId = player.Id, Name = player.Name, Team = player.Team };
+            return new PlayerJoinedMessage { PlayerId = player.Id, Name = player.Name, Team = player.Team, PacShape = player.PacShape };
         }
 
         private static void Send(IClientConnection connection, INetworkMessage message)

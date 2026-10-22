@@ -30,7 +30,7 @@ namespace EatMeClient
 
         // space between the respawn countdown's text and the edge of its panel
         private const float RESPAWN_PANEL_PADDING = 24f;
-        private const int PAC_FRAME_COUNT = 4;
+        public const int PAC_FRAME_COUNT = 4;
         private const float HUD_MARGIN = 20f;
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace EatMeClient
         /// </summary>
         private const float FLAG_BASE_BLINK_SECONDS = 0.5f;
 
-        private const int GHOST_FRAME_COUNT = 4;
+        public const int GHOST_FRAME_COUNT = 4;
 
         // rainbow ghost sheets, each moved round the gradient a little further, so the rainbow scrolls as ghosts move
         private const int RAINBOW_GHOST_PHASES = 16;
@@ -313,7 +313,7 @@ namespace EatMeClient
             _InputSequence = 0;
 
             var settings = ConfigManager.Settings;
-            _Client.Connect(host, port, new HelloMessage { PlayerName = settings.PlayerName, PreferredTeam = settings.PreferredTeam });
+            _Client.Connect(host, port, new HelloMessage { PlayerName = settings.PlayerName, PreferredTeam = settings.PreferredTeam, PacShape = settings.PacShape });
 
             _Camera.Position = Vector2.Zero;
             _Camera.ShakeOffset = Vector2.Zero;
@@ -587,11 +587,11 @@ namespace EatMeClient
 
                             // an area effect's shockwave shakes the board for everyone inside its radius, the pac that set it off included
                             if (PowerUpEffects.ShakesScreen(gameEvent.EventType) && _State.IsOwnPacInEffectRange(gameEvent))
-                                ShakeScreen(ScreenShake.POW_AMPLITUDE_PIXELS, ScreenShake.POW_DURATION_SECONDS);
+                                ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, ScreenShake.BLAST_DURATION_SECONDS);
 
                             // smashed walls shake every board, wherever the player is
                             if (PowerUpEffects.ShakesEveryScreen(gameEvent.EventType))
-                                ShakeScreen(ScreenShake.POW_AMPLITUDE_PIXELS, ScreenShake.POW_DURATION_SECONDS);
+                                ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, ScreenShake.BLAST_DURATION_SECONDS);
                         }
 
                         StartDeathAnimation(gameEvent);
@@ -640,7 +640,7 @@ namespace EatMeClient
                 eGameEvent.PacEaten => Const.SFX_DEATH,
                 eGameEvent.GhostKilled => Const.SFX_EAT_GHOST,
                 eGameEvent.PowerUpEaten => Const.SFX_POWER_UP_EATEN,
-                eGameEvent.Pow => Const.SFX_POW,
+                eGameEvent.Blast => Const.SFX_POW,
                 eGameEvent.PokeBallCapture or eGameEvent.PokeBallRelease => Const.SFX_BLOOP,
                 eGameEvent.BfgBurst => Const.SFX_BFG_BURST,
                 _ => null,
@@ -834,7 +834,8 @@ namespace EatMeClient
                         var ownPac = _State.GetOwnPac();
                         var ownSize = ownPac.HasValue ? (int)Math.Round(ownPac.Value.Size) : 0;
                         _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill(), _State.IsOwnPacStunned());
-                        DrawRespawnCountdown(spriteBatch, viewport);
+                        if (!ConfigManager.Settings.Paused)
+                            DrawRespawnCountdown(spriteBatch, viewport);
 
                         if (_PlayerListHeld && _State.HasPlayerList)
                             _PlayerList.Draw(spriteBatch, GetBoardViewport(viewport).Bounds, _State.BluePlayerList, _State.RedPlayerList, _State.PlayerId);
@@ -1566,10 +1567,10 @@ namespace EatMeClient
             if (_State.Snapshot == null)
                 return;
 
-            var frameWidth = _PacSheet.Width / PAC_FRAME_COUNT;
             var frame = GetChompFrame(_AnimationTime);
-            var source = new Rectangle(frame * frameWidth, 0, frameWidth, _PacSheet.Height);
-            var origin = new Vector2(frameWidth * 0.5f, _PacSheet.Height * 0.5f);
+            var frameWidth = _PacSheet.Width / PAC_FRAME_COUNT;
+            var frameHeight = _PacSheet.Height / PacShapes.ALL.Length;
+            var origin = new Vector2(frameWidth * 0.5f, frameHeight * 0.5f);
 
             foreach (var pac in _State.Snapshot.Pacs)
             {
@@ -1581,6 +1582,7 @@ namespace EatMeClient
                 var scale = pacWidth / frameWidth;
                 var isOwn = pac.PlayerId == _State.PlayerId;
                 var color = ClientColors.GetPacColor(pac.Team, isOwn);
+                var source = GetPacSource(_PacSheet, _State.GetPacShape(pac.PlayerId), frame);
 
                 // power pulse, star blink, white flash and spawn charge blink, trail included (the mini map uses the same)
                 var tint = ClientColors.GetPacTint(pac, isOwn, _AnimationTime);
@@ -1590,10 +1592,6 @@ namespace EatMeClient
                 // a stunned pac spins in place (and the flag it carries with it)
                 if (pac.Stunned)
                     rotation += PowerUpEffects.GetStunSpinAngle(_AnimationTime);
-
-                // a Morph Ball pac rolls as it moves
-                if (pac.PowerUpEffect == ePowerUpEffect.MorphBall)
-                    rotation += PowerUpEffects.GetRollAngle(pac.X, pac.Y);
 
                 // a Screw Attack pac spins very fast as it moves
                 if (pac.PowerUpEffect == ePowerUpEffect.ScrewAttack)
@@ -1817,6 +1815,16 @@ namespace EatMeClient
             var cycle = PAC_FRAME_COUNT * 2 - 2;
             var step = (int)(time / PAC_FRAME_SECONDS) % cycle;
             return step < PAC_FRAME_COUNT ? step : cycle - step;
+        }
+
+        /// <summary>
+        /// The part of the pac sheet holding the shape's chomp frame (a row per shape, PAC_FRAME_COUNT frames across).
+        /// </summary>
+        public static Rectangle GetPacSource(Texture2D pacSheet, ePacShape shape, int frame)
+        {
+            var frameWidth = pacSheet.Width / PAC_FRAME_COUNT;
+            var frameHeight = pacSheet.Height / PacShapes.ALL.Length;
+            return new Rectangle(frame * frameWidth, PacShapes.GetCellY(shape) * frameHeight, frameWidth, frameHeight);
         }
     }
 }

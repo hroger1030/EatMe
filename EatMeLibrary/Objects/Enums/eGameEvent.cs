@@ -30,9 +30,11 @@ namespace EatMeLibrary
         PowerUpEaten,
 
         /// <summary>
-        /// A pac (ActorId) set off a POW block at X, Y, stunning everything within PowerUpEffects.EFFECT_RADIUS but itself.
+        /// An explosion at X, Y (ActorId the pac that set it off, Team its team): a POW block press or a bomb going off.
+        /// Every client plays the boom in-world, and the board shakes for everyone inside PowerUpEffects.EFFECT_RADIUS.
+        /// The server sends it with GameServer.BroadcastBlast; anything that blows up can use it.
         /// </summary>
-        Pow,
+        Blast,
 
         /// <summary>
         /// Sent only to the pac (TargetId) that just respawned at once thanks to a teammate's Reinforcements; it hears

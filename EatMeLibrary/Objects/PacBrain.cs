@@ -6,8 +6,9 @@ namespace EatMeLibrary
 {
     /// <summary>
     /// How bot pacs pick which way to go. In order: run from anything that can kill them, take a carried flag home,
-    /// rescue their own flag, chase an enemy carrying their flag, hunt smaller enemies (and ghosts once big enough),
-    /// grab a nearby power pill, go for the enemy flag (attackers only), eat the nearest dot, and otherwise wander.
+    /// rescue their own flag, chase an enemy carrying their flag, grab a dropped enemy flag, grab a nearby power pill
+    /// or power up, hunt smaller enemies (and ghosts once big enough), go for the enemy flag (attackers only), eat the
+    /// nearest dot, and otherwise wander. Bots press the action button whenever their buff has a use (ShouldUseAction).
     /// A bot keeps the goal it picks for a while (BotMemory) instead of picking again at every cell centre, and once
     /// it has fled from something it keeps fleeing a little longer and then keeps away from where it was.
     /// Now and then a bot wanders instead (RANDOM_TURN_PERCENT), and it sees other pacs' sizes only roughly
@@ -85,6 +86,7 @@ namespace EatMeLibrary
         [
             eBotGoal.Rescue,
             eBotGoal.HuntCarrier,
+            eBotGoal.LooseFlag,
             eBotGoal.PowerPill,
             eBotGoal.PowerUp,
             eBotGoal.Hunt,
@@ -104,6 +106,7 @@ namespace EatMeLibrary
             eBotGoal.Hunt,
             eBotGoal.HuntGhost,
             eBotGoal.Rescue,
+            eBotGoal.LooseFlag,
             eBotGoal.EnemyFlag,
             eBotGoal.Dot,
         ];
@@ -246,6 +249,12 @@ namespace EatMeLibrary
                 case eBotGoal.HuntCarrier:
                     return FindNearestPac(world, me, paths, carrierHuntDistance, true);
 
+                case eBotGoal.LooseFlag:
+                    // any bot grabs a dropped enemy flag it can see, if it is free to pick one up
+                    return PowerUpEffects.CanPickUpFlag(me.PowerUpEffect)
+                        ? FindNearestFlag(world, paths, f => f.CanBePickedUpBy(me.Team) && !f.IsAtBase, SEARCH_DISTANCE)
+                        : null;
+
                 case eBotGoal.PowerUp:
                     return !me.IsInvincible ? FindNearestPowerUp(world, paths, POWER_UP_DISTANCE) : null;
 
@@ -279,7 +288,8 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if something more urgent than goal has come up, so a bot drops it at once rather than waiting for its
-        /// time to run out: it picked up a flag (or lost the one it was taking home), or its own flag needs rescuing.
+        /// time to run out: it picked up a flag (or lost the one it was taking home), its own flag needs rescuing, or an
+        /// enemy flag it can pick up has been dropped nearby.
         /// </summary>
         public static bool InterruptsGoal(BotWorld world, Player me, int x, int y, PathMap paths, eBotGoal goal)
         {
@@ -290,7 +300,13 @@ namespace EatMeLibrary
             if (me.IsInvincible)
                 return false;
 
-            return goal != eBotGoal.CarryHome && goal != eBotGoal.Rescue && FindGoalTarget(world, me, x, y, paths, eBotGoal.Rescue).HasValue;
+            if (goal is eBotGoal.CarryHome or eBotGoal.Rescue)
+                return false;
+
+            if (FindGoalTarget(world, me, x, y, paths, eBotGoal.Rescue).HasValue)
+                return true;
+
+            return goal != eBotGoal.LooseFlag && goal != eBotGoal.HuntCarrier && FindGoalTarget(world, me, x, y, paths, eBotGoal.LooseFlag).HasValue;
         }
 
         /// <summary>
@@ -367,12 +383,12 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if other is an enemy that can kill me: it is invincible, or looks big enough to eat me
-        /// (GetPerceivedSize). Nothing is a threat to an invincible bot.
+        /// (GetPerceivedSize). Nothing is a threat to an invincible bot, and a stunned pac is no threat to anyone.
         /// </summary>
         public static bool IsThreat(BotWorld world, Player me, Player other)
         {
-            // pacs passing through each other (Morph Ball, Raccoon Tail) can't fight
-            if (!other.Alive || other.Team == me.Team || me.IsInvincible || me.PassesThrough || other.PassesThrough)
+            // pacs passing through each other (Raccoon Tail) can't fight
+            if (!other.Alive || other.IsStunned || other.Team == me.Team || me.IsInvincible || me.PassesThrough || other.PassesThrough)
                 return false;
 
             return other.IsInvincible || GetPerceivedSize(world, me, other) > me.Size;
@@ -443,16 +459,17 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Cells of the ghosts and bigger enemies within maxDistance steps. paths must be filled from the bot.
+        /// Cells of the ghosts and bigger enemies within maxDistance steps; stunned ones can't hurt it, so they don't
+        /// count. paths must be filled from the bot.
         /// </summary>
         public static List<(int X, int Y)> FindThreats(BotWorld world, Player me, PathMap paths, int maxDistance = DANGER_DISTANCE)
         {
             var threats = new List<(int X, int Y)>();
 
-            // a bot passing through ghosts (Morph Ball, Raccoon Tail) has nothing to fear from them
+            // a bot passing through ghosts (Raccoon Tail) has nothing to fear from them
             if (!CanKillGhosts(world, me) && !me.PassesThrough)
                 foreach (var ghost in world.Ghosts)
-                    if (ghost.Alive)
+                    if (ghost.Alive && !ghost.IsStunned)
                         AddIfClose(threats, paths, MazeMovement.GetCell(ghost.Location), maxDistance);
 
             foreach (var pac in world.Pacs)
@@ -474,25 +491,57 @@ namespace EatMeLibrary
         public const int FLAME_DANGER_DISTANCE = 2;
 
         /// <summary>
-        /// True if a bot with a buff that fires on the action button (Sword Swing, Fireball) should fire now: the
-        /// nearest pac or ghost in line ahead of it, within WeaponRules.FIRE_DISTANCE and before any wall, is an enemy
-        /// pac that isn't invincible or a ghost. A teammate in the way holds its fire. With Gotcha, poke balls find
-        /// ghosts by themselves, so it throws whenever any ghost is alive.
+        /// True if a bot should press the action button now for its buff:
+        /// - Sword Swing, Fire Flower and BFG: the nearest pac or ghost in line ahead of it, within
+        ///   WeaponRules.FIRE_DISTANCE and before any wall, is an enemy pac that isn't invincible or a ghost (a
+        ///   teammate in the way holds its fire). It fires the BFG even when the burst will catch it too.
+        /// - Gotcha: whenever any ghost is alive, since poke balls find ghosts by themselves.
+        /// - POW: a ghost or an enemy pac that isn't invincible, neither stunned already, is within the standard effect
+        ///   radius (PowerUpEffects.EFFECT_RADIUS).
+        /// - Bomb: its bomb isn't dropped yet and a ghost or enemy pac that isn't stunned is within the standard radius.
+        /// - Banana Peel and Block Drop: a ghost or enemy pac that isn't stunned is within DANGER_DISTANCE cells.
+        /// - Warp: something that can kill it (a ghost, or an enemy that IsThreat) is within DANGER_DISTANCE cells.
         /// </summary>
-        public static bool ShouldFire(BotWorld world, Player me)
+        public static bool ShouldUseAction(BotWorld world, Player me)
         {
-            if (me.PowerUpEffect == ePowerUpEffect.Gotcha)
+            switch (me.PowerUpEffect)
             {
-                foreach (var ghost in world.Ghosts)
-                    if (ghost.Alive)
-                        return true;
+                case ePowerUpEffect.Gotcha:
+                    foreach (var ghost in world.Ghosts)
+                        if (ghost.Alive)
+                            return true;
 
-                return false;
+                    return false;
+
+                case ePowerUpEffect.SwordSwing:
+                case ePowerUpEffect.FireFlower:
+                case ePowerUpEffect.Bfg:
+                    return HasTargetAhead(world, me);
+
+                case ePowerUpEffect.Pow:
+                    return HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, true);
+
+                case ePowerUpEffect.Bomb:
+                    return !me.BombDropped && HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, false);
+
+                case ePowerUpEffect.BananaPeel:
+                case ePowerUpEffect.BlockDrop:
+                    return HasTargetNear(world, me, DANGER_DISTANCE, false);
+
+                case ePowerUpEffect.Warp:
+                    return HasThreatNear(world, me, DANGER_DISTANCE);
+
+                default:
+                    return false;
             }
+        }
 
-            if (me.PowerUpEffect != ePowerUpEffect.SwordSwing && me.PowerUpEffect != ePowerUpEffect.FireFlower)
-                return false;
-
+        /// <summary>
+        /// True if the nearest pac or ghost in line ahead of me, within WeaponRules.FIRE_DISTANCE and before any wall,
+        /// is an enemy pac that isn't invincible or a ghost.
+        /// </summary>
+        private static bool HasTargetAhead(BotWorld world, Player me)
+        {
             var width = world.Map.GetLength(0);
             var height = world.Map.GetLength(1);
             var (x, y) = MazeMovement.GetCell(me.Location);
@@ -512,6 +561,49 @@ namespace EatMeLibrary
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// True if a living ghost or enemy pac that isn't stunned is no more than cells away from me horizontally and
+        /// vertically. With skipInvincible, invincible enemies don't count.
+        /// </summary>
+        private static bool HasTargetNear(BotWorld world, Player me, float cells, bool skipInvincible)
+        {
+            foreach (var ghost in world.Ghosts)
+                if (ghost.Alive && !ghost.IsStunned && IsWithin(me.Location, ghost.Location, cells))
+                    return true;
+
+            foreach (var pac in world.Pacs)
+                if (pac.Alive && pac.Team != me.Team && !pac.IsStunned && !(skipInvincible && pac.IsInvincible) && IsWithin(me.Location, pac.Location, cells))
+                    return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// True if something that can kill me (a ghost I can't kill or pass through, or an enemy that IsThreat) is no
+        /// more than cells away horizontally and vertically.
+        /// </summary>
+        private static bool HasThreatNear(BotWorld world, Player me, float cells)
+        {
+            if (!CanKillGhosts(world, me) && !me.PassesThrough)
+                foreach (var ghost in world.Ghosts)
+                    if (ghost.Alive && !ghost.IsStunned && IsWithin(me.Location, ghost.Location, cells))
+                        return true;
+
+            foreach (var pac in world.Pacs)
+                if (IsThreat(world, me, pac) && IsWithin(me.Location, pac.Location, cells))
+                    return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// True if to is no more than cells away from from, horizontally and vertically.
+        /// </summary>
+        public static bool IsWithin(Point2 from, Point2 to, float cells)
+        {
+            return MathF.Abs(to.X - from.X) <= cells && MathF.Abs(to.Y - from.Y) <= cells;
         }
 
         /// <summary>
@@ -577,7 +669,7 @@ namespace EatMeLibrary
 
             if (!CanKillGhosts(world, me) && !me.PassesThrough)
                 foreach (var ghost in world.Ghosts)
-                    if (ghost.Alive && IsAhead(world, me, x, y, clear, ghost.Location))
+                    if (ghost.Alive && !ghost.IsStunned && IsAhead(world, me, x, y, clear, ghost.Location))
                         return true;
 
             foreach (var pac in world.Pacs)

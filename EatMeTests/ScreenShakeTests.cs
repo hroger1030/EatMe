@@ -58,11 +58,11 @@ namespace EatMeTests
             Assert.That(shake.IsShaking, Is.False);
             Assert.That(shake.GetOffset(), Is.EqualTo((0f, 0f)));
 
-            shake.Start(ScreenShake.POW_AMPLITUDE_PIXELS, ScreenShake.POW_DURATION_SECONDS);
+            shake.Start(ScreenShake.BLAST_AMPLITUDE_PIXELS, ScreenShake.BLAST_DURATION_SECONDS);
             Assert.That(shake.IsShaking, Is.True);
-            Assert.That(shake.GetOffset().Y, Is.EqualTo(ScreenShake.POW_AMPLITUDE_PIXELS));
+            Assert.That(shake.GetOffset().Y, Is.EqualTo(ScreenShake.BLAST_AMPLITUDE_PIXELS));
 
-            shake.Update(ScreenShake.POW_DURATION_SECONDS);
+            shake.Update(ScreenShake.BLAST_DURATION_SECONDS);
             Assert.That(shake.IsShaking, Is.False);
             Assert.That(shake.GetOffset(), Is.EqualTo((0f, 0f)));
         }

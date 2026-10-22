@@ -24,6 +24,7 @@ namespace EatMeClient
             // a hand edited file could hold anything, so pull brightness and bloom back into range
             Settings.Brightness = DisplayAdjust.ClampBrightness(Settings.Brightness);
             Settings.Bloom = DisplayAdjust.ClampBloom(Settings.Bloom);
+            Settings.PacShape = PacShapes.Clamp(Settings.PacShape);
         }
 
         /// <summary>

@@ -266,7 +266,7 @@ namespace EatMeLibrary
                     break;
 
                 case PlayerJoinedMessage joined:
-                    _Players[joined.PlayerId] = new PlayerInfo(joined.PlayerId, joined.Name, joined.Team);
+                    _Players[joined.PlayerId] = new PlayerInfo(joined.PlayerId, joined.Name, joined.Team, PacShapes.Clamp(joined.PacShape));
                     break;
 
                 case PlayerLeftMessage left:
@@ -488,6 +488,14 @@ namespace EatMeLibrary
         public string GetPlayerName(int playerId)
         {
             return _Players.TryGetValue(playerId, out var player) ? player.Name : string.Empty;
+        }
+
+        /// <summary>
+        /// The pac sprite the player picked, or PacShapes.DEFAULT for a player the client hasn't been told about.
+        /// </summary>
+        public ePacShape GetPacShape(int playerId)
+        {
+            return _Players.TryGetValue(playerId, out var player) ? player.PacShape : PacShapes.DEFAULT;
         }
 
         /// <summary>

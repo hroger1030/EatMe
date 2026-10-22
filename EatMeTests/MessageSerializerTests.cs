@@ -9,7 +9,7 @@ namespace EatMeTests
         /// </summary>
         public static IEnumerable<INetworkMessage> SampleMessages()
         {
-            yield return new HelloMessage { ClientVersion = 1.5f, PlayerName = "Blinky42", PreferredTeam = eTeamPreference.Blue };
+            yield return new HelloMessage { ClientVersion = 1.5f, PlayerName = "Blinky42", PreferredTeam = eTeamPreference.Blue, PacShape = ePacShape.Gears };
             yield return new InputMessage { Sequence = 123456, Direction = eDirection.Left };
             yield return new PingMessage { ClientTime = 9876543210 };
             yield return new LeaveMessage();
@@ -28,7 +28,7 @@ namespace EatMeTests
                 WeaponEffects = [new WeaponEffectState(3, eWeaponEffect.Sword, 12.25f, 4.5f, eFacing.Left), new WeaponEffectState(9, eWeaponEffect.HolyFlame, 1.5f, 2.5f, eFacing.Up)],
             };
             yield return new CellsChangedMessage { IsCatchUp = true, Cells = [new CellChange(4, 5, eGridDef.Food), new CellChange(99, 0, eGridDef.PowerPill | eGridDef.SpawnPointRed)] };
-            yield return new PlayerJoinedMessage { PlayerId = 5, Name = "Inky", Team = eTeam.Blue };
+            yield return new PlayerJoinedMessage { PlayerId = 5, Name = "Inky", Team = eTeam.Blue, PacShape = ePacShape.LadyDi };
             yield return new PlayerLeftMessage { PlayerId = 5 };
             yield return new GameEventMessage { EventType = eGameEvent.FlagCaptured, ActorId = 3, TargetId = 8, X = 10.5f, Y = 20.25f, Team = eTeam.Blue };
             yield return new LevelWonMessage

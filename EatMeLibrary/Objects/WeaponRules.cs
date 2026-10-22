@@ -37,6 +37,11 @@ namespace EatMeLibrary
         public const int POKE_BALL_COOLDOWN_MS = 1000;
 
         /// <summary>
+        /// A dropped bomb goes off this long after it is dropped.
+        /// </summary>
+        public const int BOMB_FUSE_MS = 5000;
+
+        /// <summary>
         /// A spread shot moves this many times PacSpeed.
         /// </summary>
         public const float SPREAD_SHOT_SPEED_SCALE = 1.5f;
@@ -244,16 +249,23 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Where a pac at location's hammer is: one cell further along facing, wrapped round the map so it stays on it.
+        /// Cells from the edge of a pac's body to the centre of its hammer.
         /// </summary>
-        public static Point2 GetHammerLocation(Point2 location, eFacing facing, int width, int height)
+        public const float HAMMER_GAP = 0.5f;
+
+        /// <summary>
+        /// Where the hammer of a pac at location with radius pacRadius is: HAMMER_GAP past the edge of its body along
+        /// facing (one cell from its centre at size 0, further as it grows), wrapped round the map so it stays on it.
+        /// </summary>
+        public static Point2 GetHammerLocation(Point2 location, eFacing facing, float pacRadius, int width, int height)
         {
+            var reach = pacRadius + HAMMER_GAP;
             var (dx, dy) = facing switch
             {
-                eFacing.Up => (0f, -1f),
-                eFacing.Down => (0f, 1f),
-                eFacing.Left => (-1f, 0f),
-                _ => (1f, 0f),
+                eFacing.Up => (0f, -reach),
+                eFacing.Down => (0f, reach),
+                eFacing.Left => (-reach, 0f),
+                _ => (reach, 0f),
             };
 
             var x = (location.X + dx + width) % width;

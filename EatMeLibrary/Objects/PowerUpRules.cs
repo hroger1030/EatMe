@@ -20,6 +20,11 @@ namespace EatMeLibrary
         public const eGridDef BLOCKED = eGridDef.Wall;
 
         /// <summary>
+        /// The items that can appear on the board: every item but the Power Pill, since every maze has power pills.
+        /// </summary>
+        public const ePowerUp SPAWNABLE = ePowerUp.Any & ~ePowerUp.PowerPill;
+
+        /// <summary>
         /// How far, in cells, a power up's sprite bobs above and below its position.
         /// </summary>
         public const float HOVER_CELLS = 0.1f;

@@ -11,7 +11,7 @@ namespace EatMeLibrary
     {
         public const int CELL_PIXELS = 60;
         public const int FRAME_COUNT = 2;
-        public const int ROWS = 10;
+        public const int ROWS = 11;
 
         /// <summary>
         /// How long each animation frame shows.
@@ -55,12 +55,13 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True for effects lying in the maze (holy flames, banana peels, Tetromino blocks), drawn before the rest so
-        /// flying ones go over them.
+        /// True for effects lying in the maze (holy flames, banana peels, Tetromino blocks, bombs), drawn before the rest
+        /// so flying ones go over them.
         /// </summary>
         public static bool IsOnFloor(eWeaponEffect effect)
         {
-            return effect == eWeaponEffect.HolyFlame || effect == eWeaponEffect.BananaPeel || effect == eWeaponEffect.TetrisBlock;
+            return effect == eWeaponEffect.HolyFlame || effect == eWeaponEffect.BananaPeel || effect == eWeaponEffect.TetrisBlock
+                || effect == eWeaponEffect.Bomb;
         }
 
         /// <summary>

@@ -9,6 +9,11 @@
         public const string GAME_TITLE = "Eat Me";
         public const string CLIENT_INSTANCE_MUTEX_NAME = "Local\\EatMeClient";
         public const string STRING_STORY = "Story";
+
+        // Attract screen section titles
+        public const string STRING_ENEMIES = "Enemies";
+        public const string STRING_ATTRACT_POWER_UPS = "Power-Ups";
+        public const string STRING_STARRING = "Starring";
         public const string STRING_HIGH_SCORES = "High Scores";
         public const string STRING_GAME_SETTINGS = "Game Settings";
         public const string STRING_QUIT = "Quit";
@@ -24,6 +29,7 @@
         public const string STRING_DISPLAY = "Display";
         public const string STRING_DISPLAY_FULL_SCREEN = "Full Screen";
         public const string STRING_DISPLAY_WINDOWED = "Windowed";
+        public const string STRING_PAC_SHAPE = "Pac";
         public const string STRING_RANK = "Rank";
         public const string STRING_NAME = "Name";
         public const string STRING_SCORE = "Score";
@@ -70,7 +76,7 @@
         public const string STRING_TWISTER = "Twister";
         public const string STRING_INVINCIBLE = "Invincible";
         public const string STRING_REINFORCEMENTS = "Reinforce";
-        public const string STRING_MORPH_BALL = "Morph Ball";
+        public const string STRING_BOMB = "Bomb";
         public const string STRING_RACCOON_TAIL = "Raccoon Tail";
         public const string STRING_SWORD_SWING = "Throw Sword";
         public const string STRING_HOLY_FIRE = "Holy Fire";

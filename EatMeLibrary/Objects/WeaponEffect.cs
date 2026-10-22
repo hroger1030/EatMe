@@ -28,5 +28,10 @@ namespace EatMeLibrary
         public const int NO_GHOST = -1;
 
         public bool IsHoldingGhost => CapturedGhostId != NO_GHOST;
+
+        /// <summary>
+        /// ms before a bomb goes off (WeaponRules.BOMB_FUSE_MS when dropped).
+        /// </summary>
+        public int FuseMs { get; set; }
     }
 }

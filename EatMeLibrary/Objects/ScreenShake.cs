@@ -20,10 +20,10 @@ namespace EatMeLibrary
         public const float DEFAULT_DURATION_SECONDS = 0.6f;
 
         /// <summary>
-        /// The POW block's shockwave.
+        /// A Blast event (the POW block, a bomb), and smashed walls.
         /// </summary>
-        public const float POW_AMPLITUDE_PIXELS = 18f;
-        public const float POW_DURATION_SECONDS = 0.6f;
+        public const float BLAST_AMPLITUDE_PIXELS = 18f;
+        public const float BLAST_DURATION_SECONDS = 0.6f;
 
         /// <summary>
         /// Up and down bounces a second.

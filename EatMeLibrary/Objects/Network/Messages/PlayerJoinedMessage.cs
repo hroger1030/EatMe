@@ -12,12 +12,14 @@ namespace EatMeLibrary
         public int PlayerId { get; set; }
         public string Name { get; set; } = string.Empty;
         public eTeam Team { get; set; }
+        public ePacShape PacShape { get; set; } = PacShapes.DEFAULT;
 
         public void Write(BinaryWriter writer)
         {
             writer.Write(PlayerId);
             writer.Write(Name);
             writer.Write((byte)Team);
+            writer.Write((byte)PacShape);
         }
 
         public void Read(BinaryReader reader)
@@ -25,6 +27,7 @@ namespace EatMeLibrary
             PlayerId = reader.ReadInt32();
             Name = reader.ReadString();
             Team = (eTeam)reader.ReadByte();
+            PacShape = (ePacShape)reader.ReadByte();
         }
     }
 }

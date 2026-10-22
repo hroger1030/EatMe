@@ -18,6 +18,9 @@ namespace EatMeLibrary
         /// <summary>Chase a smaller enemy carrying its flag.</summary>
         HuntCarrier,
 
+        /// <summary>Pick up a dropped enemy flag nearby (any bot free to pick one up).</summary>
+        LooseFlag,
+
         /// <summary>Eat a nearby power pill.</summary>
         PowerPill,
 

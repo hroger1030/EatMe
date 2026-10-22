@@ -4,7 +4,7 @@ namespace EatMeClient
     {
         TitleMenu,
         Game,
-        Story,
+        Attract,
         HighScores,
         GameSettings,
         JoinGame,

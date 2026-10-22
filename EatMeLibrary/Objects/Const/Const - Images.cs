@@ -13,7 +13,7 @@ namespace EatMeLibrary
         public const string IMAGE_PAC_BASE = "Images/base0.png (48x48x6)";
         public const string IMAGE_FLAG0 = "Images/flag0";
         public const string IMAGE_FLAG_BASE = "Images/flagbase0";
-        public const string IMAGE_PAC_SHEET = "Images/pac(60x60x4)";
+        public const string IMAGE_PAC_SHEET = "Images/Pacs (60x60x9)";
         public const string IMAGE_WIN_BLUE = "Images/winblue";
         public const string IMAGE_WIN_RED = "Images/winred";
 
@@ -26,7 +26,7 @@ namespace EatMeLibrary
         // Bonus items: one 60x60 cell per ePowerUp flag, in bit order, eight to a row (see PowerUpSprites)
         public const string IMAGE_POWER_UP_SHEET = "Images/powerups(60x60x32)";
         // Projectiles and objects power up effects put in the maze, two frames each (WeaponEffectSprites)
-        public const string IMAGE_WEAPON_EFFECTS = "Images/WeaponEffects(60x60x20)";
+        public const string IMAGE_WEAPON_EFFECTS = "Images/WeaponEffects(60x60x22)";
         // Mini map icons: one 16x16 cell per eMiniMapIcon, in enum order, in one row, white tinted when drawn (MiniMapSprites)
         public const string IMAGE_MINI_MAP_ICONS = "Images/MiniMapIcons(16x16x10)";
 

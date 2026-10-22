@@ -8,7 +8,7 @@ See [Specs.md](Specs.md) for the full design and game rules.
 
 | Project | Type | Description |
 |---|---|---|
-| `EatMeClient` | MonoGame DesktopGL app | Game client: title, settings, story, high scores, credits and game screens. |
+| `EatMeClient` | MonoGame DesktopGL app | Game client: title, settings, high scores, attract, credits and game screens. |
 | `EatMeServer` | Console app (headless) | Game server. Reads its configuration from `server.cfg` on startup. |
 | `EatMeLibrary` | Class library | Code shared by the client and server. Referenced by both. |
 | `EatMeTests` | NUnit test project | Unit tests for the library and server. Run with `dotnet test EatMeTests`. |
@@ -183,5 +183,5 @@ The protocol has no login, so anyone who knows the address can join while the po
 dotnet run --project EatMeClient
 ```
 
-The client runs fullscreen at the desktop resolution. Settings (music volume, sound volume, controller type) are saved to `settings.ini` next to the executable. F1 shows or hides a performance overlay (frame rate, update and draw times, memory, and in a game snapshot rate, traffic and ping).
+The client runs fullscreen at the desktop resolution. Settings (music volume, sound volume, controller type, pac shape) are saved to `settings.ini` next to the executable. F1 shows or hides a performance overlay (frame rate, update and draw times, memory, and in a game snapshot rate, traffic and ping).
 
