@@ -16,7 +16,6 @@ See [Specs.md](Specs.md) for the full design and game rules.
 The client also references two sibling projects that must be checked out next to this repo:
 
 - `..\FastG\FastG\FastG.csproj` (geometry)
-- `..\SpatialTrees\SpatialTrees\SpatialTrees.csproj` (quadtree)
 
 ## Requirements
 
