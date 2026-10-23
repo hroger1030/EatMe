@@ -151,7 +151,7 @@ namespace EatMeClient
                 tint = Color.Lerp(tint, Color.White, amount);
             }
 
-            if (pac.PowerUpEffect == ePowerUpEffect.Invincible && PowerUpEffects.IsStarBlinkYellow(animationTime))
+            if (pac.PowerUpEffect == ePowerUp.Starman && PowerUpEffects.IsStarBlinkYellow(animationTime))
                 tint = COLOR_PAC_YELLOW;
 
             if (PowerUpEffects.FlashesWhite(pac.PowerUpEffect) && PowerUpEffects.IsFireFlashWhite(animationTime))

@@ -418,10 +418,10 @@ namespace EatMeLibrary
         /// <summary>
         /// The power up effect working on our own pac, None when it has none or is dead.
         /// </summary>
-        public ePowerUpEffect GetOwnPowerUpEffect()
+        public ePowerUp GetOwnPowerUpEffect()
         {
             var ownPac = GetOwnPac();
-            return ownPac.HasValue && ownPac.Value.Alive ? ownPac.Value.PowerUpEffect : ePowerUpEffect.None;
+            return ownPac.HasValue && ownPac.Value.Alive ? ownPac.Value.PowerUpEffect : ePowerUp.None;
         }
 
         /// <summary>
@@ -429,7 +429,7 @@ namespace EatMeLibrary
         /// </summary>
         public float GetOwnPowerUpFill()
         {
-            if (GetOwnPowerUpEffect() == ePowerUpEffect.None)
+            if (GetOwnPowerUpEffect() == ePowerUp.None)
                 return 0f;
 
             var duration = (GameConfig ?? new GameConfiguration()).PowerUpDurationMs;

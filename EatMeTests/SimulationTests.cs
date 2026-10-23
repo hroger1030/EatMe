@@ -254,7 +254,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             PutOn(red, FindCell(server, eGridDef.PowerPill));
             red.Size = 120f;
-            red.PowerUpEffect = ePowerUpEffect.PowerPill;
+            red.PowerUpEffect = ePowerUp.PowerPill;
             red.PowerUpMs = 1;
 
             server.UpdateEating(0);
@@ -270,22 +270,22 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Size = 50f;
 
-            server.StartPowerUpEffect(red, ePowerUpEffect.PowerPill);
+            server.StartPowerUpEffect(red, ePowerUp.PowerPill);
             Assert.That(red.Size, Is.EqualTo(150f));
 
             var pac = server.BuildSnapshot().Pacs.Single();
-            Assert.That(pac.PowerUpEffect, Is.EqualTo(ePowerUpEffect.PowerPill));
+            Assert.That(pac.PowerUpEffect, Is.EqualTo(ePowerUp.PowerPill));
             Assert.That(pac.PowerUpMsLeft, Is.EqualTo(Config.PowerUpDurationMs));
 
             server.EndPowerUpEffect(red);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
             Assert.That(red.PowerUpMs, Is.EqualTo(0));
             Assert.That(red.Size, Is.EqualTo(50f), "the pill's size wears off");
-            Assert.That(server.BuildSnapshot().Pacs.Single().PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(server.BuildSnapshot().Pacs.Single().PowerUpEffect, Is.EqualTo(ePowerUp.None));
         }
 
         [Test]
-        public void Cherry_StartsSugarRush()
+        public void Cherry_StartsCherryTwin()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
@@ -293,9 +293,9 @@ namespace EatMeTests
 
             server.ApplyPowerUp(red, ePowerUp.Cherry);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SugarRush));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Cherry));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
-            Assert.That(red.Size, Is.EqualTo(50f), "sugar rush doesn't change size");
+            Assert.That(red.Size, Is.EqualTo(50f), "Cherry Twin doesn't change size");
         }
 
         [Test]
@@ -306,7 +306,7 @@ namespace EatMeTests
 
             server.ApplyPowerUp(red, ePowerUp.Strawberry);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SweetTooth));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Strawberry));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
         }
 
@@ -317,7 +317,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             PutOn(red, FindCell(server, eGridDef.Food));
             red.Size = 10f;
-            server.StartPowerUpEffect(red, ePowerUpEffect.SweetTooth);
+            server.StartPowerUpEffect(red, ePowerUp.Strawberry);
 
             server.UpdateEating(0);
 
@@ -332,7 +332,7 @@ namespace EatMeTests
 
             server.ApplyPowerUp(red, ePowerUp.Orange);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.VitaminC));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Orange));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
         }
 
@@ -345,11 +345,11 @@ namespace EatMeTests
             server.UpdateEating(0);
             red.Size = 50f;
             red.MsSinceEaten = Config.MsUntilStarvation;
-            server.StartPowerUpEffect(red, ePowerUpEffect.VitaminC);
+            server.StartPowerUpEffect(red, ePowerUp.Orange);
 
             server.UpdateEating(Config.PowerUpDurationMs - 1000);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.VitaminC));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Orange));
             Assert.That(red.PowerUpMs, Is.EqualTo(1000), "the buff bar counts down");
             Assert.That(red.MsSinceEaten, Is.EqualTo(0), "the hunger bar stays empty");
             Assert.That(red.Size, Is.EqualTo(50f), "never shrinks");
@@ -360,11 +360,11 @@ namespace EatMeTests
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.StartPowerUpEffect(red, ePowerUpEffect.VitaminC);
+            server.StartPowerUpEffect(red, ePowerUp.Orange);
 
             server.UpdateEating(Config.PowerUpDurationMs);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
         }
 
         [Test]
@@ -373,17 +373,17 @@ namespace EatMeTests
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
 
-            server.StartPowerUpEffect(red, ePowerUpEffect.VitaminC);
-            server.StartPowerUpEffect(red, ePowerUpEffect.PowerPill);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.PowerPill));
+            server.StartPowerUpEffect(red, ePowerUp.Orange);
+            server.StartPowerUpEffect(red, ePowerUp.PowerPill);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.PowerPill));
 
-            server.StartPowerUpEffect(red, ePowerUpEffect.VitaminC);
+            server.StartPowerUpEffect(red, ePowerUp.Orange);
             red.Alive = false;
             red.RespawnTimer = 0;
             server.UpdateRespawns(1);
 
             Assert.That(red.Alive, Is.True);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
         }
 
         [Test]
@@ -393,14 +393,14 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
 
             server.ApplyPowerUp(red, ePowerUp.Apple);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.DoctorAway));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Apple));
             Assert.That(red.RepelsGhosts, Is.True);
 
             server.UpdateEating(Config.PowerUpDurationMs / 2);
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs - Config.PowerUpDurationMs / 2), "the buff bar counts down");
 
             server.UpdateEating(Config.PowerUpDurationMs);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
             Assert.That(red.RepelsGhosts, Is.False);
         }
 
@@ -415,7 +415,7 @@ namespace EatMeTests
             red.MsSinceEaten = Config.MsUntilStarvation;
 
             server.ApplyPowerUp(red, ePowerUp.Melon);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.MelonBelly));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Melon));
             Assert.That(red.Size, Is.EqualTo(30f + PacRules.MELON_BELLY_SIZE_GAIN));
 
             server.UpdateEating(Config.PowerUpDurationMs - 1);
@@ -423,7 +423,7 @@ namespace EatMeTests
             Assert.That(red.Size, Is.EqualTo(30f + PacRules.MELON_BELLY_SIZE_GAIN), "doesn't shrink");
 
             server.UpdateEating(1);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
             Assert.That(red.Size, Is.EqualTo(30f), "the gain wears off");
         }
 
@@ -434,8 +434,8 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Size = 30f;
 
-            server.StartPowerUpEffect(red, ePowerUpEffect.MelonBelly);
-            server.StartPowerUpEffect(red, ePowerUpEffect.PowerPill);
+            server.StartPowerUpEffect(red, ePowerUp.Melon);
+            server.StartPowerUpEffect(red, ePowerUp.PowerPill);
 
             Assert.That(red.Size, Is.EqualTo(30f + Config.PowerPillSizeGain));
         }
@@ -447,10 +447,10 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
 
             server.ApplyPowerUp(red, ePowerUp.Bell);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.DinnerBell));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Bell));
 
             server.ApplyPowerUp(red, ePowerUp.Key);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Lockdown));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Key));
         }
 
         [Test]
@@ -459,7 +459,7 @@ namespace EatMeTests
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
-            server.StartPowerUpEffect(red, ePowerUpEffect.Lockdown);
+            server.StartPowerUpEffect(red, ePowerUp.Key);
             blue.Alive = false;
             blue.RespawnTimer = 0;
 
@@ -480,7 +480,7 @@ namespace EatMeTests
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
-            server.StartPowerUpEffect(red, ePowerUpEffect.Lockdown);
+            server.StartPowerUpEffect(red, ePowerUp.Key);
             blue.Alive = false;
             blue.RespawnTimer = 0;
 
@@ -499,7 +499,7 @@ namespace EatMeTests
 
             server.ApplyPowerUp(red, ePowerUp.Pretzel);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Twister));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Pretzel));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
         }
 
@@ -512,7 +512,7 @@ namespace EatMeTests
             var (slowed, _) = Join(twisted, 2, eTeamPreference.Blue);
             var (red, _) = Join(twisted, 1, eTeamPreference.Red);
             red.Location = slowed.Location;
-            twisted.StartPowerUpEffect(red, ePowerUpEffect.Twister);
+            twisted.StartPowerUpEffect(red, ePowerUp.Pretzel);
 
             var start = alone.Location;
             normal.MovePacs(0.1f, 100);
@@ -525,13 +525,13 @@ namespace EatMeTests
         }
 
         [Test]
-        public void SugarRush_MovesFaster()
+        public void WarpSpeed_MovesFaster()
         {
             var normal = MakeServer();
             var (slow, _) = Join(normal, 1, eTeamPreference.Red);
             var rushed = MakeServer();
             var (fast, _) = Join(rushed, 1, eTeamPreference.Red);
-            rushed.StartPowerUpEffect(fast, ePowerUpEffect.SugarRush);
+            rushed.StartPowerUpEffect(fast, ePowerUp.Galaxian);
 
             var start = slow.Location;
             normal.MovePacs(0.1f, 100);
@@ -540,7 +540,7 @@ namespace EatMeTests
             var slowMoved = MathF.Abs(slow.Location.X - start.X) + MathF.Abs(slow.Location.Y - start.Y);
             var fastMoved = MathF.Abs(fast.Location.X - start.X) + MathF.Abs(fast.Location.Y - start.Y);
             Assert.That(slowMoved, Is.GreaterThan(0f));
-            Assert.That(fastMoved, Is.EqualTo(slowMoved * PacRules.SUGAR_RUSH_SPEED_SCALE).Within(0.0001f));
+            Assert.That(fastMoved, Is.EqualTo(slowMoved * PacRules.WARP_SPEED_SCALE).Within(0.0001f));
         }
 
         [Test]
@@ -605,7 +605,7 @@ namespace EatMeTests
         }
 
         [Test]
-        public void RocketScience_DoublesPointsForPlayerAndTeam()
+        public void WarpSpeed_ScoresNormalPoints()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
@@ -613,14 +613,14 @@ namespace EatMeTests
             blue.Location = red.Location;
             red.Size = 60f;
             server.ApplyPowerUp(red, ePowerUp.Galaxian);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.RocketScience));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Galaxian));
 
             server.UpdatePacFights();
 
             Assert.That(blue.Alive, Is.False);
-            Assert.That(server.RedScore, Is.EqualTo(Config.PlayerKill * PowerUpEffects.ROCKET_SCIENCE_SCORE_SCALE));
-            Assert.That(red.Score, Is.EqualTo(Config.PlayerKill * PowerUpEffects.ROCKET_SCIENCE_SCORE_SCALE));
-            Assert.That(red.TotalScore, Is.EqualTo(Config.PlayerKill * PowerUpEffects.ROCKET_SCIENCE_SCORE_SCALE));
+            Assert.That(server.RedScore, Is.EqualTo(Config.PlayerKill));
+            Assert.That(red.Score, Is.EqualTo(Config.PlayerKill));
+            Assert.That(red.TotalScore, Is.EqualTo(Config.PlayerKill));
         }
 
         [Test]
@@ -631,7 +631,7 @@ namespace EatMeTests
 
             server.ApplyPowerUp(red, ePowerUp.Starman);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Invincible));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Starman));
             Assert.That(red.IsInvincible, Is.True);
             Assert.That(red.RepelsGhosts, Is.True, "ghosts flee it like a power pill");
         }
@@ -645,7 +645,7 @@ namespace EatMeTests
             blue.Location = red.Location;
             red.Size = 10f;
             blue.Size = 90f;
-            server.StartPowerUpEffect(red, ePowerUpEffect.Invincible);
+            server.StartPowerUpEffect(red, ePowerUp.Starman);
 
             server.UpdatePacFights();
 
@@ -664,8 +664,8 @@ namespace EatMeTests
             blue.Location = red.Location;
             red.Size = 10f;
             blue.Size = 90f;
-            server.StartPowerUpEffect(red, ePowerUpEffect.Invincible);
-            server.StartPowerUpEffect(blue, ePowerUpEffect.Invincible);
+            server.StartPowerUpEffect(red, ePowerUp.Starman);
+            server.StartPowerUpEffect(blue, ePowerUp.Starman);
 
             server.UpdatePacFights();
 
@@ -679,7 +679,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Location = server.Ghosts[0].Location;
             red.Size = 0f;
-            server.StartPowerUpEffect(red, ePowerUpEffect.Invincible);
+            server.StartPowerUpEffect(red, ePowerUp.Starman);
 
             server.UpdateGhosts(0f, 0);
 
@@ -887,11 +887,11 @@ namespace EatMeTests
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             red.Location = new Point2(10.5f, 10.5f);
             blue.Location = new Point2(12.5f, 10.5f);
-            server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
+            server.StartPowerUpEffect(red, ePowerUp.Cherry);
 
             server.ApplyPowerUp(red, ePowerUp.PowBlock);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Pow));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.PowBlock));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
             Assert.That(blue.IsStunned, Is.False);
             Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.Blast), Is.False);
@@ -975,7 +975,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             server.Ghosts[0].StunMs = PowerUpEffects.POW_STUN_MS;
             red.Location = server.Ghosts[0].Location;
-            red.PowerUpEffect = ePowerUpEffect.Invincible;
+            red.PowerUpEffect = ePowerUp.Starman;
             red.PowerUpMs = 1000;
 
             server.UpdateGhosts(0f, 0);
@@ -1005,7 +1005,7 @@ namespace EatMeTests
             var ghost = server.Ghosts[0];
             red.Location = ghost.Location;
             red.Size = Config.PacMaxSize;
-            red.PowerUpEffect = ePowerUpEffect.PowerPill;
+            red.PowerUpEffect = ePowerUp.PowerPill;
             red.PowerUpMs = Config.PowerUpDurationMs;
 
             server.UpdateGhosts(0f, 0);
@@ -1040,7 +1040,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var ghost = server.Ghosts[0];
             red.Size = Config.PacMaxSize;
-            red.PowerUpEffect = ePowerUpEffect.PowerPill;
+            red.PowerUpEffect = ePowerUp.PowerPill;
             red.PowerUpMs = Config.PowerUpDurationMs;
 
             // put the pac four steps away through the maze: in sight but not yet touching

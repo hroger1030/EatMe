@@ -63,5 +63,10 @@ namespace EatMeLibrary
         /// PowerUpEffects.EFFECT_RADIUS.
         /// </summary>
         BfgBurst,
+
+        /// <summary>
+        /// An enemy pac or a ghost touched a Cherry Twin decoy (owner ActorId) at X, Y, which popped. Nobody is hurt.
+        /// </summary>
+        DecoyPopped,
     }
 }

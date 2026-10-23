@@ -1,4 +1,4 @@
-EAT ME VERSION 0.9 - GAME SERVER
+EAT ME VERSION 0.91 - GAME SERVER
 ====================
 
 The headless server for Eat Me, a multiplayer capture-the-flag Pac-Man game.

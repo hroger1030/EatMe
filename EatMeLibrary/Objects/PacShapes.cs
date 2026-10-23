@@ -8,7 +8,12 @@ namespace EatMeLibrary
     /// </summary>
     public static class PacShapes
     {
-        public const ePacShape DEFAULT = ePacShape.Fang;
+        public const ePacShape DEFAULT = ePacShape.Chomper;
+
+        /// <summary>
+        /// Every bot's shape.
+        /// </summary>
+        public const ePacShape BOT = ePacShape.Gears;
 
         /// <summary>
         /// Every shape in sheet order, as the settings screen cycles through them.
@@ -22,8 +27,8 @@ namespace EatMeLibrary
         {
             return shape switch
             {
-                ePacShape.OG => "O.G.",
-                ePacShape.Fang => "Fang",
+                ePacShape.OG => "O-gee",
+                ePacShape.Chomper => "Chomper",
                 ePacShape.Hex => "Hex",
                 ePacShape.Boxie => "Boxie",
                 ePacShape.Trey => "Trey",

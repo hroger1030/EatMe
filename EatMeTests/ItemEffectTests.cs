@@ -80,7 +80,7 @@ namespace EatMeTests
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.StartPowerUpEffect(red, ePowerUpEffect.Warp);
+            server.StartPowerUpEffect(red, ePowerUp.Pear);
 
             var start = red.Location;
             server.HandleAction(red);
@@ -104,7 +104,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var flag = server.Flags.First(f => f.Team == eTeam.Blue);
 
-            server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
+            server.StartPowerUpEffect(red, ePowerUp.Cherry);
             red.Location = new Point2(flag.X, flag.Y);
             server.UpdateFlags();
             Assert.That(red.HasFlag, Is.False);
@@ -140,7 +140,7 @@ namespace EatMeTests
             PutOn(red, FindCell(server, (cell, _) => cell.HasFlag(eGridDef.PowerPill)));
             server.UpdateEating(TICK_MS);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.PowerPill));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.PowerPill));
             Assert.That(red.HasFlag, Is.False);
             Assert.That(flag.IsCarried, Is.False);
         }
@@ -170,7 +170,7 @@ namespace EatMeTests
             Assert.That(pac.RespawnMsLeft, Is.EqualTo(2500));
             Assert.That(pac.SpawnLocked, Is.False);
 
-            server.StartPowerUpEffect(blue, ePowerUpEffect.Lockdown);
+            server.StartPowerUpEffect(blue, ePowerUp.Key);
             pac = server.BuildSnapshot().Pacs.Single(p => p.PlayerId == red.Id);
             Assert.That(pac.SpawnLocked, Is.True);
 
@@ -203,7 +203,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             server.ApplyPowerUp(red, ePowerUp.Pear);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Warp));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Pear));
 
             var start = MazeMovement.GetCell(red.Location);
             server.HandleAction(red);
@@ -236,7 +236,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             server.ApplyPowerUp(red, ePowerUp.Banana);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.BananaPeel));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Banana));
 
             var cell = MazeMovement.GetCell(red.Location);
             server.HandleAction(red);
@@ -264,7 +264,7 @@ namespace EatMeTests
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.StartPowerUpEffect(red, ePowerUpEffect.SugarRush);
+            server.StartPowerUpEffect(red, ePowerUp.Cherry);
             red.Size = 10f;
             red.MsSinceEaten = 5000;
 
@@ -272,7 +272,7 @@ namespace EatMeTests
 
             Assert.That(red.Size, Is.EqualTo(new GameConfiguration().PacMaxSize));
             Assert.That(red.MsSinceEaten, Is.EqualTo(0));
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.FullHeal), "a normal effect: it replaces the buff");
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.HeartContainer), "a normal effect: it replaces the buff");
             Assert.That(red.PowerUpMs, Is.EqualTo(new GameConfiguration().PowerUpDurationMs));
 
             red.Size = 150f;
@@ -286,7 +286,7 @@ namespace EatMeTests
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Size = 10f;
-            server.StartPowerUpEffect(red, ePowerUpEffect.MelonBelly);
+            server.StartPowerUpEffect(red, ePowerUp.Melon);
 
             server.ApplyPowerUp(red, ePowerUp.HeartContainer);
 
@@ -304,24 +304,33 @@ namespace EatMeTests
             server.EndPowerUpEffect(red);
 
             Assert.That(red.Size, Is.EqualTo(70f));
-            Assert.That(PowerUpEffects.PreventsStarving(ePowerUpEffect.FullHeal), Is.True);
+            Assert.That(PowerUpEffects.PreventsStarving(ePowerUp.HeartContainer), Is.True);
         }
 
         // Tetromino
 
         [Test]
-        public void BlockDrop_WallsTheCellBehind_UntilTheEffectEnds()
+        public void BlockDrop_LeavesABlockInEachCellLeft_UntilTheEffectEnds()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (x, y) = FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Food);
-            PutOn(red, (x + 1, y));
+            PutOn(red, (x, y));
             red.Facing = eFacing.Right;
 
             server.ApplyPowerUp(red, ePowerUp.Tetromino);
             server.HandleAction(red);
+            server.UpdateWeaponEffects(0f, 0);
+            server.UpdateWeaponEffects(0f, 0);
+
+            Assert.That(server.Map[x, y], Is.EqualTo(eGridDef.Food), "no block until the pac leaves the cell, and the action button does nothing");
+            Assert.That(server.WeaponEffects, Is.Empty);
+
+            PutOn(red, (x + 1, y));
+            server.UpdateWeaponEffects(0f, 0);
 
             Assert.That(server.Map[x, y], Is.EqualTo(eGridDef.Food | eGridDef.Wall | eGridDef.TetrisBlock));
+            Assert.That(server.Map[x + 1, y], Is.EqualTo(eGridDef.Food), "the cell the pac is in stays open");
             Assert.That(server.WeaponEffects.Single().Kind, Is.EqualTo(eWeaponEffect.TetrisBlock));
 
             Tick(server, 1);
@@ -330,6 +339,36 @@ namespace EatMeTests
             server.EndPowerUpEffect(red);
             Tick(server, 1);
             Assert.That(server.Map[x, y], Is.EqualTo(eGridDef.Food));
+            Assert.That(server.WeaponEffects, Is.Empty);
+        }
+
+        [Test]
+        public void BlockDrop_SkipsACellWithAPacOrGhostInIt()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            var (x, y) = FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Food);
+            var ghost = server.Ghosts[0];
+            server.ApplyPowerUp(red, ePowerUp.Tetromino);
+
+            // a pac in the cell left
+            PutOn(red, (x, y));
+            PutOn(blue, (x, y));
+            server.UpdateWeaponEffects(0f, 0);
+            PutOn(red, (x + 1, y));
+            server.UpdateWeaponEffects(0f, 0);
+            Assert.That(server.Map[x, y], Is.EqualTo(eGridDef.Food), "a pac is in it");
+
+            // a ghost in the cell left
+            PutOn(blue, (x + 1, y));
+            ghost.Alive = true;
+            ghost.Location = new Point2(x + 0.5f, y + 0.5f);
+            PutOn(red, (x, y));
+            server.UpdateWeaponEffects(0f, 0);
+            PutOn(red, (x + 1, y));
+            server.UpdateWeaponEffects(0f, 0);
+            Assert.That(server.Map[x, y], Is.EqualTo(eGridDef.Food), "a ghost is in it");
             Assert.That(server.WeaponEffects, Is.Empty);
         }
 
@@ -443,7 +482,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             server.ApplyPowerUp(red, ePowerUp.Apple);
             server.UpdateEating(new GameConfiguration().PowerUpDurationMs);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
 
             server.Ghosts[0].Location = new Point2(red.Location.X + 3f, red.Location.Y);
             server.UpdateWeaponEffects(0f, 0);
@@ -461,12 +500,12 @@ namespace EatMeTests
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             var (starman, _) = Join(server, 3, eTeamPreference.Blue);
             server.ApplyPowerUp(red, ePowerUp.BFG);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Bfg));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.BFG));
 
             server.Ghosts[0].Location = red.Location;
             blue.Location = new Point2(red.Location.X + 3f, red.Location.Y);
             starman.Location = new Point2(red.Location.X - 3f, red.Location.Y);
-            server.StartPowerUpEffect(starman, ePowerUpEffect.Invincible);
+            server.StartPowerUpEffect(starman, ePowerUp.Starman);
 
             server.HandleAction(red);
             Tick(server, 1);
@@ -561,7 +600,7 @@ namespace EatMeTests
             Assert.That(red.Alive, Is.True);
 
             var (star, _) = Join(server, 3, eTeamPreference.Blue);
-            server.StartPowerUpEffect(star, ePowerUpEffect.Invincible);
+            server.StartPowerUpEffect(star, ePowerUp.Starman);
             star.Location = red.Location;
             server.UpdatePacFights();
             Assert.That(red.Alive, Is.False);
@@ -570,8 +609,8 @@ namespace EatMeTests
         [Test]
         public void KillsOnContact_StarScrewAttackAndSuperSizeOnly()
         {
-            var killers = Enum.GetValues<ePowerUpEffect>().Where(PowerUpEffects.KillsOnContact);
-            Assert.That(killers, Is.EquivalentTo(new[] { ePowerUpEffect.Invincible, ePowerUpEffect.ScrewAttack, ePowerUpEffect.SuperSize }));
+            var killers = Enum.GetValues<ePowerUp>().Where(PowerUpEffects.KillsOnContact);
+            Assert.That(killers, Is.EquivalentTo(new[] { ePowerUp.Starman, ePowerUp.ScrewAttack, ePowerUp.Mushroom }));
         }
 
         [Test]
@@ -647,7 +686,7 @@ namespace EatMeTests
             PutOn(red, FindCell(server, (cell, _) => cell == eGridDef.Wall));
             server.UpdateEating(1);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.None), "a normal timed effect");
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None), "a normal timed effect");
             Assert.That(red.Size, Is.EqualTo(config.PacMaxSize));
         }
 
@@ -661,7 +700,7 @@ namespace EatMeTests
 
             server.ApplyPowerUp(red, ePowerUp.Cherry);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SugarRush), "one buff at a time");
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Cherry), "one buff at a time");
             Assert.That(red.Size, Is.EqualTo(40f));
         }
 
@@ -683,7 +722,7 @@ namespace EatMeTests
             Assert.That(red.PlayerKills, Is.EqualTo(1));
 
             var (star, _) = Join(server, 3, eTeamPreference.Blue);
-            server.StartPowerUpEffect(star, ePowerUpEffect.Invincible);
+            server.StartPowerUpEffect(star, ePowerUp.Starman);
             star.Location = red.Location;
             server.UpdatePacFights();
             Assert.That(red.Alive, Is.False);
@@ -715,7 +754,7 @@ namespace EatMeTests
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             server.ApplyPowerUp(red, ePowerUp.PepperShaker);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.Pepper));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.PepperShaker));
 
             server.Ghosts[0].Location = red.Location;
             server.UpdateGhosts(0f, 0);
@@ -733,7 +772,7 @@ namespace EatMeTests
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             server.ApplyPowerUp(red, ePowerUp.SpreadGun);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.SpreadShot));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.SpreadGun));
 
             // on a crossroads, so no shot meets a wall straight away
             var map = server.Map;
@@ -772,7 +811,7 @@ namespace EatMeTests
 
             server.ApplyPowerUp(red, ePowerUp.Triforce);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUpEffect.ForceField));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Triforce));
             Assert.That(redFlag.IsAtBase, Is.True);
             Assert.That(blue.HasFlag, Is.False);
             Assert.That(red.FlagRescues, Is.EqualTo(1));
@@ -887,9 +926,9 @@ namespace EatMeTests
         [Test]
         public void ScrewAttack_FlashesWhite_AndSpinsOnlyWhenMoving()
         {
-            Assert.That(PowerUpEffects.FlashesWhite(ePowerUpEffect.ScrewAttack), Is.True);
-            Assert.That(PowerUpEffects.FlashesWhite(ePowerUpEffect.FireFlower), Is.True);
-            Assert.That(PowerUpEffects.FlashesWhite(ePowerUpEffect.SugarRush), Is.False);
+            Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.ScrewAttack), Is.True);
+            Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.FireFlower), Is.True);
+            Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.Cherry), Is.False);
             Assert.That(PowerUpEffects.GetScrewAngle(3f, 4f), Is.EqualTo(PowerUpEffects.GetScrewAngle(3f, 4f)));
             Assert.That(PowerUpEffects.GetScrewAngle(3.1f, 4f), Is.Not.EqualTo(PowerUpEffects.GetScrewAngle(3f, 4f)));
         }

@@ -65,12 +65,12 @@
         public const string STRING_LEVEL = "Level";
         public const string STRING_POWER_UP_NONE = "No power up";
         public const string STRING_POWER_PILL = "Power Pill";
-        public const string STRING_SUGAR_RUSH = "Sugar Rush";
+        public const string STRING_CHERRY_TWIN = "Cherry Twin";
         public const string STRING_SWEET_TOOTH = "Sweet Tooth";
         public const string STRING_VITAMIN_C = "Vitamin C";
         public const string STRING_DOCTOR_AWAY = "Doctor Away";
         public const string STRING_MELON_BELLY = "Melon Belly";
-        public const string STRING_SCIENCE = "Science";
+        public const string STRING_WARP_SPEED = "Warp Speed";
         public const string STRING_DINNER_BELL = "Dinner Bell";
         public const string STRING_LOCKDOWN = "Lockdown";
         public const string STRING_TWISTER = "Twister";
@@ -95,6 +95,7 @@
         public const string STRING_POW = "POW";
         public const string STRING_FULL_HEAL = "Full Heal";
         public const string STRING_GOTCHA = "Gotcha";
+        public const string STRING_BLUE_SHELL = "Blue Shell";
 
         // Respawn countdown, shown while the own pac is dead
         public const string STRING_RESPAWNING_IN = "Respawning in";

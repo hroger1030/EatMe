@@ -62,6 +62,7 @@ namespace EatMeClient
         private int _SelectedMenuIndex;
         private float? _ExitTimeRemaining;
         private float _DisplayStableSeconds;
+        private float _LogoSeconds;
         private Texture2D _Pixel;
 
         // seconds the title menu has had no input, and how long it has been fading to the attract screen (null if not)
@@ -293,6 +294,9 @@ namespace EatMeClient
                 return;
             }
 
+            // the logo only animates while it shows, wrapped at one loop so the clock never grows large
+            _LogoSeconds = (_LogoSeconds + (float)gameTime.ElapsedGameTime.TotalSeconds) % (LogoSprites.FRAME_COUNT * LogoSprites.FRAME_SECONDS);
+
             if (UpdateIdle((float)gameTime.ElapsedGameTime.TotalSeconds))
             {
                 base.Update(gameTime);
@@ -457,7 +461,7 @@ namespace EatMeClient
         private (Vector2 Position, Vector2 Size) GetTitleLayout(Viewport viewport)
         {
             var logoWidth = viewport.Width * LOGO_WIDTH_RATIO;
-            var titleSize = new Vector2(logoWidth, logoWidth * _Logo.Height / _Logo.Width);
+            var titleSize = new Vector2(logoWidth, logoWidth * LogoSprites.FRAME_HEIGHT / LogoSprites.FRAME_WIDTH);
             var titlePosition = new Vector2((viewport.Width - titleSize.X) / 2f, viewport.Height * TITLE_CENTER_Y_RATIO - titleSize.Y / 2f);
             return (titlePosition, titleSize);
         }
@@ -713,7 +717,9 @@ namespace EatMeClient
             // Logo in place of the title text, point sampled so the pixel art stays crisp
             _SpriteBatch.Begin(samplerState: SamplerState.PointClamp);
             var (titlePosition, titleSize) = GetTitleLayout(viewport);
-            _SpriteBatch.Draw(_Logo, new Rectangle((int)titlePosition.X, (int)titlePosition.Y, (int)titleSize.X, (int)titleSize.Y), Color.White);
+            var logoFrame = LogoSprites.GetFrame(_LogoSeconds);
+            var logoSource = new Rectangle(LogoSprites.GetCellX(logoFrame), LogoSprites.GetCellY(logoFrame), LogoSprites.FRAME_WIDTH, LogoSprites.FRAME_HEIGHT);
+            _SpriteBatch.Draw(_Logo, new Rectangle((int)titlePosition.X, (int)titlePosition.Y, (int)titleSize.X, (int)titleSize.Y), logoSource, Color.White);
             _SpriteBatch.End();
 
             _SpriteBatch.Begin();

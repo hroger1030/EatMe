@@ -116,7 +116,7 @@ namespace EatMeTests
             var red = Join(server, 1, eTeamPreference.Red);
             PutOnSpawn(server, red, eGridDef.SpawnPointRed);
             red.Size = 0f;
-            server.StartPowerUpEffect(red, ePowerUpEffect.ScrewAttack);
+            server.StartPowerUpEffect(red, ePowerUp.ScrewAttack);
 
             server.UpdateEating(TICK_MS);
 

@@ -63,6 +63,11 @@ namespace EatMeLibrary
         public (int X, int Y)? LurkCell { get; set; }
 
         /// <summary>
+        /// The cell the Roamer is wandering to, or null when it has to pick one (GhostBrain.PickWanderCell).
+        /// </summary>
+        public (int X, int Y)? WanderCell { get; set; }
+
+        /// <summary>
         /// Which flag base the FlagHound is patrolling toward (an index into the level's flags).
         /// </summary>
         public int PatrolIndex { get; set; }

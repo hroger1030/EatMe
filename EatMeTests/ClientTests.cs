@@ -267,6 +267,17 @@ namespace EatMeTests
         }
 
         [Test]
+        public void ClientState_PlayerJoinedAgain_UpdatesPacShape()
+        {
+            var state = JoinedState();
+
+            state.Apply(new PlayerJoinedMessage { PlayerId = 4, Name = "Inky", Team = eTeam.Red, PacShape = ePacShape.Boxie }, 0);
+            state.Apply(new PlayerJoinedMessage { PlayerId = 4, Name = "Inky", Team = eTeam.Red, PacShape = ePacShape.Go }, 0);
+
+            Assert.That(state.GetPacShape(4), Is.EqualTo(ePacShape.Go));
+        }
+
+        [Test]
         public void ClientState_Pong_SetsPing()
         {
             var state = JoinedState();
@@ -381,13 +392,13 @@ namespace EatMeTests
         {
             var state = JoinedState(playerId: 3);
 
-            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false, powerUpEffect: ePowerUpEffect.PowerPill)] }, 0);
+            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false, powerUpEffect: ePowerUp.PowerPill)] }, 0);
             Assert.That(state.IsOwnPacPowered(), Is.True);
 
-            state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false), new PacState(4, eTeam.Red, 1.5f, 1.5f, 50f, eFacing.Left, true, false, false, powerUpEffect: ePowerUpEffect.PowerPill)] }, 0);
+            state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false), new PacState(4, eTeam.Red, 1.5f, 1.5f, 50f, eFacing.Left, true, false, false, powerUpEffect: ePowerUp.PowerPill)] }, 0);
             Assert.That(state.IsOwnPacPowered(), Is.False, "only another pac is powered");
 
-            state.Apply(new SnapshotMessage { Tick = 3, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, false, false, false, powerUpEffect: ePowerUpEffect.PowerPill)] }, 0);
+            state.Apply(new SnapshotMessage { Tick = 3, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, false, false, false, powerUpEffect: ePowerUp.PowerPill)] }, 0);
             Assert.That(state.IsOwnPacPowered(), Is.False, "a dead pac isn't powered");
         }
 
@@ -395,16 +406,16 @@ namespace EatMeTests
         public void OwnPowerUp_FollowsOwnPacsEffectAndTimeLeft()
         {
             var state = JoinedState(playerId: 3);
-            Assert.That(state.GetOwnPowerUpEffect(), Is.EqualTo(ePowerUpEffect.None), "no snapshot yet");
+            Assert.That(state.GetOwnPowerUpEffect(), Is.EqualTo(ePowerUp.None), "no snapshot yet");
             Assert.That(state.GetOwnPowerUpFill(), Is.EqualTo(0f));
 
             var duration = new GameConfiguration().PowerUpDurationMs;
-            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false, powerUpEffect: ePowerUpEffect.PowerPill, powerUpMsLeft: duration / 4)] }, 0);
-            Assert.That(state.GetOwnPowerUpEffect(), Is.EqualTo(ePowerUpEffect.PowerPill));
+            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, true, false, false, powerUpEffect: ePowerUp.PowerPill, powerUpMsLeft: duration / 4)] }, 0);
+            Assert.That(state.GetOwnPowerUpEffect(), Is.EqualTo(ePowerUp.PowerPill));
             Assert.That(state.GetOwnPowerUpFill(), Is.EqualTo(0.25f).Within(0.0001f));
 
-            state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, false, false, false, powerUpEffect: ePowerUpEffect.PowerPill, powerUpMsLeft: duration)] }, 0);
-            Assert.That(state.GetOwnPowerUpEffect(), Is.EqualTo(ePowerUpEffect.None), "a dead pac has no effect");
+            state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 20.5f, 50f, eFacing.Left, false, false, false, powerUpEffect: ePowerUp.PowerPill, powerUpMsLeft: duration)] }, 0);
+            Assert.That(state.GetOwnPowerUpEffect(), Is.EqualTo(ePowerUp.None), "a dead pac has no effect");
             Assert.That(state.GetOwnPowerUpFill(), Is.EqualTo(0f));
         }
 

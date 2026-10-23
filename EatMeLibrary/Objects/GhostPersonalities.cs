@@ -18,7 +18,7 @@ namespace EatMeLibrary
         public static readonly IReadOnlyList<GhostPersonality> ALL =
         [
             new(0, "Norm", FastColor.FromRgb(225, 190, 130), eGhostBehavior.Normal),
-            new(1, "Fang", FastColor.FromRgb(120, 255, 40), eGhostBehavior.Hunter, visionScale: 1.2f),
+            new(1, "Fang", FastColor.FromRgb(240, 40, 240), eGhostBehavior.Hunter, visionScale: 1.2f),
             new(2, "Sly", FastColor.FromRgb(255, 80, 200), eGhostBehavior.Ambusher),
             new(3, "Dither", FastColor.FromRgb(255, 140, 0), eGhostBehavior.Ditherer),
             new(4, "Snitch", FastColor.FromRgb(255, 215, 0), eGhostBehavior.FlagHound),
@@ -35,8 +35,8 @@ namespace EatMeLibrary
             new(15, "Boo", FastColor.FromRgb(200, 160, 255), eGhostBehavior.Shy),
             new(16, "Mimic", FastColor.FromRgb(255, 250, 90), eGhostBehavior.Copycat),
             new(17, "Snooze", FastColor.FromRgb(170, 170, 40), eGhostBehavior.Sleeper),
-            new(18, "Wobble", FastColor.FromRgb(40, 200, 60), eGhostBehavior.Confused),
-            new(19, "Panic", FastColor.FromRgb(255, 200, 160), eGhostBehavior.Scaredy),
+            new(18, "Wobble", FastColor.FromRgb(230, 30, 110), eGhostBehavior.Confused),
+            new(19, "Dizzy", FastColor.FromRgb(255, 200, 160), eGhostBehavior.Roamer),
             new(20, "Tagalong", FastColor.FromRgb(170, 80, 140), eGhostBehavior.Sidekick),
         ];
 

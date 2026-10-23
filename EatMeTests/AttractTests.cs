@@ -54,7 +54,7 @@ namespace EatMeTests
 
             Assert.That(order, Does.Not.Contain(ePowerUp.PowerPill));
             Assert.That(order, Has.Count.EqualTo(31));
-            Assert.That(order.Aggregate(ePowerUp.None, (all, item) => all | item), Is.EqualTo(PowerUpRules.SPAWNABLE));
+            Assert.That(order, Is.EquivalentTo(PowerUpRules.SPAWNABLE));
             Assert.That(order.Select(PowerUpNames.GetName), Is.Ordered.Using((IComparer<string>)StringComparer.OrdinalIgnoreCase));
         }
 
@@ -65,7 +65,7 @@ namespace EatMeTests
 
             foreach (var item in Enum.GetValues<ePowerUp>())
             {
-                if (item == ePowerUp.None || item == ePowerUp.Any)
+                if (item == ePowerUp.None)
                     continue;
 
                 var name = PowerUpNames.GetName(item);
@@ -74,7 +74,7 @@ namespace EatMeTests
                 Assert.That(names.Add(name), Is.True, $"{name} is used twice");
             }
 
-            Assert.Throws<ArgumentOutOfRangeException>(() => PowerUpNames.GetName(ePowerUp.Any));
+            Assert.Throws<ArgumentOutOfRangeException>(() => PowerUpNames.GetName((ePowerUp)255));
         }
 
         [Test]
@@ -98,7 +98,7 @@ namespace EatMeTests
 
             foreach (var item in Enum.GetValues<ePowerUp>())
             {
-                if (item == ePowerUp.None || item == ePowerUp.Any)
+                if (item == ePowerUp.None)
                     continue;
 
                 var blurb = AttractBlurbs.GetPowerUpBlurb(item);
@@ -107,7 +107,7 @@ namespace EatMeTests
                 Assert.That(blurbs.Add(blurb), Is.True, $"{item} shares a blurb");
             }
 
-            Assert.Throws<ArgumentOutOfRangeException>(() => AttractBlurbs.GetPowerUpBlurb(ePowerUp.Any));
+            Assert.Throws<ArgumentOutOfRangeException>(() => AttractBlurbs.GetPowerUpBlurb((ePowerUp)255));
         }
 
         [Test]

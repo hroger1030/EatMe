@@ -108,19 +108,19 @@ namespace EatMeTests
         [Test]
         public void PickItem_PicksOnlyFromTheSet_AndEveryItemInIt()
         {
-            var items = ePowerUp.Cherry | ePowerUp.Triforce | ePowerUp.PokeBall;
+            var items = new[] { ePowerUp.Cherry, ePowerUp.Triforce, ePowerUp.PokeBall };
             var random = new Random(5);
-            var seen = ePowerUp.None;
+            var seen = new HashSet<ePowerUp>();
 
             for (var i = 0; i < 200; i++)
             {
                 var item = PowerUpRules.PickItem(items, random);
-                Assert.That(items.HasFlag(item) && item != ePowerUp.None, Is.True, item.ToString());
-                seen |= item;
+                Assert.That(items, Does.Contain(item), item.ToString());
+                seen.Add(item);
             }
 
-            Assert.That(seen, Is.EqualTo(items));
-            Assert.That(PowerUpRules.PickItem(ePowerUp.None, random), Is.EqualTo(ePowerUp.None));
+            Assert.That(seen, Is.EquivalentTo(items));
+            Assert.That(PowerUpRules.PickItem([], random), Is.EqualTo(ePowerUp.None));
         }
 
         [TestCase(0, 29999, 30000, 0)]
@@ -195,7 +195,7 @@ namespace EatMeTests
 
                 Assert.That(server.PowerUpSpawns, Does.Contain(cell));
                 Assert.That(MazeMovement.IsWarpCell(server.Map, powerUp.Exit.X, powerUp.Exit.Y), Is.True);
-                Assert.That(ePowerUp.Any.HasFlag(powerUp.Item) && powerUp.Item != ePowerUp.None, Is.True);
+                Assert.That(PowerUpRules.SPAWNABLE, Does.Contain(powerUp.Item));
             }
 
             Assert.That(server.PowerUps.Select(p => p.Id), Is.Unique);

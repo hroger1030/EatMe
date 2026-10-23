@@ -81,6 +81,51 @@ namespace EatMeTests
         }
 
         [Test]
+        public void PacShapeMessage_ChangesShape_SentToEveryPlayer()
+        {
+            var server = MakeServer();
+            var first = Join(server, 1, "First");
+            var second = Join(server, 2, "Second");
+            first.Received.Clear();
+            second.Received.Clear();
+
+            server.HandleMessage(first, new PacShapeMessage { PacShape = ePacShape.Hex });
+
+            Assert.That(server.Players.Single(p => p.Player.Id == 1).Player.PacShape, Is.EqualTo(ePacShape.Hex));
+            foreach (var connection in new[] { first, second })
+            {
+                var joined = connection.ReceivedOf<PlayerJoinedMessage>().Single();
+                Assert.That(joined.PlayerId, Is.EqualTo(1));
+                Assert.That(joined.PacShape, Is.EqualTo(ePacShape.Hex));
+            }
+        }
+
+        [Test]
+        public void PacShapeMessage_SameShape_SendsNothing()
+        {
+            var server = MakeServer();
+            var connection = Join(server, 1, "Pac");
+            connection.Received.Clear();
+
+            server.HandleMessage(connection, new PacShapeMessage { PacShape = PacShapes.DEFAULT });
+
+            Assert.That(connection.ReceivedOf<PlayerJoinedMessage>(), Is.Empty);
+        }
+
+        [Test]
+        public void PacShapeMessage_BadShape_GetsDefault()
+        {
+            var server = MakeServer();
+            var connection = new FakeConnection(1);
+            server.HandleEvent(new NetworkEvent(eNetworkEventType.Connected, connection));
+            server.HandleMessage(connection, new HelloMessage { PlayerName = "Pac", PacShape = ePacShape.Doc });
+
+            server.HandleMessage(connection, new PacShapeMessage { PacShape = (ePacShape)200 });
+
+            Assert.That(server.Players.Single().Player.PacShape, Is.EqualTo(PacShapes.DEFAULT));
+        }
+
+        [Test]
         public void Hello_BadPacShape_GetsDefault()
         {
             var server = MakeServer();

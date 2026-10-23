@@ -63,6 +63,18 @@ namespace EatMeTests
         }
 
         [Test]
+        public void Bots_AreGears()
+        {
+            var server = MakeServer(0, autoBalanceTeams: true);
+
+            var human = Join(server, 1, "Human", eTeamPreference.Red);
+
+            var bot = server.Players.Single(p => p.IsBot).Player;
+            Assert.That(bot.PacShape, Is.EqualTo(PacShapes.BOT));
+            Assert.That(human.ReceivedOf<PlayerJoinedMessage>().Single(m => m.PlayerId == bot.Id).PacShape, Is.EqualTo(ePacShape.Gears));
+        }
+
+        [Test]
         public void AutoBalance_OneHuman_BotJoinsOtherTeam()
         {
             var server = MakeServer(0, autoBalanceTeams: true);

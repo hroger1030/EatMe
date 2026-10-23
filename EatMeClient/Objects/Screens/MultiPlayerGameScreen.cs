@@ -164,6 +164,7 @@ namespace EatMeClient
         /// </summary>
         private SettingsScreen _SettingsScreen;
         private bool _SettingsOpen;
+        private ePacShape _SentPacShape;
 
         /// <summary>
         /// No music starts while paused, so this remembers that the next level's track is owed when play resumes.
@@ -314,6 +315,7 @@ namespace EatMeClient
 
             var settings = ConfigManager.Settings;
             _Client.Connect(host, port, new HelloMessage { PlayerName = settings.PlayerName, PreferredTeam = settings.PreferredTeam, PacShape = settings.PacShape });
+            _SentPacShape = settings.PacShape;
 
             _Camera.Position = Vector2.Zero;
             _Camera.ShakeOffset = Vector2.Zero;
@@ -362,8 +364,22 @@ namespace EatMeClient
         /// </summary>
         private void CloseSettings()
         {
+            SendPacShape();
             _SettingsOpen = false;
             _InGameMenu.Open();
+        }
+
+        /// <summary>
+        /// Tells the server when the player has picked another pac shape since it was last sent.
+        /// </summary>
+        private void SendPacShape()
+        {
+            var shape = ConfigManager.Settings.PacShape;
+            if (shape == _SentPacShape)
+                return;
+
+            _Client?.Send(new PacShapeMessage { PacShape = shape });
+            _SentPacShape = shape;
         }
 
         private void QuitToTitle()
@@ -641,7 +657,7 @@ namespace EatMeClient
                 eGameEvent.GhostKilled => Const.SFX_EAT_GHOST,
                 eGameEvent.PowerUpEaten => Const.SFX_POWER_UP_EATEN,
                 eGameEvent.Blast => Const.SFX_POW,
-                eGameEvent.PokeBallCapture or eGameEvent.PokeBallRelease => Const.SFX_BLOOP,
+                eGameEvent.PokeBallCapture or eGameEvent.PokeBallRelease or eGameEvent.DecoyPopped => Const.SFX_BLOOP,
                 eGameEvent.BfgBurst => Const.SFX_BFG_BURST,
                 _ => null,
             };
@@ -1572,6 +1588,8 @@ namespace EatMeClient
             var frameHeight = _PacSheet.Height / PacShapes.ALL.Length;
             var origin = new Vector2(frameWidth * 0.5f, frameHeight * 0.5f);
 
+            DrawDecoys(spriteBatch, viewport, frame, origin, frameWidth);
+
             foreach (var pac in _State.Snapshot.Pacs)
             {
                 if (!pac.Alive)
@@ -1594,10 +1612,10 @@ namespace EatMeClient
                     rotation += PowerUpEffects.GetStunSpinAngle(_AnimationTime);
 
                 // a Screw Attack pac spins very fast as it moves
-                if (pac.PowerUpEffect == ePowerUpEffect.ScrewAttack)
+                if (pac.PowerUpEffect == ePowerUp.ScrewAttack)
                     rotation += PowerUpEffects.GetScrewAngle(pac.X, pac.Y);
 
-                // speed trail behind a pac with Sugar Rush, oldest copy first so the newer ones sit on top
+                // speed trail behind a pac with Warp Speed or Invincible, oldest copy first so the newer ones sit on top
                 var trail = _Trails.GetTrail(pac.PlayerId);
                 for (var i = trail.Count - 1; i > -1; i--)
                 {
@@ -1612,6 +1630,39 @@ namespace EatMeClient
 
                 DrawPacName(spriteBatch, pac, screen, pacWidth, color);
             }
+        }
+
+        /// <summary>
+        /// Draws every Cherry Twin decoy as a copy of its owner's pac (shape, size, chomp and name) facing its own way,
+        /// always in the plain team color, so to the owner it looks like a teammate and to everyone else like the owner.
+        /// </summary>
+        private void DrawDecoys(SpriteBatch spriteBatch, Viewport viewport, int frame, Vector2 origin, float frameWidth)
+        {
+            foreach (var effect in _State.Snapshot.WeaponEffects)
+            {
+                if (!WeaponEffectSprites.IsDrawnAsPac(effect.Kind) || FindPac(effect.OwnerId) is not { } owner)
+                    continue;
+
+                var screen = _Camera.ToScreenPosition(CellToWorld(effect.X, effect.Y), viewport);
+                var pacWidth = CELL_PIXELS * PacRules.GetDiameter(owner.Size);
+                var source = GetPacSource(_PacSheet, _State.GetPacShape(owner.PlayerId), frame);
+                var (rotation, effects) = GetFacingTransform(effect.Facing);
+
+                spriteBatch.Draw(_PacSheet, screen, source, ClientColors.GetPacTint(owner, false, _AnimationTime), rotation, origin, pacWidth / frameWidth, effects, 0f);
+                DrawPacName(spriteBatch, owner, screen, pacWidth, ClientColors.GetPacColor(owner.Team, false));
+            }
+        }
+
+        /// <summary>
+        /// The living pac with this player id in the latest snapshot, or null.
+        /// </summary>
+        private PacState? FindPac(int playerId)
+        {
+            foreach (var pac in _State.Snapshot.Pacs)
+                if (pac.PlayerId == playerId && pac.Alive)
+                    return pac;
+
+            return null;
         }
 
         /// <summary>
@@ -1703,7 +1754,8 @@ namespace EatMeClient
             {
                 foreach (var effect in _State.Snapshot.WeaponEffects)
                 {
-                    if (WeaponEffectSprites.IsOnFloor(effect.Kind) != (pass == 0))
+                    // decoys are drawn with the pacs
+                    if (WeaponEffectSprites.IsDrawnAsPac(effect.Kind) || WeaponEffectSprites.IsOnFloor(effect.Kind) != (pass == 0))
                         continue;
 
                     var frame = WeaponEffectSprites.GetFrame(_AnimationTime + effect.Id * WeaponEffectSprites.FRAME_SECONDS);

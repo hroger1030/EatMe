@@ -80,8 +80,7 @@ namespace EatMeLibrary
         /// </summary>
         public static List<ePowerUp> GetPowerUpOrder()
         {
-            return Enum.GetValues<ePowerUp>()
-                .Where(item => item != ePowerUp.None && item != ePowerUp.Any && PowerUpRules.SPAWNABLE.HasFlag(item))
+            return PowerUpRules.SPAWNABLE
                 .OrderBy(PowerUpNames.GetName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

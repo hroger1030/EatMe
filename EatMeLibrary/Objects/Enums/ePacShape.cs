@@ -7,7 +7,7 @@ namespace EatMeLibrary
     public enum ePacShape
     {
         OG = 0,
-        Fang = 1,
+        Chomper = 1,
         Hex = 2,
         Boxie = 3,
         Trey = 4,

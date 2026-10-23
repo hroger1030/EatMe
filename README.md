@@ -102,7 +102,19 @@ Every other `server.cfg` setting has its own command, its name in lower case: ty
 | `lagcompensationmaxms [n]` | LagCompensationMaxMs |
 | `serverseed [n]` | ServerSeed |
 
-`[n]` is a whole number and `[x]` a number with a decimal point. A value is checked like the file is when it loads: an odd or too small `MazeSize` is refused and the setting keeps its value, and out of range values are clamped (for example `DotRegenPercent` to 0 to 100 and `TickRate` to 1 or more). Most changes count at once, and game rule changes are sent to every connected player. The settings the map is built from (`MazeSize`, `WarpTunnelCount`, `GhostCount`, `PowerPillCount`, `FlagCount`, `PlayerBaseCount` and `ServerSeed`) count from the next level, or at once with `restart`. `StartingLevel` counts on the next `new game`. `RandomLevels` (`on` or `off`) counts from the next level change: with it on, every level after the starting one is picked at random, never the one just played.
+`[n]` is a whole number, `[x]` can have decimals.
+
+Values are checked the same way as in `server.cfg`:
+
+- A bad `MazeSize` (odd or too small) is ignored and the old value stays.
+- Anything else out of range is clamped, e.g. `DotRegenPercent` to 0–100, `TickRate` to at least 1.
+
+When a change takes effect:
+
+- **Now:** most settings. Game rule changes are sent to every connected player.
+- **Next level** (or now, with `restart`): the map settings, `MazeSize`, `WarpTunnelCount`, `GhostCount`, `PowerPillCount`, `FlagCount`, `PlayerBaseCount` and `ServerSeed`.
+- **Next level change:** `RandomLevels`. When it's on, each level after the starting one is random, never a repeat of the one just played.
+- **Next `new game`:** `StartingLevel`.
 
 ### server.cfg
 

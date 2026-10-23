@@ -23,7 +23,7 @@ namespace EatMeLibrary
         public void Write(BinaryWriter writer)
         {
             writer.Write(PowerUpId);
-            writer.Write((uint)Item);
+            writer.Write((byte)Item);
             writer.Write(X);
             writer.Write(Y);
         }
@@ -32,7 +32,7 @@ namespace EatMeLibrary
         {
             return new PowerUpState(
                 reader.ReadInt32(),
-                (ePowerUp)reader.ReadUInt32(),
+                (ePowerUp)reader.ReadByte(),
                 reader.ReadSingle(),
                 reader.ReadSingle());
         }

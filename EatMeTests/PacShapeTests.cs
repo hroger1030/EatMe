@@ -8,9 +8,9 @@ namespace EatMeTests
     public class PacShapeTests
     {
         [Test]
-        public void Default_IsFang()
+        public void Default_IsChomper()
         {
-            Assert.That(PacShapes.DEFAULT, Is.EqualTo(ePacShape.Fang));
+            Assert.That(PacShapes.DEFAULT, Is.EqualTo(ePacShape.Chomper));
         }
 
         [Test]
@@ -27,7 +27,7 @@ namespace EatMeTests
         {
             var names = PacShapes.ALL.Select(PacShapes.GetName);
 
-            Assert.That(names, Is.EqualTo(new[] { "O.G.", "Fang", "Hex", "Boxie", "Trey", "Doc", "Gears", "LadyDi", "Go" }));
+            Assert.That(names, Is.EqualTo(new[] { "O-gee", "Chomper", "Hex", "Boxie", "Trey", "Doc", "Gears", "LadyDi", "Go" }));
         }
 
         [Test]

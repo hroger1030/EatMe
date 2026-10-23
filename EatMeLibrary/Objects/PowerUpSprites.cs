@@ -1,11 +1,10 @@
 using System;
-using System.Numerics;
 
 namespace EatMeLibrary
 {
     /// <summary>
     /// Where each bonus item is on the power up sheet (Const.IMAGE_POWER_UP_SHEET): one CELL_PIXELS square cell per
-    /// ePowerUp flag, in bit order (Cherry is cell 0), COLUMNS cells to a row, left to right then top to bottom.
+    /// ePowerUp, in enum order (Cherry is cell 0), COLUMNS cells to a row, left to right then top to bottom.
     /// </summary>
     public static class PowerUpSprites
     {
@@ -14,16 +13,14 @@ namespace EatMeLibrary
         public const int ROWS = 4;
 
         /// <summary>
-        /// The item's cell number: the position of its flag bit. Throws unless the value is exactly one item.
+        /// The item's cell number: its enum value less one. Throws unless the value is an item.
         /// </summary>
         public static int GetCellIndex(ePowerUp item)
         {
-            var bits = (uint)item;
+            if (item == ePowerUp.None || !Enum.IsDefined(item))
+                throw new ArgumentException("Expected a bonus item", nameof(item));
 
-            if (bits == 0 || (bits & (bits - 1)) != 0 || (item & ePowerUp.Any) != item)
-                throw new ArgumentException("Expected exactly one bonus item", nameof(item));
-
-            return BitOperations.TrailingZeroCount(bits);
+            return (int)item - 1;
         }
 
         /// <summary>

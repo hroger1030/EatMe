@@ -8,8 +8,8 @@ namespace EatMeClient
 {
     /// <summary>
     /// Shown after the title menu has sat idle (AttractMath.IDLE_SECONDS): on black, the story, every ghost and every
-    /// power up (alphabetically, across the centre third of the screen: sprite at its left edge, name at its right edge
-    /// and a short description under them), and the two teams' pacs, scrolling up slowly
+    /// power up (alphabetically: sprite and name side by side, centred, and a short description under them across the
+    /// centre third of the screen), and the two teams' pacs, scrolling up slowly
     /// until the bottom is on screen, then back to the title after AttractMath.HOLD_SECONDS. Any key, gamepad button
     /// or mouse button goes back at once.
     /// </summary>
@@ -26,8 +26,8 @@ namespace EatMeClient
         private const float SECTION_GAP_LINES = 0.75f;
 
         /// <summary>
-        /// The ghost and power up lists span the middle of the screen, from LIST_LEFT_RATIO to LIST_RIGHT_RATIO of its
-        /// width (the centre third).
+        /// The ghost and power up descriptions span the middle of the screen, from LIST_LEFT_RATIO to LIST_RIGHT_RATIO
+        /// of its width (the centre third).
         /// </summary>
         private const float LIST_LEFT_RATIO = 1f / 3f;
         private const float LIST_RIGHT_RATIO = 2f / 3f;
@@ -36,6 +36,11 @@ namespace EatMeClient
         /// Size of a ghost or power up sprite in the lists, in pixels.
         /// </summary>
         private const int ICON_PIXELS = 72;
+
+        /// <summary>
+        /// Space between a list entry's sprite and its name, in pixels.
+        /// </summary>
+        private const int ICON_GAP = 24;
 
         /// <summary>
         /// Space after each entry's description, before the next entry, in description font lines.
@@ -192,9 +197,9 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// One list entry across the centre third of the screen: the sprite at its left edge and the name at its right
-        /// edge, centred on one row, then the description under them in the small font, wrapped to the same width and
-        /// centred. Returns the y below it.
+        /// One list entry: the sprite with the name ICON_GAP to its right, the pair centred on the screen on one row,
+        /// then the description under them in the small font, wrapped to the centre third of the screen and centred.
+        /// Returns the y below it.
         /// </summary>
         private float LayoutEntry(SpriteBatch spriteBatch, Viewport viewport, Texture2D sheet, Rectangle source, string name, Color nameColor, string blurb, float y)
         {
@@ -204,10 +209,12 @@ namespace EatMeClient
 
             if (spriteBatch != null && IsOnScreen(viewport, y, rowHeight))
             {
+                var nameWidth = _NameFont.MeasureString(name).X;
+                var iconX = (viewport.Width - ICON_PIXELS - ICON_GAP - nameWidth) / 2f;
                 var iconY = y + (rowHeight - ICON_PIXELS) / 2f;
-                spriteBatch.Draw(sheet, new Rectangle((int)left, (int)iconY, ICON_PIXELS, ICON_PIXELS), source, Color.White);
+                spriteBatch.Draw(sheet, new Rectangle((int)iconX, (int)iconY, ICON_PIXELS, ICON_PIXELS), source, Color.White);
 
-                var nameX = right - _NameFont.MeasureString(name).X;
+                var nameX = iconX + ICON_PIXELS + ICON_GAP;
                 var nameY = y + (rowHeight - _NameFont.LineSpacing) / 2f;
                 TextHelper.DrawShadowedString(spriteBatch, _NameFont, name, new Vector2(nameX, nameY), nameColor);
             }

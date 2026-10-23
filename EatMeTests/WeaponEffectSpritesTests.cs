@@ -7,7 +7,7 @@ namespace EatMeTests
         [Test]
         public void EveryEffect_HasARowOnTheSheet()
         {
-            var effects = Enum.GetValues<eWeaponEffect>();
+            var effects = Enum.GetValues<eWeaponEffect>().Where(e => !WeaponEffectSprites.IsDrawnAsPac(e)).ToArray();
 
             Assert.That(effects, Has.Length.EqualTo(WeaponEffectSprites.ROWS));
 

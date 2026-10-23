@@ -13,13 +13,19 @@ namespace EatMeLibrary
         public float Y { get; }
         public eFacing Facing { get; }
 
-        public WeaponEffectState(int id, eWeaponEffect kind, float x, float y, eFacing facing)
+        /// <summary>
+        /// Id of the pac that made it; the client draws a decoy as a copy of this pac.
+        /// </summary>
+        public int OwnerId { get; }
+
+        public WeaponEffectState(int id, eWeaponEffect kind, float x, float y, eFacing facing, int ownerId)
         {
             Id = id;
             Kind = kind;
             X = x;
             Y = y;
             Facing = facing;
+            OwnerId = ownerId;
         }
 
         public void Write(BinaryWriter writer)
@@ -29,11 +35,12 @@ namespace EatMeLibrary
             writer.Write(X);
             writer.Write(Y);
             writer.Write((byte)Facing);
+            writer.Write(OwnerId);
         }
 
         public static WeaponEffectState Read(BinaryReader reader)
         {
-            return new WeaponEffectState(reader.ReadInt32(), (eWeaponEffect)reader.ReadByte(), reader.ReadSingle(), reader.ReadSingle(), (eFacing)reader.ReadByte());
+            return new WeaponEffectState(reader.ReadInt32(), (eWeaponEffect)reader.ReadByte(), reader.ReadSingle(), reader.ReadSingle(), (eFacing)reader.ReadByte(), reader.ReadInt32());
         }
     }
 }

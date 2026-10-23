@@ -91,6 +91,8 @@ namespace EatMeClient
                     DrawIcon(spriteBatch, _icons, eMiniMapIcon.Ghost, inner, mapSize, ghost.X, ghost.Y, ClientColors.COLOR_MINI_MAP_GHOST);
             }
 
+            DrawEnemyDecoys(spriteBatch, inner, mapSize, snapshot, ownPlayerId, animationTime);
+
             // a pac carrying a flag is drawn as that flag instead (below), except the player's own, which stays so it can
             // be found, with the flag over it
             foreach (var pac in snapshot.Pacs)
@@ -145,6 +147,29 @@ namespace EatMeClient
             }
 
             return (flag.X, flag.Y);
+        }
+
+        /// <summary>
+        /// A dot for every Cherry Twin decoy whose owner is on the other team from the player, so to enemies it looks
+        /// like one more pac. The owner's team doesn't see it.
+        /// </summary>
+        private void DrawEnemyDecoys(SpriteBatch spriteBatch, Rectangle inner, int mapSize, SnapshotMessage snapshot, int ownPlayerId, float animationTime)
+        {
+            eTeam? ownTeam = null;
+
+            foreach (var pac in snapshot.Pacs)
+                if (pac.PlayerId == ownPlayerId)
+                    ownTeam = pac.Team;
+
+            foreach (var effect in snapshot.WeaponEffects)
+            {
+                if (!WeaponEffectSprites.IsDrawnAsPac(effect.Kind))
+                    continue;
+
+                foreach (var pac in snapshot.Pacs)
+                    if (pac.PlayerId == effect.OwnerId && pac.Alive && pac.Team != ownTeam)
+                        DrawIcon(spriteBatch, _icons, eMiniMapIcon.Dot, inner, mapSize, effect.X, effect.Y, ClientColors.GetPacTint(pac, false, animationTime));
+            }
         }
 
         /// <summary>

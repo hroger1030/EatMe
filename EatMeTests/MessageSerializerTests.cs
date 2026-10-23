@@ -21,11 +21,11 @@ namespace EatMeTests
                 Tick = 4000,
                 RedScore = 12,
                 BlueScore = 40,
-                Pacs = [new PacState(1, eTeam.Red, 1.5f, 2.25f, 10f, eFacing.Up, true, false, true), new PacState(2, eTeam.Blue, 98f, 3f, 50.5f, eFacing.Right, false, true, false, 4, 7, 2, 9, ePowerUpEffect.PowerPill, 4321, 1234, 750, true)],
+                Pacs = [new PacState(1, eTeam.Red, 1.5f, 2.25f, 10f, eFacing.Up, true, false, true), new PacState(2, eTeam.Blue, 98f, 3f, 50.5f, eFacing.Right, false, true, false, 4, 7, 2, 9, ePowerUp.PowerPill, 4321, 1234, 750, true)],
                 Ghosts = [new GhostState(0, 50f, 50f, eFacing.Down, true), new GhostState(1, 5f, 6f, eFacing.Left, true, true)],
                 Flags = [new FlagState(0, eTeam.Red, 3.5f, 40.5f, FlagState.NO_CARRIER), new FlagState(1, eTeam.Blue, 12f, 13f, 1)],
                 PowerUps = [new PowerUpState(0, ePowerUp.Cherry, 49.5f, 50.25f), new PowerUpState(7, ePowerUp.PokeBall, 1f, 2f)],
-                WeaponEffects = [new WeaponEffectState(3, eWeaponEffect.Sword, 12.25f, 4.5f, eFacing.Left), new WeaponEffectState(9, eWeaponEffect.HolyFlame, 1.5f, 2.5f, eFacing.Up)],
+                WeaponEffects = [new WeaponEffectState(3, eWeaponEffect.Sword, 12.25f, 4.5f, eFacing.Left, 1), new WeaponEffectState(9, eWeaponEffect.Decoy, 1.5f, 2.5f, eFacing.Up, 1_000_002)],
             };
             yield return new CellsChangedMessage { IsCatchUp = true, Cells = [new CellChange(4, 5, eGridDef.Food), new CellChange(99, 0, eGridDef.PowerPill | eGridDef.SpawnPointRed)] };
             yield return new PlayerJoinedMessage { PlayerId = 5, Name = "Inky", Team = eTeam.Blue, PacShape = ePacShape.LadyDi };
@@ -44,6 +44,7 @@ namespace EatMeTests
             yield return new ServerPongMessage { ServerTime = 7654321 };
             yield return new ActionMessage();
             yield return new PlayerListRequestMessage();
+            yield return new PacShapeMessage { PacShape = ePacShape.Trey };
             yield return new PlayerListMessage { Entries = [new PlayerListEntry(1, "Pac", eTeam.Red, false, 42), new PlayerListEntry(1000, "Blinky", eTeam.Blue, true, PlayerListEntry.NO_PING)] };
             yield return new GameConfigMessage { GameConfig = new GameConfiguration { MazeSize = 40, PacSpeed = 7.5f, MinPlayers = 6 } };
             yield return new HighScoresMessage { Scores = [new HighScoreEntry { Name = "Smith, John", Score = 1522400, Date = "2024-04-12" }, new HighScoreEntry { Name = "Dios", Score = 200, Date = "2026-01-09" }] };

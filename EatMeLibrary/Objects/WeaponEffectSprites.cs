@@ -55,6 +55,14 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// True for effects drawn as a copy of their owner's pac rather than from the sheet: the Decoy. They have no row.
+        /// </summary>
+        public static bool IsDrawnAsPac(eWeaponEffect effect)
+        {
+            return effect == eWeaponEffect.Decoy;
+        }
+
+        /// <summary>
         /// True for effects lying in the maze (holy flames, banana peels, Tetromino blocks, bombs), drawn before the rest
         /// so flying ones go over them.
         /// </summary>

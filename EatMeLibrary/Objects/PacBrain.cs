@@ -499,37 +499,42 @@ namespace EatMeLibrary
         /// - POW: a ghost or an enemy pac that isn't invincible, neither stunned already, is within the standard effect
         ///   radius (PowerUpEffects.EFFECT_RADIUS).
         /// - Bomb: its bomb isn't dropped yet and a ghost or enemy pac that isn't stunned is within the standard radius.
-        /// - Banana Peel and Block Drop: a ghost or enemy pac that isn't stunned is within DANGER_DISTANCE cells.
-        /// - Warp: something that can kill it (a ghost, or an enemy that IsThreat) is within DANGER_DISTANCE cells.
+        /// - Banana Peel: a ghost or enemy pac that isn't stunned is within DANGER_DISTANCE cells.
+        /// - Warp and Cherry Twin: something that can kill it (a ghost, or an enemy that IsThreat) is within
+        ///   DANGER_DISTANCE cells.
+        /// - Blue Shell: its shell isn't fired yet and there is an enemy to send it after (WeaponRules.PickBlueShellTarget).
         /// </summary>
         public static bool ShouldUseAction(BotWorld world, Player me)
         {
             switch (me.PowerUpEffect)
             {
-                case ePowerUpEffect.Gotcha:
+                case ePowerUp.PokeBall:
                     foreach (var ghost in world.Ghosts)
                         if (ghost.Alive)
                             return true;
 
                     return false;
 
-                case ePowerUpEffect.SwordSwing:
-                case ePowerUpEffect.FireFlower:
-                case ePowerUpEffect.Bfg:
+                case ePowerUp.WhiteSword:
+                case ePowerUp.FireFlower:
+                case ePowerUp.BFG:
                     return HasTargetAhead(world, me);
 
-                case ePowerUpEffect.Pow:
+                case ePowerUp.PowBlock:
                     return HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, true);
 
-                case ePowerUpEffect.Bomb:
+                case ePowerUp.Bomb:
                     return !me.BombDropped && HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, false);
 
-                case ePowerUpEffect.BananaPeel:
-                case ePowerUpEffect.BlockDrop:
+                case ePowerUp.Banana:
                     return HasTargetNear(world, me, DANGER_DISTANCE, false);
 
-                case ePowerUpEffect.Warp:
+                case ePowerUp.Pear:
+                case ePowerUp.Cherry:
                     return HasThreatNear(world, me, DANGER_DISTANCE);
+
+                case ePowerUp.BlueShell:
+                    return !me.BlueShellFired && WeaponRules.PickBlueShellTarget(me.Team, world.Pacs) != null;
 
                 default:
                     return false;

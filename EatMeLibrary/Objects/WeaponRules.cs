@@ -29,12 +29,12 @@ namespace EatMeLibrary
         /// After the action button does something it does nothing again for this long, whatever the effect, so it
         /// can't be spammed.
         /// </summary>
-        public const int ACTION_COOLDOWN_MS = 500;
+        public const int ACTION_COOLDOWN_MS = 1000;
 
         /// <summary>
-        /// Gotcha (poke ball) throws at most one ball this often, instead of ACTION_COOLDOWN_MS.
+        /// Cherry Twin has at most this many decoys out at once.
         /// </summary>
-        public const int POKE_BALL_COOLDOWN_MS = 1000;
+        public const int MAX_DECOYS = 1;
 
         /// <summary>
         /// A dropped bomb goes off this long after it is dropped.
@@ -100,6 +100,42 @@ namespace EatMeLibrary
         public static bool CanThrowSword(int swordsInFlight)
         {
             return swordsInFlight < MAX_SWORDS;
+        }
+
+        /// <summary>
+        /// True if a pac with decoysOut decoys in the maze may drop another (at most MAX_DECOYS).
+        /// </summary>
+        public static bool CanDropDecoy(int decoysOut)
+        {
+            return decoysOut < MAX_DECOYS;
+        }
+
+        /// <summary>
+        /// The way a decoy dropped by a pac facing ownerFacing sets off: straight back the way the pac came, so the
+        /// two split up.
+        /// </summary>
+        public static eFacing GetDecoyFacing(eFacing ownerFacing)
+        {
+            return MazeMovement.GetOpposite(ownerFacing);
+        }
+
+        /// <summary>
+        /// A copy of owner standing at location facing facing, for a decoy to pass as the owner: same id, name, team,
+        /// shape and size, alive, with no flag and no power up effect.
+        /// </summary>
+        public static Player MakeDecoyStandIn(Player owner, Point2 location, eFacing facing)
+        {
+            return new Player
+            {
+                Id = owner.Id,
+                Name = owner.Name,
+                Team = owner.Team,
+                PacShape = owner.PacShape,
+                Size = owner.Size,
+                Location = location,
+                Facing = facing,
+                Alive = true,
+            };
         }
 
         /// <summary>
@@ -271,14 +307,6 @@ namespace EatMeLibrary
             var x = (location.X + dx + width) % width;
             var y = (location.Y + dy + height) % height;
             return new Point2(x, y);
-        }
-
-        /// <summary>
-        /// The cell a Tetromino block goes in for a pac in (x, y) facing facing: the one behind it (wrapping round the map).
-        /// </summary>
-        public static (int X, int Y) GetBehindCell(int x, int y, eFacing facing, int width, int height)
-        {
-            return MazeMovement.GetNeighbor(x, y, MazeMovement.GetOpposite(facing), width, height);
         }
 
         /// <summary>

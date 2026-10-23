@@ -60,6 +60,11 @@ namespace EatMeServer
         /// Living pacs with Twister working this tick (CollectTwisters), so movement only checks those.
         /// </summary>
         private readonly List<Player> _Twisters = [];
+
+        /// <summary>
+        /// What bots see as the living pacs: _Living plus the stand-in of every Cherry Twin decoy (CollectBotPacs).
+        /// </summary>
+        private readonly List<Player> _BotPacs = [];
         private Random _Random = new();
 
         // kept apart from _Random so joining players don't change what the ghosts do
@@ -330,6 +335,10 @@ namespace EatMeServer
                     Send(connection, BuildPlayerList());
                     break;
 
+                case PacShapeMessage pacShape:
+                    ChangePacShape(serverPlayer.Player, pacShape.PacShape);
+                    break;
+
                 case LeaveMessage:
                     RemovePlayer(connection);
                     connection.Close();
@@ -439,7 +448,7 @@ namespace EatMeServer
                 snapshot.PowerUps.Add(powerUp.ToState());
 
             foreach (var effect in _WeaponEffects)
-                snapshot.WeaponEffects.Add(new WeaponEffectState(effect.Id, effect.Kind, effect.Location.X, effect.Location.Y, effect.Facing));
+                snapshot.WeaponEffects.Add(new WeaponEffectState(effect.Id, effect.Kind, effect.Location.X, effect.Location.Y, effect.Facing, effect.OwnerId));
 
             return snapshot;
         }
@@ -588,7 +597,7 @@ namespace EatMeServer
             {
                 var player = serverPlayer.Player;
 
-                if (player.Team == team && PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.Reinforcements))
+                if (player.Team == team && PowerUpEffects.HasActiveEffect(player, ePowerUp.Reinforcements))
                     return true;
             }
 
@@ -616,7 +625,7 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// The POW block's action (ePowerUpEffect.Pow): stuns every living pac (either team) and ghost within
+        /// The POW block's action (ePowerUp.PowBlock): stuns every living pac (either team) and ghost within
         /// PowerUpEffects.EFFECT_RADIUS cells of the pac, except that pac, for POW_STUN_MS. A stun already running starts
         /// over. Broadcasts a Blast so clients play the boom and shake.
         /// </summary>
@@ -714,7 +723,8 @@ namespace EatMeServer
             var height = Map.GetLength(1);
 
             CollectLiving();
-            var world = new BotWorld { Map = Map, MaxSize = config.PacMaxSize, PerceptionSeed = _LevelSeed, Pacs = _Living, Ghosts = _Ghosts, Flags = _Flags, PowerUps = _PowerUps, WeaponEffects = _WeaponEffects };
+            CollectBotPacs();
+            var world = new BotWorld { Map = Map, MaxSize = config.PacMaxSize, PerceptionSeed = _LevelSeed, Pacs = _BotPacs, Ghosts = _Ghosts, Flags = _Flags, PowerUps = _PowerUps, WeaponEffects = _WeaponEffects };
 
             foreach (var serverPlayer in _Players.Values)
             {
@@ -940,7 +950,7 @@ namespace EatMeServer
                 if (!player.Alive)
                     continue;
 
-                if (player.PowerUpEffect != ePowerUpEffect.None)
+                if (player.PowerUpEffect != ePowerUp.None)
                 {
                     player.PowerUpMs -= elapsedMs;
 
@@ -977,7 +987,7 @@ namespace EatMeServer
 
                     // grabbing a power pill lets go of the enemy flag
                     DropFlag(player);
-                    StartPowerUpEffect(player, ePowerUpEffect.PowerPill);
+                    StartPowerUpEffect(player, ePowerUp.PowerPill);
                     player.MsSinceEaten = 0;
                 }
                 else if (PowerUpEffects.CanEat(player.PowerUpEffect) && IsOwnSpawnCell(player, (x, y)))
@@ -1009,7 +1019,7 @@ namespace EatMeServer
         /// has first, and the same effect only restarts the timer. An effect with a size gain (PacRules.GetEffectSizeGain:
         /// power pill, Melon Belly) adds it (past PacMaxSize if need be) when it starts.
         /// </summary>
-        public void StartPowerUpEffect(Player player, ePowerUpEffect effect)
+        public void StartPowerUpEffect(Player player, ePowerUp effect)
         {
             var config = _Settings.GameConfig;
 
@@ -1055,7 +1065,7 @@ namespace EatMeServer
                     player.Location = new Point2(open.Value.X + CELL_CENTER, open.Value.Y + CELL_CENTER);
             }
 
-            player.PowerUpEffect = ePowerUpEffect.None;
+            player.PowerUpEffect = ePowerUp.None;
             player.PowerUpMs = 0;
         }
 
@@ -1205,9 +1215,38 @@ namespace EatMeServer
 
                 _Living.Add(player);
 
-                if (PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.Twister))
+                if (PowerUpEffects.HasActiveEffect(player, ePowerUp.Pretzel))
                     _Twisters.Add(player);
             }
+        }
+
+        /// <summary>
+        /// Fills _BotPacs with the living pacs and every decoy's stand-in, so bots see a decoy as another copy of its
+        /// owner. Call after CollectLiving.
+        /// </summary>
+        private void CollectBotPacs()
+        {
+            _BotPacs.Clear();
+            _BotPacs.AddRange(_Living);
+
+            foreach (var effect in _WeaponEffects)
+                if (effect.Kind == eWeaponEffect.Decoy && effect.StandIn != null)
+                    _BotPacs.Add(effect.StandIn);
+        }
+
+        /// <summary>
+        /// The stand-in of the decoy a pac has out, or null if it has none. Ghosts chase it instead of the pac.
+        /// </summary>
+        private Player FindDecoyStandIn(Player pac)
+        {
+            if (pac == null)
+                return null;
+
+            foreach (var effect in _WeaponEffects)
+                if (effect.Kind == eWeaponEffect.Decoy && effect.OwnerId == pac.Id && effect.StandIn != null)
+                    return effect.StandIn;
+
+            return null;
         }
 
         /// <summary>
@@ -1228,7 +1267,7 @@ namespace EatMeServer
             player.Alive = false;
             player.RespawnTimer = _Settings.GameConfig.PlayerRespawnTimeMs;
 
-            player.PowerUpEffect = ePowerUpEffect.None;
+            player.PowerUpEffect = ePowerUp.None;
             player.PowerUpMs = 0;
             Broadcast(new GameEventMessage { EventType = cause, ActorId = actorId, TargetId = player.Id, X = player.Location.X, Y = player.Location.Y });
         }
@@ -1325,13 +1364,14 @@ namespace EatMeServer
             ghost.ChaseMs = 0;
             ghost.RestMs = 0;
             ghost.LurkCell = null;
+            ghost.WanderCell = null;
             ghost.TargetHistory.Clear();
         }
 
         /// <summary>
         /// Moves the ghosts and settles ghosts touching pacs. Each ghost goes by its personality (GhostBrain): it picks a
         /// target, and at each cell centre the way toward its goal; some stand still for a while. Every ghost runs from
-        /// any pac within its vision big enough to kill it (the Scaredy from any pac at all), whatever else it is doing.
+        /// any pac within its vision big enough to kill it, whatever else it is doing.
         /// A pac it touches dies, unless the pac is big enough to kill it (GhostKill points).
         /// Dead ghosts come back at a ghost generator after GhostRegenTimeMs.
         /// </summary>
@@ -1372,6 +1412,9 @@ namespace EatMeServer
                 var vision = config.GhostVisionDistance * ghost.Personality.VisionScale;
                 var target = PickGhostTarget(ghost, vision, elapsedMs);
 
+                // a pac with a Cherry Twin decoy out sends the ghosts after the decoy instead
+                target = FindDecoyStandIn(target) ?? target;
+
                 if (ghost.Personality.Behavior == eGhostBehavior.SlowThinker)
                 {
                     if (target != ghost.CurrentTarget || target == null)
@@ -1383,9 +1426,7 @@ namespace EatMeServer
 
                 ghost.CurrentTarget = target;
 
-                var threat = ghost.Personality.Behavior == eGhostBehavior.Scaredy
-                    ? GhostBrain.FindNearestPac(ghost.Location, _Living, vision)
-                    : GhostBrain.FindThreat(ghost.Location, _Living, vision);
+                var threat = GhostBrain.FindThreat(ghost.Location, _Living, vision);
                 var distance = config.GhostSpeed * GetGhostSpeedScale(ghost) * bellScale * PowerUpEffects.GetTwisterSpeedScale(ghost, ghost.Location, _Twisters) * deltaSeconds;
                 eFacing? wanted = null;
 
@@ -1467,8 +1508,14 @@ namespace EatMeServer
                 case eGhostBehavior.Confused:
                     return GhostBrain.IsChaseable(ghost.CurrentTarget, _Living) ? ghost.CurrentTarget : null;
 
-                case eGhostBehavior.Scaredy:
-                    return null;
+                // only goes for pacs close by, and wanders somewhere new once they are gone
+                case eGhostBehavior.Roamer:
+                    var victim = GhostBrain.PickTarget(location, null, _Living, GhostBrain.DIZZY_ATTACK_DISTANCE);
+
+                    if (victim == null && ghost.CurrentTarget != null)
+                        ghost.WanderCell = null;
+
+                    return victim;
 
                 case eGhostBehavior.Sidekick:
                     var leader = GhostBrain.FindLeader(ghost, _Ghosts);
@@ -1584,6 +1631,16 @@ namespace EatMeServer
                     {
                         ghost.CurrentTarget = GhostBrain.PickRandomTarget(ghost.Location, _Living, vision, _Random);
                         goal = ghost.CurrentTarget == null ? null : MazeMovement.GetCell(ghost.CurrentTarget.Location);
+                    }
+                    break;
+
+                case eGhostBehavior.Roamer:
+                    if (target == null)
+                    {
+                        if (ghost.WanderCell == null || ghost.WanderCell == (cx, cy))
+                            ghost.WanderCell = GhostBrain.PickWanderCell(Map, _Random);
+
+                        goal = ghost.WanderCell;
                     }
                     break;
 
@@ -1805,7 +1862,8 @@ namespace EatMeServer
         ///   pac's Gotcha isn't active any more; one holding a ghost stays.
         /// - A banana peel lies where it was dropped until a pac (the owner once it has stepped off) or ghost touches it,
         ///   which is stunned for PowerUpEffects.STUN_MS; the peel is gone.
-        /// - Tetromino blocks are walls until their pac's Block Drop isn't active; then the cells open again.
+        /// - Tetromino blocks go down in each plain open cell a pac with Block Drop leaves, and are walls until its Block
+        ///   Drop isn't active; then the cells open again.
         /// - A pac with Hammer Time has a hammer one cell ahead (the way it is pressing, else the way it faces) that kills
         ///   any enemy pac or ghost it touches (not the invincible) and smashes the wall it is in (never the outer wall).
         /// - A BFG ball flies straight on at GhostSpeed until it touches a pac (the owner once clear) or ghost, or a wall
@@ -1831,6 +1889,7 @@ namespace EatMeServer
             KillGhostsInRange();
             UpdateHolyFlames();
             RemoveTetrisBlocks();
+            UpdateTetrisBlocks();
             UpdateHammers();
             FireSpreadShots(elapsedMs);
 
@@ -1850,6 +1909,7 @@ namespace EatMeServer
                     eWeaponEffect.BfgShot => UpdateBfgShot(effect, deltaSeconds),
                     eWeaponEffect.SpreadShot => UpdateSpreadShot(effect, deltaSeconds),
                     eWeaponEffect.Bomb => UpdateBomb(effect, elapsedMs),
+                    eWeaponEffect.Decoy => UpdateDecoy(effect, deltaSeconds),
                     _ => false,
                 };
 
@@ -1886,7 +1946,7 @@ namespace EatMeServer
                 var effect = _WeaponEffects[i];
 
                 if (effect.Kind != eWeaponEffect.TetrisBlock
-                    || (FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUpEffect.BlockDrop)))
+                    || (FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.Tetromino)))
                     continue;
 
                 var (x, y) = MazeMovement.GetCell(effect.Location);
@@ -1903,13 +1963,63 @@ namespace EatMeServer
         }
 
         /// <summary>
+        /// Puts a Tetromino block in each cell a living pac with Block Drop leaves, if the cell can take one
+        /// (WeaponRules.CanDropBlock) and no living pac or ghost is in it. Paths aren't rebuilt, so things may get stuck
+        /// for a while.
+        /// </summary>
+        private void UpdateTetrisBlocks()
+        {
+            foreach (var serverPlayer in _Players.Values)
+            {
+                var player = serverPlayer.Player;
+
+                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.Tetromino))
+                {
+                    player.BlockDropCell = null;
+                    continue;
+                }
+
+                var cell = MazeMovement.GetCell(player.Location);
+
+                if (player.BlockDropCell is { } left && left != cell && WeaponRules.CanDropBlock(Map[left.X, left.Y]) && !IsOccupied(left))
+                    PlaceTetrisBlock(player, left.X, left.Y);
+
+                player.BlockDropCell = cell;
+            }
+        }
+
+        /// <summary>
+        /// True if a living pac or ghost is in the cell. Call after CollectLiving.
+        /// </summary>
+        private bool IsOccupied((int X, int Y) cell)
+        {
+            foreach (var pac in _Living)
+                if (pac.Alive && MazeMovement.GetCell(pac.Location) == cell)
+                    return true;
+
+            foreach (var ghost in _Ghosts)
+                if (ghost.Alive && MazeMovement.GetCell(ghost.Location) == cell)
+                    return true;
+
+            return false;
+        }
+
+        private void PlaceTetrisBlock(Player player, int x, int y)
+        {
+            Map[x, y] |= eGridDef.Wall | eGridDef.TetrisBlock;
+            _CellChanges.Add(new CellChange((ushort)x, (ushort)y, Map[x, y]));
+            _ChangedWalls.Add((x, y));
+            AddWeaponEffect(eWeaponEffect.TetrisBlock, player, new Point2(x + CELL_CENTER, y + CELL_CENTER), player.Facing);
+        }
+
+        /// <summary>
         /// Gives every living pac with Hammer Time its hammer, one cell ahead the way it is pressing (else the way it
         /// faces), and takes away the hammers of pacs that don't have it any more.
         /// </summary>
         private void UpdateHammers()
         {
             _WeaponEffects.RemoveAll(effect => effect.Kind == eWeaponEffect.Hammer
-                && !(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUpEffect.HammerTime)));
+                && !(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.Hammer)));
 
             var width = Map.GetLength(0);
             var height = Map.GetLength(1);
@@ -1918,7 +2028,7 @@ namespace EatMeServer
             {
                 var player = serverPlayer.Player;
 
-                if (!PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.HammerTime))
+                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.Hammer))
                     continue;
 
                 var facing = MazeMovement.ToFacing(serverPlayer.Input) ?? player.Facing;
@@ -1975,7 +2085,7 @@ namespace EatMeServer
             {
                 var player = serverPlayer.Player;
 
-                if (!PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.SpreadShot) || player.IsStunned)
+                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.SpreadGun) || player.IsStunned)
                     continue;
 
                 player.SpreadShotMs -= elapsedMs;
@@ -2168,13 +2278,13 @@ namespace EatMeServer
         private void UpdateHolyFlames()
         {
             _WeaponEffects.RemoveAll(effect => effect.Kind == eWeaponEffect.HolyFlame
-                && !(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUpEffect.HolyFire)));
+                && !(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.HolyWater)));
 
             foreach (var serverPlayer in _Players.Values)
             {
                 var player = serverPlayer.Player;
 
-                if (!PowerUpEffects.HasActiveEffect(player, ePowerUpEffect.HolyFire))
+                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.HolyWater))
                 {
                     player.HolyFireCell = null;
                     continue;
@@ -2331,7 +2441,7 @@ namespace EatMeServer
                 return !TryReleaseGhost(effect, ghostRadius);
 
             // a ball still flying goes when its pac's Gotcha isn't active any more (ran out, replaced, died or left)
-            if (!(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUpEffect.Gotcha)))
+            if (!(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.PokeBall)))
                 return false;
 
             if (TryCatchGhost(effect, ghostRadius))
@@ -2419,7 +2529,7 @@ namespace EatMeServer
         /// <summary>
         /// The player pressed the action button (ActionMessage): whatever their power up effect does on action. A dead
         /// pac, or one whose effect does nothing on action, ignores it. After a press that does something the button
-        /// does nothing for WeaponRules.ACTION_COOLDOWN_MS (POKE_BALL_COOLDOWN_MS for Gotcha).
+        /// does nothing for WeaponRules.ACTION_COOLDOWN_MS, whatever the effect.
         /// </summary>
         public void HandleAction(Player player)
         {
@@ -2431,7 +2541,7 @@ namespace EatMeServer
             switch (player.PowerUpEffect)
             {
                 // White Sword: a sword the way the pac faces, at most WeaponRules.MAX_SWORDS in flight
-                case ePowerUpEffect.SwordSwing:
+                case ePowerUp.WhiteSword:
                     if (WeaponRules.CanThrowSword(CountWeaponEffects(player.Id, eWeaponEffect.Sword)))
                     {
                         AddWeaponEffect(eWeaponEffect.Sword, player, player.Location, player.Facing);
@@ -2440,41 +2550,45 @@ namespace EatMeServer
                     break;
 
                 // Fire Flower: a fireball the way the pac faces, as many in flight as you like
-                case ePowerUpEffect.FireFlower:
+                case ePowerUp.FireFlower:
                     AddWeaponEffect(eWeaponEffect.Fireball, player, player.Location, player.Facing);
                     acted = true;
                     break;
 
-                case ePowerUpEffect.Warp:
+                case ePowerUp.Pear:
                     acted = Warp(player);
                     break;
 
-                case ePowerUpEffect.BananaPeel:
+                case ePowerUp.Cherry:
+                    acted = DropDecoy(player);
+                    break;
+
+                case ePowerUp.Banana:
                     acted = DropBananaPeel(player);
                     break;
 
-                case ePowerUpEffect.BlockDrop:
-                    acted = DropTetrisBlock(player);
-                    break;
-
-                case ePowerUpEffect.Bomb:
+                case ePowerUp.Bomb:
                     acted = DropBomb(player);
                     break;
 
+                case ePowerUp.BlueShell:
+                    acted = FireBlueShell(player);
+                    break;
+
                 // BFG 9000: a slow ball the way the pac faces
-                case ePowerUpEffect.Bfg:
+                case ePowerUp.BFG:
                     AddWeaponEffect(eWeaponEffect.BfgShot, player, player.Location, player.Facing);
                     acted = true;
                     break;
 
                 // POW block: a stun round the pac each press
-                case ePowerUpEffect.Pow:
+                case ePowerUp.PowBlock:
                     PowStun(player);
                     acted = true;
                     break;
 
                 // Gotcha: a poke ball that seeks the nearest ghost, as many in flight as you like
-                case ePowerUpEffect.Gotcha:
+                case ePowerUp.PokeBall:
                     AddWeaponEffect(eWeaponEffect.PokeBall, player, player.Location, player.Facing);
                     acted = true;
                     break;
@@ -2484,7 +2598,7 @@ namespace EatMeServer
             }
 
             if (acted)
-                player.ActionCooldownMs = player.PowerUpEffect == ePowerUpEffect.Gotcha ? WeaponRules.POKE_BALL_COOLDOWN_MS : WeaponRules.ACTION_COOLDOWN_MS;
+                player.ActionCooldownMs = WeaponRules.ACTION_COOLDOWN_MS;
         }
 
         /// <summary>
@@ -2510,6 +2624,77 @@ namespace EatMeServer
 
             player.Location = new Point2(cell.Value.X + CELL_CENTER, cell.Value.Y + CELL_CENTER);
             return true;
+        }
+
+        /// <summary>
+        /// Cherry Twin: drops a decoy twin where the pac is, heading back the way it came (WeaponRules.GetDecoyFacing),
+        /// unless it has WeaponRules.MAX_DECOYS out already. Returns true if it did.
+        /// </summary>
+        public bool DropDecoy(Player player)
+        {
+            if (!WeaponRules.CanDropDecoy(CountWeaponEffects(player.Id, eWeaponEffect.Decoy)))
+                return false;
+
+            var facing = WeaponRules.GetDecoyFacing(player.Facing);
+            var decoy = AddWeaponEffect(eWeaponEffect.Decoy, player, player.Location, facing);
+            decoy.Size = player.Size;
+            decoy.StandIn = WeaponRules.MakeDecoyStandIn(player, player.Location, facing);
+            return true;
+        }
+
+        /// <summary>
+        /// Moves a decoy like a wandering pac at its owner's speed (blocked where the owner is), keeping its stand-in on
+        /// it, and pops it (a DecoyPopped event, nobody hurt) when a living enemy pac or ghost that isn't stunned
+        /// touches it. It is gone once its owner's Cherry Twin isn't active (ran out, replaced, died or left).
+        /// </summary>
+        private bool UpdateDecoy(WeaponEffect effect, float deltaSeconds)
+        {
+            var owner = FindPlayer(effect.OwnerId);
+
+            if (owner == null || !owner.Alive || !PowerUpEffects.HasActiveEffect(owner, ePowerUp.Cherry))
+                return false;
+
+            var config = _Settings.GameConfig;
+            var blocked = MazeMovement.GetPacBlocked(owner.Team);
+            var distance = PacRules.GetSpeed(config.PacSpeed, owner.Size, config.PacMaxSize) * deltaSeconds;
+            eFacing? wanted = null;
+
+            if (MazeMovement.GetDistanceToCentre(effect.Location, effect.Facing) <= distance)
+            {
+                var (cx, cy) = MazeMovement.GetNextCentreCell(effect.Location, effect.Facing, Map.GetLength(0), Map.GetLength(1));
+                wanted = PacBrain.ChooseWanderDirection(Map, cx, cy, effect.Facing, _Random, false, blocked);
+            }
+
+            MazeMovement.Move(Map, effect, wanted, distance, canWarp: true, blocked: blocked);
+            effect.Size = owner.Size;
+            effect.StandIn.Location = effect.Location;
+            effect.StandIn.Facing = effect.Facing;
+            effect.StandIn.Size = owner.Size;
+            effect.StandIn.Team = owner.Team;
+
+            if (!IsDecoyTouched(effect))
+                return true;
+
+            Broadcast(new GameEventMessage { EventType = eGameEvent.DecoyPopped, ActorId = effect.OwnerId, X = effect.Location.X, Y = effect.Location.Y, Team = effect.Team });
+            return false;
+        }
+
+        /// <summary>
+        /// True if a living enemy pac or ghost that isn't stunned touches a decoy.
+        /// </summary>
+        private bool IsDecoyTouched(WeaponEffect effect)
+        {
+            foreach (var pac in _Living)
+                if (pac.Alive && pac.Team != effect.Team && !pac.IsStunned && PacRules.IsTouchingPac(effect.Location, effect.Size, pac.Location, pac.Size))
+                    return true;
+
+            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+
+            foreach (var ghost in _Ghosts)
+                if (ghost.Alive && !ghost.IsStunned && PacRules.IsTouchingGhost(effect.Location, effect.Size, ghost.Location, ghostRadius))
+                    return true;
+
+            return false;
         }
 
         /// <summary>
@@ -2544,169 +2729,50 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Block Drop: fills the cell behind the pac with a Tetromino block, a wall until the pac's Block Drop ends, if the
-        /// cell can take one (WeaponRules.CanDropBlock). Paths aren't rebuilt, so things may get stuck for a while.
-        /// Returns true if it did.
+        /// Blue Shell: fires the pac's one shell, which seeks the enemy flag carrier or else the enemy with the highest
+        /// score (WeaponRules.PickBlueShellTarget). Returns false if the pac has fired it already.
         /// </summary>
-        public bool DropTetrisBlock(Player player)
+        public bool FireBlueShell(Player player)
         {
-            var (px, py) = MazeMovement.GetCell(player.Location);
-            var (x, y) = WeaponRules.GetBehindCell(px, py, player.Facing, Map.GetLength(0), Map.GetLength(1));
-
-            if (!WeaponRules.CanDropBlock(Map[x, y]))
+            if (player.BlueShellFired)
                 return false;
 
-            Map[x, y] |= eGridDef.Wall | eGridDef.TetrisBlock;
-            _CellChanges.Add(new CellChange((ushort)x, (ushort)y, Map[x, y]));
-            _ChangedWalls.Add((x, y));
-            AddWeaponEffect(eWeaponEffect.TetrisBlock, player, new Point2(x + CELL_CENTER, y + CELL_CENTER), player.Facing);
+            AddWeaponEffect(eWeaponEffect.BlueShell, player, player.Location, player.Facing);
+            player.BlueShellFired = true;
             return true;
         }
 
         /// <summary>
-        /// What eating a power up does to the pac that ate it, by item. An item with an effect starts it with
-        /// StartPowerUpEffect, which replaces any effect the pac has; instant items leave the effect alone.
+        /// What eating a power up does to the pac that ate it: starts the item's effect with StartPowerUpEffect, which
+        /// replaces any effect the pac has, plus whatever extra the item does.
         /// </summary>
         public void ApplyPowerUp(Player player, ePowerUp item)
         {
+            StartPowerUpEffect(player, item);
+
             switch (item)
             {
-                case ePowerUp.Cherry:
-                    StartPowerUpEffect(player, ePowerUpEffect.SugarRush);
-                    break;
-
-                case ePowerUp.Strawberry:
-                    StartPowerUpEffect(player, ePowerUpEffect.SweetTooth);
-                    break;
-
-                case ePowerUp.Orange:
-                    StartPowerUpEffect(player, ePowerUpEffect.VitaminC);
-                    break;
-
-                case ePowerUp.Apple:
-                    StartPowerUpEffect(player, ePowerUpEffect.DoctorAway);
-                    break;
-
-                case ePowerUp.Melon:
-                    StartPowerUpEffect(player, ePowerUpEffect.MelonBelly);
-                    break;
-
-                case ePowerUp.Galaxian:
-                    StartPowerUpEffect(player, ePowerUpEffect.RocketScience);
-                    break;
-
-                case ePowerUp.Bell:
-                    StartPowerUpEffect(player, ePowerUpEffect.DinnerBell);
-                    break;
-
-                case ePowerUp.Key:
-                    StartPowerUpEffect(player, ePowerUpEffect.Lockdown);
-                    break;
-
-                case ePowerUp.PowBlock:
-                    StartPowerUpEffect(player, ePowerUpEffect.Pow);
-                    break;
-
-                case ePowerUp.Pretzel:
-                    StartPowerUpEffect(player, ePowerUpEffect.Twister);
-                    break;
-
-                case ePowerUp.Starman:
-                    StartPowerUpEffect(player, ePowerUpEffect.Invincible);
-                    break;
-
-                case ePowerUp.PowerPill:
-                    StartPowerUpEffect(player, ePowerUpEffect.PowerPill);
-                    break;
-
                 // Bomb: one bomb to drop with the action button, a new one with every Bomb eaten
                 case ePowerUp.Bomb:
-                    StartPowerUpEffect(player, ePowerUpEffect.Bomb);
                     player.BombDropped = false;
                     break;
 
-                case ePowerUp.Reinforcements:
-                    StartPowerUpEffect(player, ePowerUpEffect.Reinforcements);
-                    break;
-
-                case ePowerUp.SuperLeaf:
-                    StartPowerUpEffect(player, ePowerUpEffect.RaccoonTail);
-                    break;
-
-                case ePowerUp.WhiteSword:
-                    StartPowerUpEffect(player, ePowerUpEffect.SwordSwing);
-                    break;
-
-                case ePowerUp.HolyWater:
-                    StartPowerUpEffect(player, ePowerUpEffect.HolyFire);
-                    break;
-
-                case ePowerUp.FireFlower:
-                    StartPowerUpEffect(player, ePowerUpEffect.FireFlower);
-                    break;
-
-                case ePowerUp.Pear:
-                    StartPowerUpEffect(player, ePowerUpEffect.Warp);
-                    break;
-
-                case ePowerUp.Banana:
-                    StartPowerUpEffect(player, ePowerUpEffect.BananaPeel);
-                    break;
-
-                case ePowerUp.Tetromino:
-                    StartPowerUpEffect(player, ePowerUpEffect.BlockDrop);
-                    break;
-
-                case ePowerUp.Hammer:
-                    StartPowerUpEffect(player, ePowerUpEffect.HammerTime);
-                    break;
-
-                case ePowerUp.BFG:
-                    StartPowerUpEffect(player, ePowerUpEffect.Bfg);
-                    break;
-
-                case ePowerUp.Mushroom:
-                    StartPowerUpEffect(player, ePowerUpEffect.SuperSize);
-                    break;
-
-                case ePowerUp.EnergyTank:
-                    StartPowerUpEffect(player, ePowerUpEffect.EnergyTank);
-                    break;
-
-                case ePowerUp.ScrewAttack:
-                    StartPowerUpEffect(player, ePowerUpEffect.ScrewAttack);
-                    break;
-
-                case ePowerUp.PepperShaker:
-                    StartPowerUpEffect(player, ePowerUpEffect.Pepper);
-                    break;
-
-                case ePowerUp.SpreadGun:
-                    StartPowerUpEffect(player, ePowerUpEffect.SpreadShot);
+                // Blue Shell: one shell to fire with the action button, a new one with every Blue Shell eaten
+                case ePowerUp.BlueShell:
+                    player.BlueShellFired = false;
                     break;
 
                 // Force Field: the team's flags come home (rescues), then stay sealed while it works
                 case ePowerUp.Triforce:
                     RecallFlags(player);
-                    StartPowerUpEffect(player, ePowerUpEffect.ForceField);
                     SealFlags();
                     break;
 
                 // Full Heal: up to PacMaxSize if smaller (after the old effect has ended), no longer hungry, and never
                 // starving while it lasts; the size stays when it ends
                 case ePowerUp.HeartContainer:
-                    StartPowerUpEffect(player, ePowerUpEffect.FullHeal);
                     player.Size = Math.Max(player.Size, _Settings.GameConfig.PacMaxSize);
                     player.MsSinceEaten = 0;
-                    break;
-
-                case ePowerUp.PokeBall:
-                    StartPowerUpEffect(player, ePowerUpEffect.Gotcha);
-                    break;
-
-                // instant: it doesn't touch the pac's buff
-                case ePowerUp.BlueShell:
-                    AddWeaponEffect(eWeaponEffect.BlueShell, player, player.Location, player.Facing);
                     break;
             }
         }
@@ -3003,12 +3069,10 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Gives points to the player and to their team, multiplied by the player's effect's PowerUpEffects.GetScoreScale.
+        /// Gives points to the player and to their team.
         /// </summary>
         private void AddScore(Player player, int points)
         {
-            points *= PowerUpEffects.GetScoreScale(player.PowerUpEffect);
-
             player.Score += points;
             player.TotalScore += points;
 
@@ -3333,6 +3397,7 @@ namespace EatMeServer
                 Id = _NextBotId++,
                 Name = BotNameManager.PickName(_BotNames, namesInUse, _BotRandom),
                 Team = team == eTeam.Computer ? TeamBalancer.AssignTeam(eTeamPreference.Either, redCount, blueCount) : team,
+                PacShape = PacShapes.BOT,
             };
             Respawn(bot);
 
@@ -3405,7 +3470,7 @@ namespace EatMeServer
             player.RespawnTimer = 0;
             player.StunMs = 0;
             player.MsSinceEaten = 0;
-            player.PowerUpEffect = ePowerUpEffect.None;
+            player.PowerUpEffect = ePowerUp.None;
             player.PowerUpMs = 0;
             player.Eating = false;
             player.LastCellX = -1;
@@ -3413,11 +3478,26 @@ namespace EatMeServer
             player.ActionCooldownMs = 0;
             player.SpreadShotMs = 0;
             player.HolyFireCell = null;
+            player.BlockDropCell = null;
         }
 
         private LevelStartMessage BuildLevelStart()
         {
             return new LevelStartMessage { Level = CurrentLevel.Level, WallColor = CurrentLevel.WallColor, WallFillColor = CurrentLevel.WallFillColor, BackgroundColor = CurrentLevel.BackgroundColor };
+        }
+
+        /// <summary>
+        /// The player picked another pac shape (PacShapeMessage): keeps it (a bad one is the default) and, if it
+        /// changed, tells everyone with a PlayerJoinedMessage, which clients apply as an update.
+        /// </summary>
+        public void ChangePacShape(Player player, ePacShape shape)
+        {
+            shape = PacShapes.Clamp(shape);
+            if (player.PacShape == shape)
+                return;
+
+            player.PacShape = shape;
+            Broadcast(BuildPlayerJoined(player));
         }
 
         private static PlayerJoinedMessage BuildPlayerJoined(Player player)

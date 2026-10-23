@@ -40,7 +40,7 @@ namespace EatMeClient
         /// Draws the control filling bounds (border included). fill is the share of the effect's time left, 0 to 1, and
         /// size is the player's pac size and hunger how close it is to starving, 0 to 1; stunned lights up "Stunned!".
         /// </summary>
-        public void Draw(SpriteBatch spriteBatch, Rectangle bounds, ePowerUpEffect effect, float fill, int size, float hunger, bool stunned)
+        public void Draw(SpriteBatch spriteBatch, Rectangle bounds, ePowerUp effect, float fill, int size, float hunger, bool stunned)
         {
             if (_pixel == null)
                 _pixel = TextureHelper.GetPixel(spriteBatch.GraphicsDevice);
@@ -52,7 +52,7 @@ namespace EatMeClient
             TextureHelper.FillRounded(spriteBatch, _pixel, inner, MiniMap.CORNER_RADIUS - border, Color.Black);
 
             var label = PowerUpEffects.GetLabel(effect);
-            var labelColor = effect == ePowerUpEffect.None ? ClientColors.COLOR_PAC_LIGHT_GREY : ClientColors.COLOR_PAC_WHITE;
+            var labelColor = effect == ePowerUp.None ? ClientColors.COLOR_PAC_LIGHT_GREY : ClientColors.COLOR_PAC_WHITE;
             var textX = inner.X + PADDING_PIXELS;
             spriteBatch.DrawString(_font, label, new Vector2(textX, inner.Y + PADDING_PIXELS), labelColor);
 
@@ -62,7 +62,7 @@ namespace EatMeClient
             // the yellow part shrinks towards the left as the effect runs out
             var fillWidth = (int)Math.Round(meter.Width * Math.Clamp(fill, 0f, 1f));
 
-            if (effect != ePowerUpEffect.None && fillWidth > 0)
+            if (effect != ePowerUp.None && fillWidth > 0)
                 spriteBatch.Draw(_pixel, new Rectangle(meter.X, meter.Y, fillWidth, meter.Height), ClientColors.COLOR_PAC_YELLOW);
 
             var sizeText = $"{Const.STRING_SIZE} {size}";

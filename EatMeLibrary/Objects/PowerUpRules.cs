@@ -1,6 +1,7 @@
 using FastG;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace EatMeLibrary
 {
@@ -20,9 +21,14 @@ namespace EatMeLibrary
         public const eGridDef BLOCKED = eGridDef.Wall;
 
         /// <summary>
+        /// Every item, in enum order.
+        /// </summary>
+        public static readonly IReadOnlyList<ePowerUp> ALL = Enum.GetValues<ePowerUp>().Where(item => item != ePowerUp.None).ToList().AsReadOnly();
+
+        /// <summary>
         /// The items that can appear on the board: every item but the Power Pill, since every maze has power pills.
         /// </summary>
-        public const ePowerUp SPAWNABLE = ePowerUp.Any & ~ePowerUp.PowerPill;
+        public static readonly IReadOnlyList<ePowerUp> SPAWNABLE = ALL.Where(item => item != ePowerUp.PowerPill).ToList().AsReadOnly();
 
         /// <summary>
         /// How far, in cells, a power up's sprite bobs above and below its position.
@@ -90,21 +96,11 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// One item picked at random from a set of items (ePowerUp.Any for every item), or None if the set is empty.
+        /// One item picked at random from a list of items (ALL for every item), or None if the list is empty.
         /// </summary>
-        public static ePowerUp PickItem(ePowerUp items, Random random)
+        public static ePowerUp PickItem(IReadOnlyList<ePowerUp> items, Random random)
         {
-            var choices = new List<ePowerUp>();
-
-            for (var bit = 0; bit < 32; bit++)
-            {
-                var item = (ePowerUp)(1u << bit);
-
-                if ((items & item) != 0)
-                    choices.Add(item);
-            }
-
-            return choices.Count == 0 ? ePowerUp.None : choices[random.Next(choices.Count)];
+            return items.Count == 0 ? ePowerUp.None : items[random.Next(items.Count)];
         }
 
         /// <summary>

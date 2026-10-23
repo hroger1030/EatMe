@@ -35,7 +35,7 @@ namespace EatMeTests
 
         private static Player MakePac(int id, float x, float y, float size = 50f, bool hasFlag = false, bool powered = false)
         {
-            return new Player { Id = id, Location = new Point2(x, y), Alive = true, HasFlag = hasFlag, Size = size, PowerUpEffect = powered ? ePowerUpEffect.PowerPill : ePowerUpEffect.None, PowerUpMs = powered ? 1000 : 0 };
+            return new Player { Id = id, Location = new Point2(x, y), Alive = true, HasFlag = hasFlag, Size = size, PowerUpEffect = powered ? ePowerUp.PowerPill : ePowerUp.None, PowerUpMs = powered ? 1000 : 0 };
         }
 
         private static Ghost MakeGhost(int id, float x, float y, eGhostBehavior behavior = eGhostBehavior.Normal)
@@ -354,13 +354,24 @@ namespace EatMeTests
         }
 
         [Test]
-        public void FindNearestPac_IncludesPoweredPacs()
+        public void PickWanderCell_PicksOnlyCellsAGhostCanStandIn()
         {
-            var powered = MakePac(1, 2f, 0f, powered: true);
-            var other = MakePac(2, 5f, 0f);
+            var map = MazeMovementTests.MakeMap(
+            [
+                "#####",
+                "..#.#",
+                "#...#",
+                "#####",
+            ]);
+            map[3, 1] |= eGridDef.SpawnPointRed;
+            var random = new Random(3);
+            var picked = new HashSet<(int X, int Y)>();
 
-            Assert.That(GhostBrain.FindNearestPac(ORIGIN, [other, powered], VISION), Is.SameAs(powered));
-            Assert.That(GhostBrain.FindNearestPac(ORIGIN, [MakePac(3, 20f, 0f)], VISION), Is.Null);
+            for (var i = 0; i < 200; i++)
+                picked.Add(GhostBrain.PickWanderCell(map, random).Value);
+
+            Assert.That(picked, Is.EquivalentTo(new[] { (1, 1), (1, 2), (2, 2), (3, 2) }), "no wall, warp cell or spawn tile");
+            Assert.That(GhostBrain.PickWanderCell(MazeMovementTests.MakeMap(["##", "##"]), random), Is.Null);
         }
 
         [Test]
@@ -623,14 +634,14 @@ namespace EatMeTests
             var ghost = server.Ghosts[0];
             red.Location = ghost.Location;
             red.Size = config.PacMaxSize;
-            red.PowerUpEffect = ePowerUpEffect.PowerPill;
+            red.PowerUpEffect = ePowerUp.PowerPill;
             red.PowerUpMs = config.PowerUpDurationMs;
 
             server.UpdateGhosts(0f, 0);
             Assert.That(ghost.GrudgeId, Is.EqualTo(red.Id));
 
             server.UpdateGhosts(0f, config.GhostRegenTimeMs);
-            red.PowerUpEffect = ePowerUpEffect.None;
+            red.PowerUpEffect = ePowerUp.None;
             red.PowerUpMs = 0;
             red.Size = PacRules.START_SIZE;
             red.Location = ghost.Location;
@@ -638,6 +649,30 @@ namespace EatMeTests
 
             Assert.That(red.Alive, Is.False);
             Assert.That(ghost.GrudgeId, Is.EqualTo(Ghost.NO_GRUDGE));
+        }
+
+        [Test]
+        public void Roamer_ChasesOnlyPacsCloseByAndWandersSomewhereNewAfter()
+        {
+            var server = MakeServer(1);
+            var red = Join(server, 1);
+            var ghost = server.Ghosts[0];
+            ghost.Personality = GhostPersonalities.ALL.First(p => p.Behavior == eGhostBehavior.Roamer);
+
+            red.Location = new Point2(ghost.Location.X + GhostBrain.DIZZY_ATTACK_DISTANCE + 2f, ghost.Location.Y);
+            server.UpdateGhosts(0f, 0);
+            Assert.That(ghost.CurrentTarget, Is.Null, "too far to bother with");
+
+            red.Location = new Point2(ghost.Location.X + GhostBrain.DIZZY_ATTACK_DISTANCE - 2f, ghost.Location.Y);
+            server.UpdateGhosts(0f, 0);
+            Assert.That(ghost.CurrentTarget, Is.SameAs(red));
+
+            // the outer wall's corner is never picked, so any new pick differs from it
+            ghost.WanderCell = (0, 0);
+            red.Location = new Point2(ghost.Location.X + GhostBrain.DIZZY_ATTACK_DISTANCE + 2f, ghost.Location.Y);
+            server.UpdateGhosts(0f, 0);
+            Assert.That(ghost.CurrentTarget, Is.Null);
+            Assert.That(ghost.WanderCell, Is.Not.EqualTo(((int, int)?)(0, 0)), "lost its target, so it heads somewhere new");
         }
 
         [Test]

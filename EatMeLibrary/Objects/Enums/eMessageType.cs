@@ -13,6 +13,7 @@ namespace EatMeLibrary
         ServerPong = 5,
         Action = 6,
         PlayerListRequest = 7,
+        PacShape = 8,
 
         // server to client
         Welcome = 20,

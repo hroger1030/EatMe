@@ -6,11 +6,11 @@ namespace EatMeTests
     {
         private static IEnumerable<ePowerUp> GetItems()
         {
-            return Enum.GetValues<ePowerUp>().Where(item => item != ePowerUp.None && item != ePowerUp.Any);
+            return PowerUpRules.ALL;
         }
 
         [Test]
-        public void GetCellIndex_FollowsBitOrder()
+        public void GetCellIndex_FollowsEnumOrder()
         {
             Assert.That(PowerUpSprites.GetCellIndex(ePowerUp.Cherry), Is.EqualTo(0));
             Assert.That(PowerUpSprites.GetCellIndex(ePowerUp.Key), Is.EqualTo(7));
@@ -42,11 +42,11 @@ namespace EatMeTests
         }
 
         [Test]
-        public void GetCellIndex_NotExactlyOneItem_Throws()
+        public void GetCellIndex_NotAnItem_Throws()
         {
             Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex(ePowerUp.None));
-            Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex(ePowerUp.Any));
-            Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex(ePowerUp.Cherry | ePowerUp.Bell));
+            Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex((ePowerUp)33));
+            Assert.Throws<ArgumentException>(() => PowerUpSprites.GetCellIndex((ePowerUp)255));
         }
     }
 }

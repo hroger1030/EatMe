@@ -118,17 +118,15 @@ namespace EatMeTests
         }
 
         [Test]
-        public void Any_IsEveryPowerUp()
+        public void All_IsEveryPowerUp_NumberedFromOne()
         {
-            var all = ePowerUp.None;
+            var items = PowerUpRules.ALL;
 
-            foreach (var item in Enum.GetValues<ePowerUp>())
-            {
-                if (item != ePowerUp.Any)
-                    all |= item;
-            }
+            Assert.That(items, Does.Not.Contain(ePowerUp.None));
+            Assert.That(items, Has.Count.EqualTo(Enum.GetValues<ePowerUp>().Length - 1));
 
-            Assert.That(all, Is.EqualTo(ePowerUp.Any));
+            for (var i = 0; i < items.Count; i++)
+                Assert.That((int)items[i], Is.EqualTo(i + 1));
         }
     }
 }

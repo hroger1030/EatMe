@@ -12,41 +12,42 @@ namespace EatMeLibrary
         /// <summary>
         /// The name shown on the player state panel for an effect, "No power up" when there isn't one.
         /// </summary>
-        public static string GetName(ePowerUpEffect effect)
+        public static string GetName(ePowerUp effect)
         {
             return effect switch
             {
-                ePowerUpEffect.PowerPill => Const.STRING_POWER_PILL,
-                ePowerUpEffect.SugarRush => Const.STRING_SUGAR_RUSH,
-                ePowerUpEffect.SweetTooth => Const.STRING_SWEET_TOOTH,
-                ePowerUpEffect.VitaminC => Const.STRING_VITAMIN_C,
-                ePowerUpEffect.DoctorAway => Const.STRING_DOCTOR_AWAY,
-                ePowerUpEffect.MelonBelly => Const.STRING_MELON_BELLY,
-                ePowerUpEffect.RocketScience => Const.STRING_SCIENCE,
-                ePowerUpEffect.DinnerBell => Const.STRING_DINNER_BELL,
-                ePowerUpEffect.Lockdown => Const.STRING_LOCKDOWN,
-                ePowerUpEffect.Twister => Const.STRING_TWISTER,
-                ePowerUpEffect.Invincible => Const.STRING_INVINCIBLE,
-                ePowerUpEffect.Reinforcements => Const.STRING_REINFORCEMENTS,
-                ePowerUpEffect.Bomb => Const.STRING_BOMB,
-                ePowerUpEffect.RaccoonTail => Const.STRING_RACCOON_TAIL,
-                ePowerUpEffect.SwordSwing => Const.STRING_SWORD_SWING,
-                ePowerUpEffect.HolyFire => Const.STRING_HOLY_FIRE,
-                ePowerUpEffect.FireFlower => Const.STRING_FIREBALL,
-                ePowerUpEffect.Warp => Const.STRING_WARP,
-                ePowerUpEffect.BananaPeel => Const.STRING_BANANA_PEEL,
-                ePowerUpEffect.BlockDrop => Const.STRING_BLOCK_DROP,
-                ePowerUpEffect.HammerTime => Const.STRING_HAMMER_TIME,
-                ePowerUpEffect.Bfg => Const.STRING_BFG,
-                ePowerUpEffect.SuperSize => Const.STRING_SUPER_SIZE,
-                ePowerUpEffect.EnergyTank => Const.STRING_ENERGY_TANK,
-                ePowerUpEffect.ScrewAttack => Const.STRING_SCREW_ATTACK,
-                ePowerUpEffect.Pepper => Const.STRING_PEPPER,
-                ePowerUpEffect.SpreadShot => Const.STRING_SPREAD_SHOT,
-                ePowerUpEffect.ForceField => Const.STRING_FORCE_FIELD,
-                ePowerUpEffect.Pow => Const.STRING_POW,
-                ePowerUpEffect.FullHeal => Const.STRING_FULL_HEAL,
-                ePowerUpEffect.Gotcha => Const.STRING_GOTCHA,
+                ePowerUp.PowerPill => Const.STRING_POWER_PILL,
+                ePowerUp.Cherry => Const.STRING_CHERRY_TWIN,
+                ePowerUp.Strawberry => Const.STRING_SWEET_TOOTH,
+                ePowerUp.Orange => Const.STRING_VITAMIN_C,
+                ePowerUp.Apple => Const.STRING_DOCTOR_AWAY,
+                ePowerUp.Melon => Const.STRING_MELON_BELLY,
+                ePowerUp.Galaxian => Const.STRING_WARP_SPEED,
+                ePowerUp.Bell => Const.STRING_DINNER_BELL,
+                ePowerUp.Key => Const.STRING_LOCKDOWN,
+                ePowerUp.Pretzel => Const.STRING_TWISTER,
+                ePowerUp.Starman => Const.STRING_INVINCIBLE,
+                ePowerUp.Reinforcements => Const.STRING_REINFORCEMENTS,
+                ePowerUp.Bomb => Const.STRING_BOMB,
+                ePowerUp.SuperLeaf => Const.STRING_RACCOON_TAIL,
+                ePowerUp.WhiteSword => Const.STRING_SWORD_SWING,
+                ePowerUp.HolyWater => Const.STRING_HOLY_FIRE,
+                ePowerUp.FireFlower => Const.STRING_FIREBALL,
+                ePowerUp.Pear => Const.STRING_WARP,
+                ePowerUp.Banana => Const.STRING_BANANA_PEEL,
+                ePowerUp.Tetromino => Const.STRING_BLOCK_DROP,
+                ePowerUp.Hammer => Const.STRING_HAMMER_TIME,
+                ePowerUp.BFG => Const.STRING_BFG,
+                ePowerUp.Mushroom => Const.STRING_SUPER_SIZE,
+                ePowerUp.EnergyTank => Const.STRING_ENERGY_TANK,
+                ePowerUp.ScrewAttack => Const.STRING_SCREW_ATTACK,
+                ePowerUp.PepperShaker => Const.STRING_PEPPER,
+                ePowerUp.SpreadGun => Const.STRING_SPREAD_SHOT,
+                ePowerUp.Triforce => Const.STRING_FORCE_FIELD,
+                ePowerUp.PowBlock => Const.STRING_POW,
+                ePowerUp.HeartContainer => Const.STRING_FULL_HEAL,
+                ePowerUp.PokeBall => Const.STRING_GOTCHA,
+                ePowerUp.BlueShell => Const.STRING_BLUE_SHELL,
                 _ => Const.STRING_POWER_UP_NONE,
             };
         }
@@ -55,25 +56,25 @@ namespace EatMeLibrary
         /// True if a pac with this effect passes through enemy pacs and ghosts (no fights, no ghost contact either
         /// way): Raccoon Tail.
         /// </summary>
-        public static bool PassesThrough(ePowerUpEffect effect)
+        public static bool PassesThrough(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.RaccoonTail;
+            return effect == ePowerUp.SuperLeaf;
         }
 
         /// <summary>
         /// True if a pac with this effect moves through walls: Raccoon Tail, and Super Size (which smashes them as it goes).
         /// </summary>
-        public static bool PassesThroughWalls(ePowerUpEffect effect)
+        public static bool PassesThroughWalls(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.RaccoonTail || effect == ePowerUpEffect.SuperSize;
+            return effect == ePowerUp.SuperLeaf || effect == ePowerUp.Mushroom;
         }
 
         /// <summary>
         /// True if a pac with this effect smashes every wall it moves into (never the outer wall) into a dot cell: Super Size.
         /// </summary>
-        public static bool SmashesWalls(ePowerUpEffect effect)
+        public static bool SmashesWalls(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.SuperSize;
+            return effect == ePowerUp.Mushroom;
         }
 
         /// <summary>
@@ -89,11 +90,11 @@ namespace EatMeLibrary
         /// <summary>
         /// The size an effect sets the pac to when it starts (Super Size), or null if it doesn't set one.
         /// </summary>
-        public static float? GetStartSize(ePowerUpEffect effect)
+        public static float? GetStartSize(ePowerUp effect)
         {
             return effect switch
             {
-                ePowerUpEffect.SuperSize => SUPER_SIZE,
+                ePowerUp.Mushroom => SUPER_SIZE,
                 _ => null,
             };
         }
@@ -102,12 +103,12 @@ namespace EatMeLibrary
         /// The size an effect puts the pac back to when it ends (Super Size: PacRules.START_SIZE; Energy Tank: maxSize,
         /// the normal PacMaxSize, if the pac is bigger), or null if it leaves the size alone.
         /// </summary>
-        public static float? GetEndSize(ePowerUpEffect effect, float size, float maxSize)
+        public static float? GetEndSize(ePowerUp effect, float size, float maxSize)
         {
             return effect switch
             {
-                ePowerUpEffect.SuperSize => PacRules.START_SIZE,
-                ePowerUpEffect.EnergyTank => MathF.Min(size, maxSize),
+                ePowerUp.Mushroom => PacRules.START_SIZE,
+                ePowerUp.EnergyTank => MathF.Min(size, maxSize),
                 _ => null,
             };
         }
@@ -116,34 +117,34 @@ namespace EatMeLibrary
         /// The most dots (and the spawn) can grow a pac with this effect: maxSize (PacMaxSize) times
         /// ENERGY_TANK_CAPACITY_SCALE for Energy Tank, otherwise maxSize.
         /// </summary>
-        public static float GetMaxSize(ePowerUpEffect effect, float maxSize)
+        public static float GetMaxSize(ePowerUp effect, float maxSize)
         {
-            return effect == ePowerUpEffect.EnergyTank ? maxSize * ENERGY_TANK_CAPACITY_SCALE : maxSize;
+            return effect == ePowerUp.EnergyTank ? maxSize * ENERGY_TANK_CAPACITY_SCALE : maxSize;
         }
 
         /// <summary>
         /// True if a pac with this effect kills any enemy pac or ghost it touches, and a ghost touching it doesn't kill
         /// it: Invincible, Screw Attack and Super Size. Invincible beats the other two, and weapons still kill them.
         /// </summary>
-        public static bool KillsOnContact(ePowerUpEffect effect)
+        public static bool KillsOnContact(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.Invincible || effect == ePowerUpEffect.ScrewAttack || effect == ePowerUpEffect.SuperSize;
+            return effect == ePowerUp.Starman || effect == ePowerUp.ScrewAttack || effect == ePowerUp.Mushroom;
         }
 
         /// <summary>
         /// True if a pac with this effect can eat dots and power pills: every effect but Screw Attack.
         /// </summary>
-        public static bool CanEat(ePowerUpEffect effect)
+        public static bool CanEat(ePowerUp effect)
         {
-            return effect != ePowerUpEffect.ScrewAttack;
+            return effect != ePowerUp.ScrewAttack;
         }
 
         /// <summary>
         /// True if a pac with this effect can pick up an enemy flag: only with no effect at all (a power pill counts as one).
         /// </summary>
-        public static bool CanPickUpFlag(ePowerUpEffect effect)
+        public static bool CanPickUpFlag(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.None;
+            return effect == ePowerUp.None;
         }
 
         /// <summary>
@@ -152,15 +153,15 @@ namespace EatMeLibrary
         /// </summary>
         public static bool SealsFlags(Player pac)
         {
-            return HasActiveEffect(pac, ePowerUpEffect.ForceField);
+            return HasActiveEffect(pac, ePowerUp.Triforce);
         }
 
         /// <summary>
         /// True if a ghost touching a pac with this effect is stunned (STUN_MS) instead of killing it: Pepper.
         /// </summary>
-        public static bool StunsGhosts(ePowerUpEffect effect)
+        public static bool StunsGhosts(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.Pepper;
+            return effect == ePowerUp.PepperShaker;
         }
 
         /// <summary>
@@ -177,9 +178,9 @@ namespace EatMeLibrary
         /// <summary>
         /// True if a pac with this effect flashes white (IsFireFlashWhite): Fireball and Screw Attack.
         /// </summary>
-        public static bool FlashesWhite(ePowerUpEffect effect)
+        public static bool FlashesWhite(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.FireFlower || effect == ePowerUpEffect.ScrewAttack;
+            return effect == ePowerUp.FireFlower || effect == ePowerUp.ScrewAttack;
         }
 
         /// <summary>
@@ -271,7 +272,7 @@ namespace EatMeLibrary
         /// <summary>
         /// True if the pac has this effect working and is alive, so the effect counts on the rest of the level.
         /// </summary>
-        public static bool HasActiveEffect(Player pac, ePowerUpEffect effect)
+        public static bool HasActiveEffect(Player pac, ePowerUp effect)
         {
             return pac.Alive && pac.PowerUpEffect == effect && pac.PowerUpMs > 0;
         }
@@ -284,7 +285,7 @@ namespace EatMeLibrary
         {
             foreach (var pac in pacs)
             {
-                if (HasActiveEffect(pac, ePowerUpEffect.DinnerBell))
+                if (HasActiveEffect(pac, ePowerUp.Bell))
                     return DINNER_BELL_GHOST_SPEED_SCALE;
             }
 
@@ -299,7 +300,7 @@ namespace EatMeLibrary
         {
             foreach (var pac in pacs)
             {
-                if (pac != self && HasActiveEffect(pac, ePowerUpEffect.Twister) && IsInEffectRange(pac.Location, position))
+                if (pac != self && HasActiveEffect(pac, ePowerUp.Pretzel) && IsInEffectRange(pac.Location, position))
                     return TWISTER_SPEED_SCALE;
             }
 
@@ -312,47 +313,33 @@ namespace EatMeLibrary
         /// </summary>
         public static bool LocksSpawn(Player pac, eTeam team)
         {
-            return pac.Team != team && HasActiveEffect(pac, ePowerUpEffect.Lockdown);
+            return pac.Team != team && HasActiveEffect(pac, ePowerUp.Key);
         }
-
-        /// <summary>
-        /// Points scored with Rocket Science (galaxian) are worth this many times as much.
-        /// </summary>
-        public const int ROCKET_SCIENCE_SCORE_SCALE = 2;
 
         /// <summary>
         /// True if a pac with this effect kills every ghost within EFFECT_RADIUS each tick while it lasts. Doctor Away.
         /// </summary>
-        public static bool KillsGhostsInRange(ePowerUpEffect effect)
+        public static bool KillsGhostsInRange(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.DoctorAway;
+            return effect == ePowerUp.Apple;
         }
 
         /// <summary>
         /// True if a pac with this effect never gets hungry: its time since eating stays at 0. Vitamin C, Melon Belly,
         /// Energy Tank and Full Heal.
         /// </summary>
-        public static bool PreventsStarving(ePowerUpEffect effect)
+        public static bool PreventsStarving(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank
-                || effect == ePowerUpEffect.FullHeal;
+            return effect == ePowerUp.Orange || effect == ePowerUp.Melon || effect == ePowerUp.EnergyTank
+                || effect == ePowerUp.HeartContainer;
         }
 
         /// <summary>
-        /// What points scored by a pac with this effect are multiplied by: ROCKET_SCIENCE_SCORE_SCALE for Rocket Science,
-        /// otherwise 1.
+        /// True if a pac with this effect leaves a speed trail (PacTrails): Warp Speed and Invincible.
         /// </summary>
-        public static int GetScoreScale(ePowerUpEffect effect)
+        public static bool HasSpeedTrail(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.RocketScience ? ROCKET_SCIENCE_SCORE_SCALE : 1;
-        }
-
-        /// <summary>
-        /// True if a pac with this effect leaves a speed trail (PacTrails): Sugar Rush and Invincible.
-        /// </summary>
-        public static bool HasSpeedTrail(ePowerUpEffect effect)
-        {
-            return effect == ePowerUpEffect.SugarRush || effect == ePowerUpEffect.Invincible;
+            return effect == ePowerUp.Galaxian || effect == ePowerUp.Starman;
         }
 
         /// <summary>
@@ -376,9 +363,9 @@ namespace EatMeLibrary
         public const int MAX_LABEL_LENGTH = 12;
 
         /// <summary>
-        /// The player state panel's label for an effect: just the effect's name, e.g. "Sugar Rush", or "No power up".
+        /// The player state panel's label for an effect: just the effect's name, e.g. "Cherry Twin", or "No power up".
         /// </summary>
-        public static string GetLabel(ePowerUpEffect effect)
+        public static string GetLabel(ePowerUp effect)
         {
             return GetName(effect);
         }

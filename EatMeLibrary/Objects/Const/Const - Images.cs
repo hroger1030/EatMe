@@ -5,7 +5,8 @@ namespace EatMeLibrary
         // Images
 
         public const string IMAGE_TITLE_BACKGROUND = "Images/title";
-        public const string IMAGE_LOGO = "Images/logo";
+        // Animated title logo, magenta keyed out (LogoSprites)
+        public const string IMAGE_LOGO = "Images/logo (800x200x4)";
         // White triangle pointing right, magenta color-keyed to transparent
         public const string IMAGE_POINTER = "Images/pointer";
         public const string IMAGE_DOT = "Images/dot0";
@@ -23,7 +24,7 @@ namespace EatMeLibrary
         // Ghost sheet: four frames looking right, down, left and up, with a white body the client recolors per ghost (GhostPalette)
         public const string IMAGE_GHOST = "Images/ghost(60x60x4)";
 
-        // Bonus items: one 60x60 cell per ePowerUp flag, in bit order, eight to a row (see PowerUpSprites)
+        // Bonus items: one 60x60 cell per ePowerUp, in enum order, eight to a row (see PowerUpSprites)
         public const string IMAGE_POWER_UP_SHEET = "Images/powerups(60x60x32)";
         // Projectiles and objects power up effects put in the maze, two frames each (WeaponEffectSprites)
         public const string IMAGE_WEAPON_EFFECTS = "Images/WeaponEffects(60x60x22)";

@@ -29,9 +29,9 @@ namespace EatMeLibrary
         public const float MAX_SIZE_SPEED_BONUS = 0.2f;
 
         /// <summary>
-        /// A pac with Sugar Rush (cherry) moves this many times as fast.
+        /// A pac with Warp Speed (galaxian) moves this many times as fast.
         /// </summary>
-        public const float SUGAR_RUSH_SPEED_SCALE = 1.5f;
+        public const float WARP_SPEED_SCALE = 1.5f;
 
         /// <summary>
         /// A pac with Sweet Tooth (strawberry) gets this many times as much growth from each dot.
@@ -106,21 +106,21 @@ namespace EatMeLibrary
         /// <summary>
         /// What a power up effect multiplies a dot's growth (DotSizeGain) by: SWEET_TOOTH_DOT_GAIN_SCALE for Sweet Tooth, otherwise 1.
         /// </summary>
-        public static float GetDotGainScale(ePowerUpEffect effect)
+        public static float GetDotGainScale(ePowerUp effect)
         {
-            return effect == ePowerUpEffect.SweetTooth ? SWEET_TOOTH_DOT_GAIN_SCALE : 1f;
+            return effect == ePowerUp.Strawberry ? SWEET_TOOTH_DOT_GAIN_SCALE : 1f;
         }
 
         /// <summary>
         /// Size an effect adds when it starts and takes away when it ends: powerPillSizeGain for a power pill,
         /// MELON_BELLY_SIZE_GAIN for Melon Belly, otherwise 0.
         /// </summary>
-        public static float GetEffectSizeGain(ePowerUpEffect effect, float powerPillSizeGain)
+        public static float GetEffectSizeGain(ePowerUp effect, float powerPillSizeGain)
         {
             return effect switch
             {
-                ePowerUpEffect.PowerPill => powerPillSizeGain,
-                ePowerUpEffect.MelonBelly => MELON_BELLY_SIZE_GAIN,
+                ePowerUp.PowerPill => powerPillSizeGain,
+                ePowerUp.Melon => MELON_BELLY_SIZE_GAIN,
                 _ => 0f,
             };
         }
@@ -175,16 +175,16 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// What a power up effect multiplies a pac's speed (GetSpeed) by: SUGAR_RUSH_SPEED_SCALE for Sugar Rush,
+        /// What a power up effect multiplies a pac's speed (GetSpeed) by: WARP_SPEED_SCALE for Warp Speed,
         /// INVINCIBLE_SPEED_SCALE for Invincible, ENERGY_TANK_SPEED_SCALE for Energy Tank, otherwise 1.
         /// </summary>
-        public static float GetEffectSpeedScale(ePowerUpEffect effect)
+        public static float GetEffectSpeedScale(ePowerUp effect)
         {
             return effect switch
             {
-                ePowerUpEffect.SugarRush => SUGAR_RUSH_SPEED_SCALE,
-                ePowerUpEffect.Invincible => INVINCIBLE_SPEED_SCALE,
-                ePowerUpEffect.EnergyTank => ENERGY_TANK_SPEED_SCALE,
+                ePowerUp.Galaxian => WARP_SPEED_SCALE,
+                ePowerUp.Starman => INVINCIBLE_SPEED_SCALE,
+                ePowerUp.EnergyTank => ENERGY_TANK_SPEED_SCALE,
                 _ => 1f,
             };
         }

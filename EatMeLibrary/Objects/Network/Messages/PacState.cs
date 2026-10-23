@@ -39,7 +39,7 @@ namespace EatMeLibrary
         /// <summary>
         /// The power up effect working on the pac, None when it has none.
         /// </summary>
-        public ePowerUpEffect PowerUpEffect { get; }
+        public ePowerUp PowerUpEffect { get; }
         /// <summary>
         /// ms left on PowerUpEffect.
         /// </summary>
@@ -47,7 +47,7 @@ namespace EatMeLibrary
         /// <summary>
         /// Whether a power pill is working on the pac.
         /// </summary>
-        public bool Powered => PowerUpEffect == ePowerUpEffect.PowerPill;
+        public bool Powered => PowerUpEffect == ePowerUp.PowerPill;
         /// <summary>
         /// Every point the player has won since connecting.
         /// </summary>
@@ -77,7 +77,7 @@ namespace EatMeLibrary
         public bool SpawnFeeding { get; }
 
         public PacState(int playerId, eTeam team, float x, float y, float size, eFacing facing, bool alive, bool hasFlag, bool eating,
-            int flagCaps = 0, int ghostKills = 0, int playerKills = 0, int rescues = 0, ePowerUpEffect powerUpEffect = ePowerUpEffect.None, int powerUpMsLeft = 0, int totalScore = 0, int msSinceEaten = 0, bool stunned = false,
+            int flagCaps = 0, int ghostKills = 0, int playerKills = 0, int rescues = 0, ePowerUp powerUpEffect = ePowerUp.None, int powerUpMsLeft = 0, int totalScore = 0, int msSinceEaten = 0, bool stunned = false,
             int respawnMsLeft = 0, bool spawnLocked = false, int powerUps = 0, bool spawnFeeding = false)
         {
             PlayerId = playerId;
@@ -146,7 +146,7 @@ namespace EatMeLibrary
                 reader.ReadInt32(),
                 reader.ReadInt32(),
                 reader.ReadInt32(),
-                (ePowerUpEffect)reader.ReadByte(),
+                (ePowerUp)reader.ReadByte(),
                 reader.ReadInt32(),
                 reader.ReadInt32(),
                 reader.ReadInt32(),

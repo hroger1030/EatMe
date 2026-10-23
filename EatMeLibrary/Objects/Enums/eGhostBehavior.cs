@@ -62,8 +62,8 @@ namespace EatMeLibrary
         /// <summary>Wobble: picks a new random pac in sight at every junction.</summary>
         Confused,
 
-        /// <summary>Panic: runs from every pac in sight, powered or not, and chases nobody.</summary>
-        Scaredy,
+        /// <summary>Dizzy: wanders to random cells, chasing any pac that comes within DIZZY_ATTACK_DISTANCE, and picks a new cell when it loses one.</summary>
+        Roamer,
 
         /// <summary>Tagalong: follows the nearest other ghost, and joins in when it chases.</summary>
         Sidekick,

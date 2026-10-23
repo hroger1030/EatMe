@@ -33,5 +33,11 @@ namespace EatMeLibrary
         /// ms before a bomb goes off (WeaponRules.BOMB_FUSE_MS when dropped).
         /// </summary>
         public int FuseMs { get; set; }
+
+        /// <summary>
+        /// For a decoy, the pac it pretends to be: a copy of its owner kept at the decoy's position, which ghosts chase
+        /// and enemy bots see instead of (or as well as) the owner. Null for every other effect.
+        /// </summary>
+        public Player StandIn { get; set; }
     }
 }

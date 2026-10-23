@@ -230,7 +230,7 @@
 /processorParam:TextureFormat=Color
 /build:Images/title.png
 
-#begin Images/logo.png
+#begin Images/logo (800x200x4).png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -240,7 +240,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Images/logo.png
+/build:Images/logo (800x200x4).png
 
 #begin Images/pointer.png
 /importer:TextureImporter

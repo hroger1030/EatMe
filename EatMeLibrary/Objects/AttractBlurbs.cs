@@ -31,7 +31,7 @@ namespace EatMeLibrary
                 eGhostBehavior.Copycat => "Copies every move you make.",
                 eGhostBehavior.Sleeper => "Stops for a quick nap every now and then.",
                 eGhostBehavior.Confused => "Can't decide who to chase, so keeps changing its mind.",
-                eGhostBehavior.Scaredy => "Scared of everyone, but still deadly to touch.",
+                eGhostBehavior.Roamer => "Too dizzy to know where it's going, but it'll bite anything that wanders too close.",
                 eGhostBehavior.Sidekick => "Tags along with its ghost friends and joins the chase.",
                 _ => throw new ArgumentOutOfRangeException(nameof(behavior), behavior, "No blurb for this ghost"),
             };
@@ -41,12 +41,12 @@ namespace EatMeLibrary
         {
             return item switch
             {
-                ePowerUp.Cherry => "A sugar rush! Run much faster for a while.",
+                ePowerUp.Cherry => "Double trouble! Drop a decoy twin that the ghosts chase instead of you.",
                 ePowerUp.Strawberry => "Sweet tooth: every dot makes you grow three times as much.",
                 ePowerUp.Orange => "Full of vitamins, so you never go hungry for a while.",
                 ePowerUp.Apple => "Keeps the ghosts away. Any ghost that comes near you is done for.",
                 ePowerUp.Melon => "Grow much bigger at once, and never go hungry for a while.",
-                ePowerUp.Galaxian => "Every point you score counts double.",
+                ePowerUp.Galaxian => "Warp speed! Zoom round the maze much faster for a while.",
                 ePowerUp.Bell => "Rings the dinner bell, and every ghost goes twice as fast!",
                 ePowerUp.Key => "Locks the enemy's spawn, so their fallen pacs can't come back.",
                 ePowerUp.Pretzel => "Ties everyone near you in knots, slowing them to half speed.",
@@ -67,8 +67,8 @@ namespace EatMeLibrary
                 ePowerUp.ScrewAttack => "Spin into a whirlwind that wrecks anything you touch.",
                 ePowerUp.HolyWater => "Leave a trail of holy fire behind you. Don't touch it!",
                 ePowerUp.SpreadGun => "Fires stunning shots in every direction, all by itself.",
-                ePowerUp.BlueShell => "Sends a shell after the enemy leader. Nowhere to hide!",
-                ePowerUp.Tetromino => "Press the action button to drop a block behind you and seal the way.",
+                ePowerUp.BlueShell => "Press the action button to send a shell after the enemy leader. Nowhere to hide!",
+                ePowerUp.Tetromino => "Leave a trail of blocks behind you to seal the way.",
                 ePowerUp.BFG => "Press the action button for a huge blast that wipes out everything nearby, maybe even you!",
                 ePowerUp.Bomb => "The bomb explodes and stuns all nearby enemies.",
                 ePowerUp.PepperShaker => "Too spicy! Ghosts that touch you get stunned instead.",

@@ -61,7 +61,7 @@
         /// <summary>
         /// The power up effect working on the pac, None when it has none. Only one works at a time.
         /// </summary>
-        public ePowerUpEffect PowerUpEffect { get; set; }
+        public ePowerUp PowerUpEffect { get; set; }
 
         /// <summary>
         /// ms left on PowerUpEffect. 0 when it has none working.
@@ -71,18 +71,18 @@
         /// <summary>
         /// True while a power pill is working: ghosts run from the pac and it pulses yellow.
         /// </summary>
-        public bool IsPowered => PowerUpEffect == ePowerUpEffect.PowerPill && PowerUpMs > 0;
+        public bool IsPowered => PowerUpEffect == ePowerUp.PowerPill && PowerUpMs > 0;
 
         /// <summary>
         /// True while Invincible (starman) is working: the pac can't be killed and kills any enemy pac or ghost it touches.
         /// </summary>
-        public bool IsInvincible => PowerUpEffect == ePowerUpEffect.Invincible && PowerUpMs > 0;
+        public bool IsInvincible => PowerUpEffect == ePowerUp.Starman && PowerUpMs > 0;
 
         /// <summary>
         /// True while ghosts won't chase the pac and run from it when it is within their vision: a power pill,
         /// Doctor Away (apple) or Invincible (starman) is working. Doctor Away doesn't let it kill them.
         /// </summary>
-        public bool RepelsGhosts => IsPowered || IsInvincible || (PowerUpEffect == ePowerUpEffect.DoctorAway && PowerUpMs > 0);
+        public bool RepelsGhosts => IsPowered || IsInvincible || (PowerUpEffect == ePowerUp.Apple && PowerUpMs > 0);
 
         /// <summary>
         /// True while Raccoon Tail is working: the pac passes through enemy pacs and ghosts.
@@ -116,8 +116,18 @@
         public (int X, int Y)? HolyFireCell { get; set; }
 
         /// <summary>
+        /// The cell a pac with Block Drop was in last tick, so a Tetromino block goes down in each cell it leaves.
+        /// </summary>
+        public (int X, int Y)? BlockDropCell { get; set; }
+
+        /// <summary>
         /// True once a pac with Bomb has dropped its one bomb; a new Bomb buff gives it another.
         /// </summary>
         public bool BombDropped { get; set; }
+
+        /// <summary>
+        /// True once a pac with Blue Shell has fired its one shell; a new Blue Shell buff gives it another.
+        /// </summary>
+        public bool BlueShellFired { get; set; }
     }
 }

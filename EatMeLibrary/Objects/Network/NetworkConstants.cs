@@ -10,7 +10,7 @@ namespace EatMeLibrary
         /// The client sends it to the server in HelloMessage.ClientVersion. There is no separate protocol version and
         /// no backwards compatibility: a client and server with the same APP_VERSION always speak the same messages.
         /// </summary>
-        public const float APP_VERSION = 0.9f;
+        public const float APP_VERSION = 0.91f;
 
         public const int DEFAULT_PORT = 7777;
         public const int DEFAULT_DISCOVERY_PORT = 7778;

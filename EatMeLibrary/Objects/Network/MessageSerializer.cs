@@ -82,6 +82,7 @@ namespace EatMeLibrary
                 eMessageType.ServerPong => new ServerPongMessage(),
                 eMessageType.Action => new ActionMessage(),
                 eMessageType.PlayerListRequest => new PlayerListRequestMessage(),
+                eMessageType.PacShape => new PacShapeMessage(),
                 eMessageType.Welcome => new WelcomeMessage(),
                 eMessageType.Reject => new RejectMessage(),
                 eMessageType.LevelStart => new LevelStartMessage(),

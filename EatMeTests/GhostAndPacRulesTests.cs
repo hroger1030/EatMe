@@ -29,7 +29,7 @@ namespace EatMeTests
         public void DoctorAway_GhostsIgnoreAndFleePac()
         {
             var apple = MakePac(1, 3f, 0f);
-            apple.PowerUpEffect = ePowerUpEffect.DoctorAway;
+            apple.PowerUpEffect = ePowerUp.Apple;
             apple.PowerUpMs = 1000;
             var other = MakePac(2, 6f, 0f);
 
@@ -43,7 +43,7 @@ namespace EatMeTests
         public void Invincible_GhostsIgnoreAndFleePac()
         {
             var star = MakePac(1, 3f, 0f);
-            star.PowerUpEffect = ePowerUpEffect.Invincible;
+            star.PowerUpEffect = ePowerUp.Starman;
             star.PowerUpMs = 1000;
             var other = MakePac(2, 6f, 0f);
 
@@ -54,7 +54,7 @@ namespace EatMeTests
         [Test]
         public void GetEffectSpeedScale_InvincibleIsFaster()
         {
-            Assert.That(PacRules.GetEffectSpeedScale(ePowerUpEffect.Invincible), Is.EqualTo(PacRules.INVINCIBLE_SPEED_SCALE));
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.Starman), Is.EqualTo(PacRules.INVINCIBLE_SPEED_SCALE));
             Assert.That(PacRules.INVINCIBLE_SPEED_SCALE, Is.EqualTo(1.25f));
         }
 
@@ -151,37 +151,38 @@ namespace EatMeTests
         }
 
         [Test]
-        public void GetEffectSpeedScale_OnlySugarRushIsFaster()
+        public void GetEffectSpeedScale_WarpSpeedIsFaster()
         {
-            Assert.That(PacRules.GetEffectSpeedScale(ePowerUpEffect.SugarRush), Is.EqualTo(PacRules.SUGAR_RUSH_SPEED_SCALE));
-            Assert.That(PacRules.SUGAR_RUSH_SPEED_SCALE, Is.GreaterThan(1f));
-            Assert.That(PacRules.GetEffectSpeedScale(ePowerUpEffect.PowerPill), Is.EqualTo(1f));
-            Assert.That(PacRules.GetEffectSpeedScale(ePowerUpEffect.None), Is.EqualTo(1f));
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.Galaxian), Is.EqualTo(PacRules.WARP_SPEED_SCALE));
+            Assert.That(PacRules.WARP_SPEED_SCALE, Is.GreaterThan(1f));
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.Cherry), Is.EqualTo(1f), "Cherry Twin doesn't change speed");
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.PowerPill), Is.EqualTo(1f));
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.None), Is.EqualTo(1f));
         }
 
         [Test]
         public void GetEffectSizeGain_PowerPillAndMelonBelly()
         {
-            Assert.That(PacRules.GetEffectSizeGain(ePowerUpEffect.PowerPill, 100f), Is.EqualTo(100f));
-            Assert.That(PacRules.GetEffectSizeGain(ePowerUpEffect.MelonBelly, 100f), Is.EqualTo(PacRules.MELON_BELLY_SIZE_GAIN));
-            Assert.That(PacRules.GetEffectSizeGain(ePowerUpEffect.SugarRush, 100f), Is.EqualTo(0f));
-            Assert.That(PacRules.GetEffectSizeGain(ePowerUpEffect.None, 100f), Is.EqualTo(0f));
+            Assert.That(PacRules.GetEffectSizeGain(ePowerUp.PowerPill, 100f), Is.EqualTo(100f));
+            Assert.That(PacRules.GetEffectSizeGain(ePowerUp.Melon, 100f), Is.EqualTo(PacRules.MELON_BELLY_SIZE_GAIN));
+            Assert.That(PacRules.GetEffectSizeGain(ePowerUp.Cherry, 100f), Is.EqualTo(0f));
+            Assert.That(PacRules.GetEffectSizeGain(ePowerUp.None, 100f), Is.EqualTo(0f));
         }
 
         [Test]
         public void GetDotGainScale_OnlySweetToothIsTriple()
         {
-            Assert.That(PacRules.GetDotGainScale(ePowerUpEffect.SweetTooth), Is.EqualTo(3f));
-            Assert.That(PacRules.GetDotGainScale(ePowerUpEffect.SugarRush), Is.EqualTo(1f));
-            Assert.That(PacRules.GetDotGainScale(ePowerUpEffect.PowerPill), Is.EqualTo(1f));
-            Assert.That(PacRules.GetDotGainScale(ePowerUpEffect.None), Is.EqualTo(1f));
+            Assert.That(PacRules.GetDotGainScale(ePowerUp.Strawberry), Is.EqualTo(3f));
+            Assert.That(PacRules.GetDotGainScale(ePowerUp.Cherry), Is.EqualTo(1f));
+            Assert.That(PacRules.GetDotGainScale(ePowerUp.PowerPill), Is.EqualTo(1f));
+            Assert.That(PacRules.GetDotGainScale(ePowerUp.None), Is.EqualTo(1f));
         }
 
         [Test]
         public void PickTarget_NeverChasesPoweredPac()
         {
             var powered = MakePac(1, 2f, 0f);
-            powered.PowerUpEffect = ePowerUpEffect.PowerPill;
+            powered.PowerUpEffect = ePowerUp.PowerPill;
             powered.PowerUpMs = 1000;
             var small = MakePac(2, 6f, 0f);
 
@@ -195,10 +196,10 @@ namespace EatMeTests
             var unpowered = MakePac(1, 1f, 0f);
             unpowered.Size = MAX_SIZE;
             var powered = MakePac(2, 5f, 0f);
-            powered.PowerUpEffect = ePowerUpEffect.PowerPill;
+            powered.PowerUpEffect = ePowerUp.PowerPill;
             powered.PowerUpMs = 1000;
             var poweredFar = MakePac(3, 20f, 0f);
-            poweredFar.PowerUpEffect = ePowerUpEffect.PowerPill;
+            poweredFar.PowerUpEffect = ePowerUp.PowerPill;
             poweredFar.PowerUpMs = 1000;
 
             Assert.That(GhostBrain.FindThreat(GHOST, [unpowered, powered, poweredFar], VISION), Is.SameAs(powered));

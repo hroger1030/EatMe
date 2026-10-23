@@ -2,7 +2,8 @@ namespace EatMeLibrary
 {
     /// <summary>
     /// Projectiles and objects power up effects put in the maze. Each is one row of the weapon effects sheet
-    /// (Const.IMAGE_WEAPON_EFFECTS, WeaponEffectSprites), in this order.
+    /// (Const.IMAGE_WEAPON_EFFECTS, WeaponEffectSprites), in this order, except the Decoy, which is drawn as a pac
+    /// (WeaponEffectSprites.IsDrawnAsPac) and so has no row.
     /// </summary>
     public enum eWeaponEffect : byte
     {
@@ -38,5 +39,8 @@ namespace EatMeLibrary
 
         /// <summary>Bomb, upright, its fuse burning.</summary>
         Bomb,
+
+        /// <summary>Cherry Twin's decoy twin, drawn as a copy of its owner's pac.</summary>
+        Decoy,
     }
 }

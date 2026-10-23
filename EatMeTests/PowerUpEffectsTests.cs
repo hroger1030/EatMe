@@ -18,33 +18,33 @@ namespace EatMeTests
         [Test]
         public void GetName_NoneAndPowerPill()
         {
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.None), Is.EqualTo(Const.STRING_POWER_UP_NONE));
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.PowerPill), Is.EqualTo(Const.STRING_POWER_PILL));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.None), Is.EqualTo(Const.STRING_POWER_UP_NONE));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.PowerPill), Is.EqualTo(Const.STRING_POWER_PILL));
         }
 
         [Test]
-        public void GetName_SugarRush()
+        public void GetName_CherryTwin()
         {
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.SugarRush), Is.EqualTo(Const.STRING_SUGAR_RUSH));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Cherry), Is.EqualTo(Const.STRING_CHERRY_TWIN));
         }
 
         [Test]
         public void GetName_SweetTooth()
         {
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.SweetTooth), Is.EqualTo(Const.STRING_SWEET_TOOTH));
-            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUpEffect.SweetTooth), Is.False);
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Strawberry), Is.EqualTo(Const.STRING_SWEET_TOOTH));
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Strawberry), Is.False);
         }
 
         [Test]
         public void GetName_VitaminC()
         {
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.VitaminC), Is.EqualTo(Const.STRING_VITAMIN_C));
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.DoctorAway), Is.EqualTo(Const.STRING_DOCTOR_AWAY));
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.MelonBelly), Is.EqualTo(Const.STRING_MELON_BELLY));
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.RocketScience), Is.EqualTo(Const.STRING_SCIENCE));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Orange), Is.EqualTo(Const.STRING_VITAMIN_C));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Apple), Is.EqualTo(Const.STRING_DOCTOR_AWAY));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Melon), Is.EqualTo(Const.STRING_MELON_BELLY));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Galaxian), Is.EqualTo(Const.STRING_WARP_SPEED));
         }
 
-        private static Player MakePac(eTeam team, ePowerUpEffect effect, bool alive = true)
+        private static Player MakePac(eTeam team, ePowerUp effect, bool alive = true)
         {
             return new Player { Team = team, Alive = alive, PowerUpEffect = effect, PowerUpMs = 1000 };
         }
@@ -52,29 +52,29 @@ namespace EatMeTests
         [Test]
         public void GetName_DinnerBellAndLockdown()
         {
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.DinnerBell), Is.EqualTo(Const.STRING_DINNER_BELL));
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.Lockdown), Is.EqualTo(Const.STRING_LOCKDOWN));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Bell), Is.EqualTo(Const.STRING_DINNER_BELL));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Key), Is.EqualTo(Const.STRING_LOCKDOWN));
         }
 
         [Test]
         public void GetGhostSpeedScale_DoubleWhileAnyLivingPacHasDinnerBell()
         {
-            var bell = MakePac(eTeam.Red, ePowerUpEffect.DinnerBell);
-            var plain = MakePac(eTeam.Blue, ePowerUpEffect.None);
+            var bell = MakePac(eTeam.Red, ePowerUp.Bell);
+            var plain = MakePac(eTeam.Blue, ePowerUp.None);
 
             Assert.That(PowerUpEffects.GetGhostSpeedScale([plain]), Is.EqualTo(1f));
             Assert.That(PowerUpEffects.GetGhostSpeedScale([plain, bell]), Is.EqualTo(PowerUpEffects.DINNER_BELL_GHOST_SPEED_SCALE));
-            Assert.That(PowerUpEffects.GetGhostSpeedScale([bell, MakePac(eTeam.Blue, ePowerUpEffect.DinnerBell)]), Is.EqualTo(2f), "doesn't stack");
-            Assert.That(PowerUpEffects.GetGhostSpeedScale([MakePac(eTeam.Red, ePowerUpEffect.DinnerBell, alive: false)]), Is.EqualTo(1f));
+            Assert.That(PowerUpEffects.GetGhostSpeedScale([bell, MakePac(eTeam.Blue, ePowerUp.Bell)]), Is.EqualTo(2f), "doesn't stack");
+            Assert.That(PowerUpEffects.GetGhostSpeedScale([MakePac(eTeam.Red, ePowerUp.Bell, alive: false)]), Is.EqualTo(1f));
         }
 
         [Test]
         public void LocksSpawn_OnlyLivingEnemyWithLockdown()
         {
-            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUpEffect.Lockdown), eTeam.Blue), Is.True);
-            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUpEffect.Lockdown), eTeam.Red), Is.False);
-            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUpEffect.Lockdown, alive: false), eTeam.Blue), Is.False);
-            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUpEffect.DinnerBell), eTeam.Blue), Is.False);
+            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUp.Key), eTeam.Blue), Is.True);
+            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUp.Key), eTeam.Red), Is.False);
+            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUp.Key, alive: false), eTeam.Blue), Is.False);
+            Assert.That(PowerUpEffects.LocksSpawn(MakePac(eTeam.Red, ePowerUp.Bell), eTeam.Blue), Is.False);
         }
 
         [Test]
@@ -93,7 +93,7 @@ namespace EatMeTests
         [Test]
         public void GetTwisterSpeedScale_HalfWithinRadiusOfAnotherTwister()
         {
-            var twister = MakePac(eTeam.Red, ePowerUpEffect.Twister);
+            var twister = MakePac(eTeam.Red, ePowerUp.Pretzel);
             twister.Location = new FastG.Point2(10f, 10f);
             var ghost = new Ghost();
             var near = new FastG.Point2(10f, 10f + PowerUpEffects.EFFECT_RADIUS);
@@ -103,25 +103,25 @@ namespace EatMeTests
             Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, far, [twister]), Is.EqualTo(1f), "out of range");
             Assert.That(PowerUpEffects.GetTwisterSpeedScale(twister, twister.Location, [twister]), Is.EqualTo(1f), "not the pac itself");
 
-            var other = MakePac(eTeam.Blue, ePowerUpEffect.Twister);
+            var other = MakePac(eTeam.Blue, ePowerUp.Pretzel);
             other.Location = twister.Location;
             Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, near, [twister, other]), Is.EqualTo(PowerUpEffects.TWISTER_SPEED_SCALE), "doesn't stack");
             Assert.That(PowerUpEffects.GetTwisterSpeedScale(twister, twister.Location, [twister, other]), Is.EqualTo(PowerUpEffects.TWISTER_SPEED_SCALE), "slowed by another pac's twister");
 
-            Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, near, [MakePac(eTeam.Red, ePowerUpEffect.SugarRush)]), Is.EqualTo(1f));
+            Assert.That(PowerUpEffects.GetTwisterSpeedScale(ghost, near, [MakePac(eTeam.Red, ePowerUp.Cherry)]), Is.EqualTo(1f));
         }
 
         [Test]
         public void GetName_Twister()
         {
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.Twister), Is.EqualTo(Const.STRING_TWISTER));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Pretzel), Is.EqualTo(Const.STRING_TWISTER));
         }
 
         [Test]
         public void Invincible_NameTrailAndBlink()
         {
-            Assert.That(PowerUpEffects.GetName(ePowerUpEffect.Invincible), Is.EqualTo(Const.STRING_INVINCIBLE));
-            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUpEffect.Invincible), Is.True);
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Starman), Is.EqualTo(Const.STRING_INVINCIBLE));
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Starman), Is.True);
 
             Assert.That(PowerUpEffects.IsStarBlinkYellow(0f), Is.True);
             Assert.That(PowerUpEffects.IsStarBlinkYellow(PowerUpEffects.STAR_BLINK_SECONDS * 1.5f), Is.False);
@@ -141,9 +141,9 @@ namespace EatMeTests
         [Test]
         public void GetMaxSize_OnlyEnergyTankDoubles()
         {
-            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
+            foreach (var effect in Enum.GetValues<ePowerUp>())
             {
-                var expected = effect == ePowerUpEffect.EnergyTank ? 200f : 100f;
+                var expected = effect == ePowerUp.EnergyTank ? 200f : 100f;
                 Assert.That(PowerUpEffects.GetMaxSize(effect, 100f), Is.EqualTo(expected), effect.ToString());
             }
         }
@@ -151,74 +151,66 @@ namespace EatMeTests
         [Test]
         public void GetEndSize_EnergyTank_OnlyShrinksPastMaxSize()
         {
-            Assert.That(PowerUpEffects.GetEndSize(ePowerUpEffect.EnergyTank, 180f, 100f), Is.EqualTo(100f));
-            Assert.That(PowerUpEffects.GetEndSize(ePowerUpEffect.EnergyTank, 60f, 100f), Is.EqualTo(60f));
-            Assert.That(PowerUpEffects.GetEndSize(ePowerUpEffect.SugarRush, 180f, 100f), Is.Null);
+            Assert.That(PowerUpEffects.GetEndSize(ePowerUp.EnergyTank, 180f, 100f), Is.EqualTo(100f));
+            Assert.That(PowerUpEffects.GetEndSize(ePowerUp.EnergyTank, 60f, 100f), Is.EqualTo(60f));
+            Assert.That(PowerUpEffects.GetEndSize(ePowerUp.Cherry, 180f, 100f), Is.Null);
         }
 
         [Test]
         public void GetEffectSpeedScale_EnergyTank()
         {
-            Assert.That(PacRules.GetEffectSpeedScale(ePowerUpEffect.EnergyTank), Is.EqualTo(PacRules.ENERGY_TANK_SPEED_SCALE));
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.EnergyTank), Is.EqualTo(PacRules.ENERGY_TANK_SPEED_SCALE));
             Assert.That(PacRules.ENERGY_TANK_SPEED_SCALE, Is.EqualTo(1.3f));
         }
 
         [Test]
         public void KillsGhostsInRange_OnlyDoctorAway()
         {
-            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
-                Assert.That(PowerUpEffects.KillsGhostsInRange(effect), Is.EqualTo(effect == ePowerUpEffect.DoctorAway), effect.ToString());
+            foreach (var effect in Enum.GetValues<ePowerUp>())
+                Assert.That(PowerUpEffects.KillsGhostsInRange(effect), Is.EqualTo(effect == ePowerUp.Apple), effect.ToString());
         }
 
         [Test]
         public void PreventsStarving_VitaminCMelonBellyEnergyTankAndFullHeal()
         {
-            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
+            foreach (var effect in Enum.GetValues<ePowerUp>())
             {
-                var expected = effect == ePowerUpEffect.VitaminC || effect == ePowerUpEffect.MelonBelly || effect == ePowerUpEffect.EnergyTank
-                    || effect == ePowerUpEffect.FullHeal;
+                var expected = effect == ePowerUp.Orange || effect == ePowerUp.Melon || effect == ePowerUp.EnergyTank
+                    || effect == ePowerUp.HeartContainer;
                 Assert.That(PowerUpEffects.PreventsStarving(effect), Is.EqualTo(expected), effect.ToString());
             }
         }
 
         [Test]
-        public void GetScoreScale_OnlyRocketScienceDoubles()
+        public void HasSpeedTrail_WarpSpeedAndInvincible()
         {
-            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
-            {
-                var expected = effect == ePowerUpEffect.RocketScience ? 2 : 1;
-                Assert.That(PowerUpEffects.GetScoreScale(effect), Is.EqualTo(expected), effect.ToString());
-            }
-        }
-
-        [Test]
-        public void HasSpeedTrail_OnlySugarRush()
-        {
-            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUpEffect.SugarRush), Is.True);
-            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUpEffect.PowerPill), Is.False);
-            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUpEffect.None), Is.False);
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Galaxian), Is.True);
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Starman), Is.True);
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Cherry), Is.False);
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.PowerPill), Is.False);
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.None), Is.False);
         }
 
         [Test]
         public void GetLabel_IsTheName()
         {
-            Assert.That(PowerUpEffects.GetLabel(ePowerUpEffect.None), Is.EqualTo("No power up"));
-            Assert.That(PowerUpEffects.GetLabel(ePowerUpEffect.PowerPill), Is.EqualTo("Power Pill"));
+            Assert.That(PowerUpEffects.GetLabel(ePowerUp.None), Is.EqualTo("No power up"));
+            Assert.That(PowerUpEffects.GetLabel(ePowerUp.PowerPill), Is.EqualTo("Power Pill"));
         }
 
         [Test]
         public void EveryLabel_FitsThePanel()
         {
-            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
+            foreach (var effect in Enum.GetValues<ePowerUp>())
                 Assert.That(PowerUpEffects.GetLabel(effect).Length, Is.LessThanOrEqualTo(PowerUpEffects.MAX_LABEL_LENGTH), effect.ToString());
         }
 
         [Test]
         public void EveryEffect_HasItsOwnName()
         {
-            foreach (var effect in Enum.GetValues<ePowerUpEffect>())
+            foreach (var effect in Enum.GetValues<ePowerUp>())
             {
-                if (effect != ePowerUpEffect.None)
+                if (effect != ePowerUp.None)
                     Assert.That(PowerUpEffects.GetName(effect), Is.Not.EqualTo(Const.STRING_POWER_UP_NONE), effect.ToString());
             }
         }

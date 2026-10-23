@@ -146,7 +146,7 @@ namespace EatMeTests
             var pills = MakeMap(["#########", "#O.....O#", "#########"]);
             Assert.That(PacBrain.PickTarget(MakeWorld(pills, [me]), me, 3, 1, Fill(pills, me)), Is.EqualTo((1, 1)));
 
-            me.PowerUpEffect = ePowerUpEffect.PowerPill;
+            me.PowerUpEffect = ePowerUp.PowerPill;
             me.PowerUpMs = 1000;
             Assert.That(PacBrain.PickTarget(MakeWorld(pills, [me]), me, 3, 1, Fill(pills, me)), Is.Null, "already powered");
         }
@@ -165,7 +165,7 @@ namespace EatMeTests
         {
             var map = MakeMap(CORRIDOR);
             var me = MakePac(1, eTeam.Red, 4, 1, MAX_SIZE, eFacing.Left);
-            me.PowerUpEffect = ePowerUpEffect.PowerPill;
+            me.PowerUpEffect = ePowerUp.PowerPill;
             me.PowerUpMs = 1000;
 
             Assert.That(Choose(MakeWorld(map, [me], [MakeGhost(6, 1)]), me), Is.EqualTo(eFacing.Right));
@@ -185,7 +185,7 @@ namespace EatMeTests
 
         private static void MakeInvincible(Player pac)
         {
-            pac.PowerUpEffect = ePowerUpEffect.Invincible;
+            pac.PowerUpEffect = ePowerUp.Starman;
             pac.PowerUpMs = 1000;
         }
 
@@ -255,7 +255,7 @@ namespace EatMeTests
             Assert.That(target, Is.EqualTo((6, 1)));
 
             // with a power up working it can't pick a flag up, so it doesn't go for it
-            me.PowerUpEffect = ePowerUpEffect.SugarRush;
+            me.PowerUpEffect = ePowerUp.Cherry;
             me.PowerUpMs = 1000;
             Assert.That(PacBrain.PickGoal(world, me, 4, 1, Fill(map, me), out _), Is.Not.EqualTo(eBotGoal.LooseFlag));
         }
@@ -403,7 +403,7 @@ namespace EatMeTests
             Assert.That(PacBrain.ShouldTurnBack(MakeWorld(map, [me], [MakeGhost(6, 3)]), me), Is.False);
 
             me.Size = MAX_SIZE;
-            me.PowerUpEffect = ePowerUpEffect.PowerPill;
+            me.PowerUpEffect = ePowerUp.PowerPill;
             me.PowerUpMs = 1000;
             Assert.That(PacBrain.ShouldTurnBack(MakeWorld(map, [me], [MakeGhost(6, 1)]), me), Is.False);
         }

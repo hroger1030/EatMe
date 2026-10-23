@@ -86,6 +86,11 @@ namespace EatMeLibrary
         public const float FOLLOW_DISTANCE = 3f;
 
         /// <summary>
+        /// Cells within which the Roamer stops wandering and goes for a pac.
+        /// </summary>
+        public const float DIZZY_ATTACK_DISTANCE = 5f;
+
+        /// <summary>
         /// Picks the pac a ghost chases. A ghost keeps its target until the target dies, leaves or eats a power pill,
         /// or a better pac comes within vision: a flag carrier beats any pac that isn't carrying, otherwise the closer
         /// pac wins. Ghosts never chase pacs that repel them (Player.RepelsGhosts: a power pill or Doctor Away).
@@ -485,28 +490,36 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// The nearest living pac within vision, powered or not, which the Scaredy runs from. Null if none.
+        /// A random cell a ghost can stand in, for the Roamer to wander to: not a wall, spawn tile or warp cell.
+        /// Null if the map has none.
         /// </summary>
-        public static Player FindNearestPac(Point2 ghostPosition, IEnumerable<Player> pacs, float vision)
+        public static (int X, int Y)? PickWanderCell(eGridDef[,] map, Random random)
         {
-            Player nearest = null;
-            var nearestDistance = vision * vision;
+            var width = map.GetLength(0);
+            var height = map.GetLength(1);
+            var count = 0;
 
-            foreach (var pac in pacs)
-            {
-                if (!pac.Alive)
-                    continue;
+            for (var x = 0; x < width; x++)
+                for (var y = 0; y < height; y++)
+                    if (IsWanderCell(map, x, y))
+                        count++;
 
-                var distance = GetDistanceSquared(ghostPosition, pac.Location);
+            if (count == 0)
+                return null;
 
-                if (distance <= nearestDistance)
-                {
-                    nearest = pac;
-                    nearestDistance = distance;
-                }
-            }
+            var pick = random.Next(count);
 
-            return nearest;
+            for (var x = 0; x < width; x++)
+                for (var y = 0; y < height; y++)
+                    if (IsWanderCell(map, x, y) && pick-- == 0)
+                        return (x, y);
+
+            return null;
+        }
+
+        private static bool IsWanderCell(eGridDef[,] map, int x, int y)
+        {
+            return (map[x, y] & MazeMovement.GHOST_BLOCKED) == 0 && !MazeMovement.IsWarpCell(map, x, y);
         }
 
         /// <summary>

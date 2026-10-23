@@ -4,22 +4,22 @@ namespace EatMeTests
 {
     public class PacTrailsTests
     {
-        private static PacState Pac(int id, float x, float y, bool powered = true, bool alive = true, ePowerUpEffect effect = ePowerUpEffect.SugarRush)
+        private static PacState Pac(int id, float x, float y, bool powered = true, bool alive = true, ePowerUp effect = ePowerUp.Galaxian)
         {
-            return new PacState(id, eTeam.Blue, x, y, 0f, eFacing.Right, alive, false, false, powerUpEffect: powered ? effect : ePowerUpEffect.None);
+            return new PacState(id, eTeam.Blue, x, y, 0f, eFacing.Right, alive, false, false, powerUpEffect: powered ? effect : ePowerUp.None);
         }
 
         [Test]
         public void Update_PowerPillPacHasNoTrail()
         {
             var trails = new PacTrails();
-            trails.Update([Pac(1, 1.5f, 1.5f, effect: ePowerUpEffect.PowerPill)], PacTrails.TRAIL_SAMPLE_SECONDS);
+            trails.Update([Pac(1, 1.5f, 1.5f, effect: ePowerUp.PowerPill)], PacTrails.TRAIL_SAMPLE_SECONDS);
 
             Assert.That(trails.GetTrail(1), Is.Empty);
         }
 
         [Test]
-        public void Update_SugarRushPacGetsTrailNewestFirst()
+        public void Update_WarpSpeedPacGetsTrailNewestFirst()
         {
             var trails = new PacTrails();
 
