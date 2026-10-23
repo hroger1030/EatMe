@@ -9,7 +9,7 @@ namespace EatMeTests
         private static GameServer MakeServer(int maxScore = 100)
         {
             var settings = new ServerSettings { ServerName = "Flags", ClientUpdatesPerSecond = 30, AutoBalanceTeams = false, GameConfig = new GameConfiguration { MaxScore = maxScore } };
-            return new GameServer(settings, []);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, []));
         }
 
         private static Player Join(GameServer server, int id, eTeamPreference team)

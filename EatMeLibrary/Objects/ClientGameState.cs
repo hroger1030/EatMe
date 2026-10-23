@@ -152,6 +152,26 @@ namespace EatMeLibrary
         public bool IsIntermission => LevelWinner.HasValue;
 
         /// <summary>
+        /// Client clock time (ms) the level's start countdown runs out.
+        /// </summary>
+        public long CountdownEndMs { get; private set; }
+
+        /// <summary>
+        /// The team that just won, from a Victory until the LevelWon that brings up the results (or the next LevelStart).
+        /// </summary>
+        public eTeam? VictoryTeam { get; private set; }
+
+        /// <summary>
+        /// Client clock time (ms) the Victory message came, to time its flashing.
+        /// </summary>
+        public long VictoryStartMs { get; private set; }
+
+        /// <summary>
+        /// True while "Victory!" shows over the frozen board, between a Victory and the LevelWon.
+        /// </summary>
+        public bool IsVictory => VictoryTeam.HasValue;
+
+        /// <summary>
         /// Round trip time to the server in ms from the last Pong, or -1 before the first.
         /// </summary>
         public long PingMs { get; private set; } = -1;
@@ -236,11 +256,11 @@ namespace EatMeLibrary
                     NewDebris.Clear();
                     Eyes.Clear();
                     PenCentre = GhostEyes.FindPenCentre(Map);
-                    DotColors = LevelInfo.IsRainbow
-                        ? Rainbow.BuildDotColors(Map.GetLength(0), Map.GetLength(1))
-                        : BuildDotColors(Map.GetLength(0), Map.GetLength(1), BlueDotColor, RedDotColor);
+                    DotColors = BuildDotColors(Map.GetLength(0), Map.GetLength(1), BlueDotColor, RedDotColor);
                     Snapshot = null;
                     LevelWinner = null;
+                    VictoryTeam = null;
+                    CountdownEndMs = nowMs + Math.Max(0, levelStart.CountdownMs);
                     BlueResults = [];
                     RedResults = [];
                     break;
@@ -273,7 +293,13 @@ namespace EatMeLibrary
                     _Players.Remove(left.PlayerId);
                     break;
 
+                case VictoryMessage victory:
+                    VictoryTeam = victory.WinningTeam;
+                    VictoryStartMs = nowMs;
+                    break;
+
                 case LevelWonMessage won:
+                    VictoryTeam = null;
                     LevelWinner = won.WinningTeam;
                     LevelRedScore = won.RedScore;
                     LevelBlueScore = won.BlueScore;
@@ -329,9 +355,10 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Moves every ghost's eyes for seconds at GhostEyes.SPEED_SCALE times GhostSpeed, to and round the pen's centre.
+        /// Moves every ghost's eyes for the elapsed time at GhostEyes.SPEED_SCALE times GhostSpeed, to and round the pen's
+        /// centre.
         /// </summary>
-        public void UpdateGhostEyes(float seconds)
+        public void UpdateGhostEyes(TimeSpan elapsed)
         {
             if (Eyes.Count == 0 || !PenCentre.HasValue)
                 return;
@@ -340,7 +367,7 @@ namespace EatMeLibrary
             var (centreX, centreY) = PenCentre.Value;
 
             foreach (var eyes in Eyes)
-                eyes.Update(seconds, centreX, centreY, speed);
+                eyes.Update(elapsed, centreX, centreY, speed);
         }
 
         /// <summary>
@@ -483,6 +510,30 @@ namespace EatMeLibrary
         {
             var msLeft = Math.Max(0L, IntermissionEndMs - nowMs);
             return (int)((msLeft + MS_PER_SECOND / 2) / MS_PER_SECOND);
+        }
+
+        /// <summary>
+        /// The start countdown's number to show (3, 2, 1, LevelPhases.GetCountdownNumber), or 0 once play has started.
+        /// </summary>
+        public int GetCountdownNumber(long nowMs)
+        {
+            return LevelPhases.GetCountdownNumber(CountdownEndMs - nowMs);
+        }
+
+        /// <summary>
+        /// True while the game is frozen at either end of the level: during the start countdown or while "Victory!" shows.
+        /// </summary>
+        public bool IsFrozen(long nowMs)
+        {
+            return IsVictory || GetCountdownNumber(nowMs) > 0;
+        }
+
+        /// <summary>
+        /// True while the flashing "Victory!" is on (LevelPhases.IsVictoryTextOn), false when it is off or not showing.
+        /// </summary>
+        public bool IsVictoryTextOn(long nowMs)
+        {
+            return IsVictory && LevelPhases.IsVictoryTextOn(TimeSpan.FromMilliseconds(nowMs - VictoryStartMs));
         }
 
         public string GetPlayerName(int playerId)

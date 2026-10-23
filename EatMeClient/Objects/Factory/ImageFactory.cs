@@ -1,6 +1,7 @@
 using EatMeLibrary;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
 
 namespace EatMeClient
 {
@@ -8,7 +9,7 @@ namespace EatMeClient
     {
         private const int DEATH_FRAME_COLUMNS = 11;
         private const int DEATH_FRAME_ROWS = 1;
-        private const float DEATH_DURATION = 1.1f;
+        private const int DEATH_DURATION_MS = 1100;
 
         /// <summary>
         /// The pac death animation, played once at a world location, drawn the given width in pixels and tinted.
@@ -23,7 +24,7 @@ namespace EatMeClient
                 Texture = texture,
                 Rows = DEATH_FRAME_ROWS,
                 Columns = DEATH_FRAME_COLUMNS,
-                AnimationDuration = DEATH_DURATION,
+                AnimationDuration = TimeSpan.FromMilliseconds(DEATH_DURATION_MS),
                 Scale = width / frameWidth,
                 Tint = tint,
                 Loop = false,
@@ -58,21 +59,6 @@ namespace EatMeClient
 
             var output = new Texture2D(whiteSheet.GraphicsDevice, whiteSheet.Width, whiteSheet.Height);
             output.SetData(GhostPalette.ReplaceColor(pixels, GhostPalette.BODY_COLOR, FastColor.TRANSPARENT));
-
-            return output;
-        }
-
-        /// <summary>
-        /// The ghost sheet with its white body filled with the rainbow gradient left to right across each frame,
-        /// moved round by phase (0 to 1), for rainbow levels.
-        /// </summary>
-        public static Texture2D GenerateRainbowGhostSheet(Texture2D whiteSheet, int frameCount, float phase)
-        {
-            var pixels = new uint[whiteSheet.Width * whiteSheet.Height];
-            whiteSheet.GetData(pixels);
-
-            var output = new Texture2D(whiteSheet.GraphicsDevice, whiteSheet.Width, whiteSheet.Height);
-            output.SetData(Rainbow.ReplaceWithGradient(pixels, whiteSheet.Width, whiteSheet.Width / frameCount, GhostPalette.BODY_COLOR, phase));
 
             return output;
         }

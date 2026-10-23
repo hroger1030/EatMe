@@ -8,10 +8,10 @@ namespace EatMeLibrary
     public static class ScrollerMath
     {
         /// <summary>
-        /// The text's left edge, in whole pixels, after elapsedSeconds. It starts just off the right edge of a screen
+        /// The text's left edge, in whole pixels, after a time. It starts just off the right edge of a screen
         /// screenWidth wide, moves left at pixelsPerSecond, and once it has fully left the screen starts over from the right.
         /// </summary>
-        public static int GetTextX(float screenWidth, float textWidth, double elapsedSeconds, float pixelsPerSecond)
+        public static int GetTextX(float screenWidth, float textWidth, TimeSpan time, float pixelsPerSecond)
         {
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(pixelsPerSecond, 0f);
 
@@ -19,7 +19,7 @@ namespace EatMeLibrary
             if (cycle <= 0)
                 return 0;
 
-            var scrolled = Math.Max(0, elapsedSeconds) * pixelsPerSecond % cycle;
+            var scrolled = Math.Max(0, time.TotalSeconds) * pixelsPerSecond % cycle;
             return (int)Math.Floor(screenWidth - scrolled);
         }
     }

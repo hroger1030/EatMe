@@ -10,32 +10,33 @@ namespace EatMeTests
         [Test]
         public void GetFadeAlpha_GoesFromClearToBlackOverTheFade()
         {
-            Assert.That(AttractMath.GetFadeAlpha(-1f), Is.Zero);
-            Assert.That(AttractMath.GetFadeAlpha(0f), Is.Zero);
-            Assert.That(AttractMath.GetFadeAlpha(AttractMath.FADE_SECONDS / 2f), Is.EqualTo(0.5f).Within(0.0001f));
-            Assert.That(AttractMath.GetFadeAlpha(AttractMath.FADE_SECONDS), Is.EqualTo(1f));
-            Assert.That(AttractMath.GetFadeAlpha(AttractMath.FADE_SECONDS * 3f), Is.EqualTo(1f));
+            Assert.That(AttractMath.GetFadeAlpha(TimeSpan.FromSeconds(-1)), Is.Zero);
+            Assert.That(AttractMath.GetFadeAlpha(TimeSpan.Zero), Is.Zero);
+            Assert.That(AttractMath.GetFadeAlpha(TimeSpan.FromMilliseconds(AttractMath.FADE_MS / 2)), Is.EqualTo(0.5f).Within(0.0001f));
+            Assert.That(AttractMath.GetFadeAlpha(TimeSpan.FromMilliseconds(AttractMath.FADE_MS)), Is.EqualTo(1f));
+            Assert.That(AttractMath.GetFadeAlpha(TimeSpan.FromMilliseconds(AttractMath.FADE_MS * 3)), Is.EqualTo(1f));
         }
 
         [Test]
         public void GetScrollOffset_ScrollsUntilTheBottomIsOnScreen()
         {
-            Assert.That(AttractMath.GetScrollOffset(0f, 3000f, 1000f, 100f), Is.Zero);
-            Assert.That(AttractMath.GetScrollOffset(5f, 3000f, 1000f, 100f), Is.EqualTo(500));
-            Assert.That(AttractMath.GetScrollOffset(60f, 3000f, 1000f, 100f), Is.EqualTo(2000), "stops with the bottom at the bottom of the screen");
-            Assert.That(AttractMath.GetScrollOffset(60f, 800f, 1000f, 100f), Is.Zero, "content shorter than the screen never scrolls");
+            Assert.That(AttractMath.GetScrollOffset(TimeSpan.Zero, 3000f, 1000f, 100f), Is.Zero);
+            Assert.That(AttractMath.GetScrollOffset(TimeSpan.FromSeconds(5), 3000f, 1000f, 100f), Is.EqualTo(500));
+            Assert.That(AttractMath.GetScrollOffset(TimeSpan.FromSeconds(60), 3000f, 1000f, 100f), Is.EqualTo(2000), "stops with the bottom at the bottom of the screen");
+            Assert.That(AttractMath.GetScrollOffset(TimeSpan.FromSeconds(60), 800f, 1000f, 100f), Is.Zero, "content shorter than the screen never scrolls");
         }
 
         [Test]
         public void IsFinished_AfterScrollingAndHolding()
         {
-            var scrollSeconds = AttractMath.GetScrollSeconds(3000f, 1000f, 100f);
-            Assert.That(scrollSeconds, Is.EqualTo(20f));
+            var scrollTime = AttractMath.GetScrollTime(3000f, 1000f, 100f);
+            var hold = TimeSpan.FromMilliseconds(AttractMath.HOLD_MS);
+            Assert.That(scrollTime, Is.EqualTo(TimeSpan.FromSeconds(20)));
 
-            Assert.That(AttractMath.IsFinished(scrollSeconds, 3000f, 1000f, 100f), Is.False);
-            Assert.That(AttractMath.IsFinished(scrollSeconds + AttractMath.HOLD_SECONDS - 0.01f, 3000f, 1000f, 100f), Is.False);
-            Assert.That(AttractMath.IsFinished(scrollSeconds + AttractMath.HOLD_SECONDS, 3000f, 1000f, 100f), Is.True);
-            Assert.That(AttractMath.IsFinished(AttractMath.HOLD_SECONDS, 500f, 1000f, 100f), Is.True, "nothing to scroll, just the hold");
+            Assert.That(AttractMath.IsFinished(scrollTime, 3000f, 1000f, 100f), Is.False);
+            Assert.That(AttractMath.IsFinished(scrollTime + hold - TimeSpan.FromMilliseconds(10), 3000f, 1000f, 100f), Is.False);
+            Assert.That(AttractMath.IsFinished(scrollTime + hold, 3000f, 1000f, 100f), Is.True);
+            Assert.That(AttractMath.IsFinished(hold, 500f, 1000f, 100f), Is.True, "nothing to scroll, just the hold");
         }
 
         [Test]

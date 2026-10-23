@@ -126,6 +126,11 @@ namespace EatMeServer
         // the results of the level just won, kept to send to players joining while they're shown
         private LevelWonMessage _LevelWon;
         private int _IntermissionMs;
+
+        // the frozen phases at either end of a level (LevelPhases): the start countdown, and "Victory!" before the results
+        private int _CountdownMs;
+        private eTeam? _VictoryTeam;
+        private int _VictoryMs;
         private bool _RedAboutToWinSent;
         private bool _BlueAboutToWinSent;
 
@@ -164,6 +169,21 @@ namespace EatMeServer
         /// True while the results of a won level are shown. Nothing moves until the next level starts.
         /// </summary>
         public bool IsIntermission => _LevelWon != null;
+
+        /// <summary>
+        /// True during the start countdown (LevelPhases.START_COUNTDOWN_MS from StartLevel). Nothing moves or acts until it runs out.
+        /// </summary>
+        public bool IsCountdown => _CountdownMs > 0;
+
+        /// <summary>
+        /// True while "Victory!" shows, from a team winning until the results (LevelPhases.VICTORY_MS). Nothing moves or acts.
+        /// </summary>
+        public bool IsVictory => _VictoryTeam.HasValue;
+
+        /// <summary>
+        /// True while the game is frozen at either end of a level, or the results are shown.
+        /// </summary>
+        public bool IsFrozen => IsCountdown || IsVictory || IsIntermission;
 
         /// <summary>
         /// True while no humans are connected. Update does nothing until one joins.
@@ -245,6 +265,9 @@ namespace EatMeServer
             BlueScore = 0;
             _LevelWon = null;
             _IntermissionMs = 0;
+            _CountdownMs = LevelPhases.START_COUNTDOWN_MS;
+            _VictoryTeam = null;
+            _VictoryMs = 0;
             _RedAboutToWinSent = false;
             _BlueAboutToWinSent = false;
 
@@ -352,61 +375,76 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Advances the game by one tick and sends a snapshot when one is due. While the results of a won level
-        /// are shown the game is paused, and only the countdown to the next level runs. With no humans connected
-        /// nothing runs at all, the countdown included.
+        /// Advances the game by one tick and sends a snapshot when one is due. During the start countdown and while
+        /// "Victory!" shows the game is frozen: only that phase's timer runs, and snapshots still go out. While the
+        /// results of a won level are shown only the countdown to the next level runs. With no humans connected
+        /// nothing runs at all, the countdowns included.
         /// </summary>
-        public void Update(int elapsedMs)
+        public void Update(TimeSpan elapsed)
         {
             if (IsPaused)
                 return;
 
             Tick++;
 
-            var deltaSeconds = (float)elapsedMs / MS_PER_SECOND;
-            ClockMs += elapsedMs;
+            ClockMs += (int)elapsed.TotalMilliseconds;
 
             // each step's time goes to perf logging; Record returns now, the next step's start
             var start = PerfStats.GetTimestamp();
-            UpdateLagPings(elapsedMs);
+            UpdateLagPings(elapsed);
             start = Perf.Record(ePerfSection.Lag, start);
 
             if (IsIntermission)
             {
-                UpdateIntermission(elapsedMs);
+                UpdateIntermission(elapsed);
                 Perf.Record(ePerfSection.Intermission, start);
                 return;
             }
 
-            UpdateRespawns(elapsedMs);
+            if (IsCountdown || IsVictory)
+            {
+                UpdateLevelPhases(elapsed);
+                start = Perf.Record(ePerfSection.Intermission, start);
+                SendSnapshotIfDue(elapsed, start);
+                return;
+            }
+
+            UpdateRespawns(elapsed);
             start = Perf.Record(ePerfSection.Respawns, start);
-            UpdateStuns(elapsedMs);
+            UpdateStuns(elapsed);
             start = Perf.Record(ePerfSection.Stuns, start);
-            SteerBots(deltaSeconds, elapsedMs);
+            SteerBots(elapsed);
             start = Perf.Record(ePerfSection.Bots, start);
-            MovePacs(deltaSeconds, elapsedMs);
+            MovePacs(elapsed);
             start = Perf.Record(ePerfSection.Move, start);
-            UpdateEating(elapsedMs);
+            UpdateEating(elapsed);
             start = Perf.Record(ePerfSection.Eating, start);
             UpdatePacFights();
             start = Perf.Record(ePerfSection.Fights, start);
-            UpdateGhosts(deltaSeconds, elapsedMs);
+            UpdateGhosts(elapsed);
             start = Perf.Record(ePerfSection.Ghosts, start);
-            UpdateWeaponEffects(deltaSeconds, elapsedMs);
+            UpdateWeaponEffects(elapsed);
             start = Perf.Record(ePerfSection.Weapons, start);
-            UpdatePowerUps(deltaSeconds, elapsedMs);
+            UpdatePowerUps(elapsed);
             start = Perf.Record(ePerfSection.PowerUps, start);
             UpdateFlags();
             start = Perf.Record(ePerfSection.Flags, start);
-            UpdateRegens(elapsedMs);
+            UpdateRegens(elapsed);
             start = Perf.Record(ePerfSection.Regens, start);
             SendCellChanges();
             start = Perf.Record(ePerfSection.Cells, start);
             CheckAboutToWin();
             CheckLevelWon();
             start = Perf.Record(ePerfSection.Win, start);
+            SendSnapshotIfDue(elapsed, start);
+        }
 
-            _SnapshotTimer += elapsedMs * Math.Max(1, _Settings.ClientUpdatesPerSecond);
+        /// <summary>
+        /// Sends a snapshot to everyone when one is due, ClientUpdatesPerSecond times a second.
+        /// </summary>
+        private void SendSnapshotIfDue(TimeSpan elapsed, long start)
+        {
+            _SnapshotTimer += (int)elapsed.TotalMilliseconds * Math.Max(1, _Settings.ClientUpdatesPerSecond);
 
             if (_SnapshotTimer >= MS_PER_SECOND)
             {
@@ -548,7 +586,7 @@ namespace EatMeServer
         /// - otherwise at base when its timer runs out, unless its team's spawn is locked (IsSpawnLocked); then it waits,
         ///   and comes back as soon as the lock is lifted.
         /// </summary>
-        public void UpdateRespawns(int elapsedMs)
+        public void UpdateRespawns(TimeSpan elapsed)
         {
             var redLocked = IsSpawnLocked(eTeam.Red);
             var blueLocked = IsSpawnLocked(eTeam.Blue);
@@ -562,7 +600,7 @@ namespace EatMeServer
                 if (player.Alive)
                     continue;
 
-                player.RespawnTimer -= elapsedMs;
+                player.RespawnTimer -= (int)elapsed.TotalMilliseconds;
 
                 if (player.Team == eTeam.Red ? redReinforced : blueReinforced)
                 {
@@ -607,20 +645,20 @@ namespace EatMeServer
         /// <summary>
         /// Counts down the stuns on pacs and ghosts (PowStun).
         /// </summary>
-        public void UpdateStuns(int elapsedMs)
+        public void UpdateStuns(TimeSpan elapsed)
         {
             foreach (var serverPlayer in _Players.Values)
             {
                 var player = serverPlayer.Player;
 
                 if (player.StunMs > 0)
-                    player.StunMs = Math.Max(0, player.StunMs - elapsedMs);
+                    player.StunMs = Math.Max(0, player.StunMs - (int)elapsed.TotalMilliseconds);
             }
 
             foreach (var ghost in _Ghosts)
             {
                 if (ghost.StunMs > 0)
-                    ghost.StunMs = Math.Max(0, ghost.StunMs - elapsedMs);
+                    ghost.StunMs = Math.Max(0, ghost.StunMs - (int)elapsed.TotalMilliseconds);
             }
         }
 
@@ -713,7 +751,7 @@ namespace EatMeServer
         /// what it fled from in ServerPlayer.Memory, and turns back at once if it is heading straight at something
         /// that can kill it (at most once every BotMemory.TURN_BACK_COOLDOWN_MS). A dead bot forgets everything.
         /// </summary>
-        public void SteerBots(float deltaSeconds, int elapsedMs)
+        public void SteerBots(TimeSpan elapsed)
         {
             if (_BotCount == 0)
                 return;
@@ -740,13 +778,13 @@ namespace EatMeServer
                     continue;
                 }
 
-                memory.Update(elapsedMs);
+                memory.Update(elapsed);
 
                 if (pac.IsStunned)
                     continue;
 
                 var distance = PacRules.GetSpeed(config.PacSpeed, pac.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(pac.PowerUpEffect)
-                    * PowerUpEffects.GetTwisterSpeedScale(pac, pac.Location, _Twisters) * deltaSeconds;
+                    * PowerUpEffects.GetTwisterSpeedScale(pac, pac.Location, _Twisters) * (float)elapsed.TotalSeconds;
                 world.FlagBasePaths = GetBasePaths(pac);
 
                 if (MazeMovement.GetDistanceToCentre(pac.Location, pac.Facing) <= distance)
@@ -779,7 +817,7 @@ namespace EatMeServer
         /// in the cell it came from. A stunned pac (PowStun) doesn't move, and one near another pac's Twister moves at
         /// half speed (PowerUpEffects.GetTwisterSpeedScale).
         /// </summary>
-        public void MovePacs(float deltaSeconds, int elapsedMs)
+        public void MovePacs(TimeSpan elapsed)
         {
             var config = _Settings.GameConfig;
             CollectLiving();
@@ -795,7 +833,7 @@ namespace EatMeServer
                 var from = MazeMovement.GetCell(pac.Location);
                 var speed = PacRules.GetSpeed(config.PacSpeed, pac.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(pac.PowerUpEffect)
                     * PowerUpEffects.GetTwisterSpeedScale(pac, pac.Location, _Twisters);
-                var distance = speed * deltaSeconds;
+                var distance = speed * (float)elapsed.TotalSeconds;
                 var blocked = MazeMovement.GetPacBlocked(pac.Team);
 
                 // Raccoon Tail goes through walls, wrapping off the map's edges like a warp tunnel
@@ -822,7 +860,7 @@ namespace EatMeServer
                 MazeMovement.Move(Map, pac, wanted, distance, blocked: blocked);
 
                 if (!serverPlayer.IsBot)
-                    UpdateTurnBuffer(serverPlayer, facing, distance, elapsedMs);
+                    UpdateTurnBuffer(serverPlayer, facing, distance, elapsed);
 
                 if (pac.HasFlag && IsSpawnCell(MazeMovement.GetCell(pac.Location)))
                     DropFlag(pac, from.X + CELL_CENTER, from.Y + CELL_CENTER);
@@ -878,7 +916,7 @@ namespace EatMeServer
         /// After a human's move: counts the cells moved straight (back to 0 on a change of direction), and drops the
         /// buffered turn once the pac faces that way or its time is up.
         /// </summary>
-        private static void UpdateTurnBuffer(ServerPlayer serverPlayer, eFacing facingBefore, float distance, int elapsedMs)
+        private static void UpdateTurnBuffer(ServerPlayer serverPlayer, eFacing facingBefore, float distance, TimeSpan elapsed)
         {
             var pac = serverPlayer.Player;
             serverPlayer.StraightDistance = pac.Facing == facingBefore ? serverPlayer.StraightDistance + distance : 0f;
@@ -886,7 +924,7 @@ namespace EatMeServer
             if (!serverPlayer.BufferedTurn.HasValue)
                 return;
 
-            serverPlayer.BufferedTurnMs -= elapsedMs;
+            serverPlayer.BufferedTurnMs -= (int)elapsed.TotalMilliseconds;
 
             if (pac.Facing == serverPlayer.BufferedTurn || serverPlayer.BufferedTurnMs <= 0)
                 serverPlayer.BufferedTurn = null;
@@ -895,14 +933,14 @@ namespace EatMeServer
         /// <summary>
         /// Sends each human a ServerPing every LagEstimate.PING_INTERVAL_MS; their ServerPong updates ServerPlayer.Lag.
         /// </summary>
-        public void UpdateLagPings(int elapsedMs)
+        public void UpdateLagPings(TimeSpan elapsed)
         {
             foreach (var serverPlayer in _Players.Values)
             {
                 if (serverPlayer.IsBot)
                     continue;
 
-                serverPlayer.PingTimerMs += elapsedMs;
+                serverPlayer.PingTimerMs += (int)elapsed.TotalMilliseconds;
 
                 if (serverPlayer.PingTimerMs < LagEstimate.PING_INTERVAL_MS)
                     continue;
@@ -937,7 +975,7 @@ namespace EatMeServer
         /// (PacRules.GetSpawnFeedGain, up to the same limit, SpawnFeeding set while it grows) and doesn't get hungry, unless its effect can't eat.
         /// A pac with an effect that PowerUpEffects.PreventsStarving never gets hungry. Otherwise a pac that hasn't eaten for MsUntilStarvation shrinks by PacShrinkPerSecond each second.
         /// </summary>
-        public void UpdateEating(int elapsedMs)
+        public void UpdateEating(TimeSpan elapsed)
         {
             var config = _Settings.GameConfig;
 
@@ -952,7 +990,7 @@ namespace EatMeServer
 
                 if (player.PowerUpEffect != ePowerUp.None)
                 {
-                    player.PowerUpMs -= elapsedMs;
+                    player.PowerUpMs -= (int)elapsed.TotalMilliseconds;
 
                     if (player.PowerUpMs <= 0)
                         EndPowerUpEffect(player);
@@ -994,7 +1032,7 @@ namespace EatMeServer
                 {
                     // the spawn feeds the pac as fast as a line of dots would
                     var speed = PacRules.GetSpeed(config.PacSpeed, player.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(player.PowerUpEffect);
-                    var gain = PacRules.GetSpawnFeedGain(config.DotSizeGain * PacRules.GetDotGainScale(player.PowerUpEffect), speed, (float)elapsedMs / MS_PER_SECOND);
+                    var gain = PacRules.GetSpawnFeedGain(config.DotSizeGain * PacRules.GetDotGainScale(player.PowerUpEffect), speed, elapsed);
 
                     player.SpawnFeeding = player.Size < maxSize;
                     player.Size = PacRules.GrowFromDot(player.Size, gain, maxSize);
@@ -1006,10 +1044,10 @@ namespace EatMeServer
                 }
                 else
                 {
-                    player.MsSinceEaten += elapsedMs;
+                    player.MsSinceEaten += (int)elapsed.TotalMilliseconds;
 
                     if (player.MsSinceEaten >= config.MsUntilStarvation)
-                        player.Size = PacRules.Starve(player.Size, config.PacShrinkPerSecond, (float)elapsedMs / MS_PER_SECOND);
+                        player.Size = PacRules.Starve(player.Size, config.PacShrinkPerSecond, elapsed);
                 }
             }
         }
@@ -1095,12 +1133,12 @@ namespace EatMeServer
         /// <summary>
         /// Counts down eaten power pills and puts them back when their time is up.
         /// </summary>
-        public void UpdateRegens(int elapsedMs)
+        public void UpdateRegens(TimeSpan elapsed)
         {
             for (var i = _Regens.Count - 1; i >= 0; i--)
             {
                 var regen = _Regens[i];
-                regen.MsLeft -= elapsedMs;
+                regen.MsLeft -= (int)elapsed.TotalMilliseconds;
 
                 if (regen.MsLeft > 0)
                     continue;
@@ -1375,7 +1413,7 @@ namespace EatMeServer
         /// A pac it touches dies, unless the pac is big enough to kill it (GhostKill points).
         /// Dead ghosts come back at a ghost generator after GhostRegenTimeMs.
         /// </summary>
-        public void UpdateGhosts(float deltaSeconds, int elapsedMs)
+        public void UpdateGhosts(TimeSpan elapsed)
         {
             var config = _Settings.GameConfig;
             var width = Map.GetLength(0);
@@ -1392,7 +1430,7 @@ namespace EatMeServer
                     if (ghost.IsCaptured)
                         continue;
 
-                    ghost.RespawnTimer -= elapsedMs;
+                    ghost.RespawnTimer -= (int)elapsed.TotalMilliseconds;
 
                     if (ghost.RespawnTimer <= 0)
                         SpawnGhost(ghost);
@@ -1400,7 +1438,7 @@ namespace EatMeServer
                     continue;
                 }
 
-                ghost.LifeMs += elapsedMs;
+                ghost.LifeMs += (int)elapsed.TotalMilliseconds;
 
                 // a stunned ghost stays put and can't hurt anyone, but a pac that can kill ghosts still kills it
                 if (ghost.IsStunned)
@@ -1410,7 +1448,7 @@ namespace EatMeServer
                 }
 
                 var vision = config.GhostVisionDistance * ghost.Personality.VisionScale;
-                var target = PickGhostTarget(ghost, vision, elapsedMs);
+                var target = PickGhostTarget(ghost, vision, elapsed);
 
                 // a pac with a Cherry Twin decoy out sends the ghosts after the decoy instead
                 target = FindDecoyStandIn(target) ?? target;
@@ -1427,7 +1465,7 @@ namespace EatMeServer
                 ghost.CurrentTarget = target;
 
                 var threat = GhostBrain.FindThreat(ghost.Location, _Living, vision);
-                var distance = config.GhostSpeed * GetGhostSpeedScale(ghost) * bellScale * PowerUpEffects.GetTwisterSpeedScale(ghost, ghost.Location, _Twisters) * deltaSeconds;
+                var distance = config.GhostSpeed * GetGhostSpeedScale(ghost) * bellScale * PowerUpEffects.GetTwisterSpeedScale(ghost, ghost.Location, _Twisters) * (float)elapsed.TotalSeconds;
                 eFacing? wanted = null;
 
                 if (threat != null)
@@ -1462,7 +1500,7 @@ namespace EatMeServer
         /// <summary>
         /// The pac a ghost goes after this tick, by its personality. Never a pac with a power pill working.
         /// </summary>
-        private Player PickGhostTarget(Ghost ghost, float vision, int elapsedMs)
+        private Player PickGhostTarget(Ghost ghost, float vision, TimeSpan elapsed)
         {
             var location = ghost.Location;
 
@@ -1480,7 +1518,7 @@ namespace EatMeServer
 
                 case eGhostBehavior.Sprinter:
                     ghost.CurrentTarget = GhostBrain.PickTarget(location, ghost.CurrentTarget, _Living, vision);
-                    return GhostBrain.UpdateAttention(ghost, elapsedMs) ? ghost.CurrentTarget : null;
+                    return GhostBrain.UpdateAttention(ghost, elapsed) ? ghost.CurrentTarget : null;
 
                 case eGhostBehavior.Lurker:
                     var prey = GhostBrain.PickTarget(location, ghost.CurrentTarget, _Living, vision);
@@ -1674,7 +1712,7 @@ namespace EatMeServer
         private void ResolveGhostContacts(Ghost ghost)
         {
             var config = _Settings.GameConfig;
-            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+            var ghostRadius = PacRules.GHOST_RADIUS;
 
             // a hammer gets the ghost before the ghost can reach its pac
             if (HitByHammer(ghost, ghostRadius))
@@ -1763,16 +1801,16 @@ namespace EatMeServer
         /// drifts toward its exit at PowerUpSpeed and leaves on reaching it, and any living pac touching one eats it.
         /// Ghosts ignore them.
         /// </summary>
-        public void UpdatePowerUps(float deltaSeconds, int elapsedMs)
+        public void UpdatePowerUps(TimeSpan elapsed)
         {
             var before = _PowerUpTimerMs;
-            _PowerUpTimerMs += elapsedMs;
+            _PowerUpTimerMs += (int)elapsed.TotalMilliseconds;
 
             var due = PowerUpRules.GetSpawnsDue(before, _PowerUpTimerMs, _Settings.GameConfig.PowerUpSpawnTimerMs);
             for (var i = 0; i < due; i++)
                 SpawnPowerUp();
 
-            var distance = _Settings.GameConfig.PowerUpSpeed * deltaSeconds;
+            var distance = _Settings.GameConfig.PowerUpSpeed * (float)elapsed.TotalSeconds;
 
             for (var i = _PowerUps.Count - 1; i >= 0; i--)
             {
@@ -1874,7 +1912,7 @@ namespace EatMeServer
         /// - A bomb lies where it was dropped for WeaponRules.BOMB_FUSE_MS, then goes off, stunning every enemy pac and
         ///   ghost within PowerUpEffects.EFFECT_RADIUS for STUN_MS.
         /// </summary>
-        public void UpdateWeaponEffects(float deltaSeconds, int elapsedMs)
+        public void UpdateWeaponEffects(TimeSpan elapsed)
         {
             CollectLiving();
 
@@ -1883,7 +1921,7 @@ namespace EatMeServer
                 var player = serverPlayer.Player;
 
                 if (player.ActionCooldownMs > 0)
-                    player.ActionCooldownMs = Math.Max(0, player.ActionCooldownMs - elapsedMs);
+                    player.ActionCooldownMs = Math.Max(0, player.ActionCooldownMs - (int)elapsed.TotalMilliseconds);
             }
 
             KillGhostsInRange();
@@ -1891,7 +1929,7 @@ namespace EatMeServer
             RemoveTetrisBlocks();
             UpdateTetrisBlocks();
             UpdateHammers();
-            FireSpreadShots(elapsedMs);
+            FireSpreadShots(elapsed);
 
             for (var i = _WeaponEffects.Count - 1; i > -1; i--)
             {
@@ -1899,17 +1937,17 @@ namespace EatMeServer
 
                 var keep = effect.Kind switch
                 {
-                    eWeaponEffect.Sword or eWeaponEffect.Fireball => UpdateShot(effect, deltaSeconds),
+                    eWeaponEffect.Sword or eWeaponEffect.Fireball => UpdateShot(effect, elapsed),
                     eWeaponEffect.HolyFlame => UpdateHolyFlame(effect),
-                    eWeaponEffect.BlueShell => UpdateBlueShell(effect, deltaSeconds),
-                    eWeaponEffect.PokeBall => UpdatePokeBall(effect, deltaSeconds),
+                    eWeaponEffect.BlueShell => UpdateBlueShell(effect, elapsed),
+                    eWeaponEffect.PokeBall => UpdatePokeBall(effect, elapsed),
                     eWeaponEffect.BananaPeel => UpdateBananaPeel(effect),
                     eWeaponEffect.TetrisBlock => true,
                     eWeaponEffect.Hammer => UpdateHammer(effect),
-                    eWeaponEffect.BfgShot => UpdateBfgShot(effect, deltaSeconds),
-                    eWeaponEffect.SpreadShot => UpdateSpreadShot(effect, deltaSeconds),
-                    eWeaponEffect.Bomb => UpdateBomb(effect, elapsedMs),
-                    eWeaponEffect.Decoy => UpdateDecoy(effect, deltaSeconds),
+                    eWeaponEffect.BfgShot => UpdateBfgShot(effect, elapsed),
+                    eWeaponEffect.SpreadShot => UpdateSpreadShot(effect, elapsed),
+                    eWeaponEffect.Bomb => UpdateBomb(effect, elapsed),
+                    eWeaponEffect.Decoy => UpdateDecoy(effect, elapsed),
                     _ => false,
                 };
 
@@ -2065,7 +2103,7 @@ namespace EatMeServer
                 if (pac.Alive && pac.Team != effect.Team && WeaponRules.IsTouchingPac(effect.Location, pac.Location, pac.Size))
                     KillPacBy(pac, owner);
 
-            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+            var ghostRadius = PacRules.GHOST_RADIUS;
 
             foreach (var ghost in _Ghosts)
                 if (ghost.Alive && WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius))
@@ -2079,7 +2117,7 @@ namespace EatMeServer
         /// <summary>
         /// Every living pac with Spread Shot fires a shot up, down, left and right each SPREAD_SHOT_INTERVAL_MS.
         /// </summary>
-        private void FireSpreadShots(int elapsedMs)
+        private void FireSpreadShots(TimeSpan elapsed)
         {
             foreach (var serverPlayer in _Players.Values)
             {
@@ -2088,7 +2126,7 @@ namespace EatMeServer
                 if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.SpreadGun) || player.IsStunned)
                     continue;
 
-                player.SpreadShotMs -= elapsedMs;
+                player.SpreadShotMs -= (int)elapsed.TotalMilliseconds;
 
                 if (player.SpreadShotMs > 0)
                     continue;
@@ -2122,7 +2160,7 @@ namespace EatMeServer
                 return (pac, null);
             }
 
-            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+            var ghostRadius = PacRules.GHOST_RADIUS;
 
             foreach (var ghost in _Ghosts)
                 if (ghost.Alive && WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius))
@@ -2156,9 +2194,9 @@ namespace EatMeServer
         /// goes off (a Blast) and is gone, stunning every living pac not on the bomb's team and every living ghost within
         /// PowerUpEffects.EFFECT_RADIUS for STUN_MS. A stun already running starts over.
         /// </summary>
-        private bool UpdateBomb(WeaponEffect effect, int elapsedMs)
+        private bool UpdateBomb(WeaponEffect effect, TimeSpan elapsed)
         {
-            effect.FuseMs -= elapsedMs;
+            effect.FuseMs -= (int)elapsed.TotalMilliseconds;
 
             if (effect.FuseMs > 0)
                 return true;
@@ -2180,9 +2218,9 @@ namespace EatMeServer
             return false;
         }
 
-        private bool UpdateSpreadShot(WeaponEffect effect, float deltaSeconds)
+        private bool UpdateSpreadShot(WeaponEffect effect, TimeSpan elapsed)
         {
-            var moved = MazeMovement.Move(Map, effect, null, GetWeaponDistance(effect, deltaSeconds), canWarp: true, blocked: eGridDef.Wall);
+            var moved = MazeMovement.Move(Map, effect, null, GetWeaponDistance(effect, elapsed), canWarp: true, blocked: eGridDef.Wall);
             var (pac, ghost) = FindFirstTouched(effect, FindPlayer(effect.OwnerId));
 
             if (pac != null)
@@ -2195,9 +2233,9 @@ namespace EatMeServer
             return false;
         }
 
-        private bool UpdateBfgShot(WeaponEffect effect, float deltaSeconds)
+        private bool UpdateBfgShot(WeaponEffect effect, TimeSpan elapsed)
         {
-            var moved = MazeMovement.Move(Map, effect, null, GetWeaponDistance(effect, deltaSeconds), canWarp: true, blocked: eGridDef.Wall);
+            var moved = MazeMovement.Move(Map, effect, null, GetWeaponDistance(effect, elapsed), canWarp: true, blocked: eGridDef.Wall);
             var owner = FindPlayer(effect.OwnerId);
             var (pac, ghost) = FindFirstTouched(effect, owner);
 
@@ -2262,13 +2300,13 @@ namespace EatMeServer
             return null;
         }
 
-        private float GetWeaponDistance(WeaponEffect effect, float deltaSeconds)
+        private float GetWeaponDistance(WeaponEffect effect, TimeSpan elapsed)
         {
             // the BFG ball is as slow as a ghost
             if (effect.Kind == eWeaponEffect.BfgShot)
-                return _Settings.GameConfig.GhostSpeed * deltaSeconds;
+                return _Settings.GameConfig.GhostSpeed * (float)elapsed.TotalSeconds;
 
-            return _Settings.GameConfig.PacSpeed * WeaponRules.GetSpeedScale(effect.Kind) * deltaSeconds;
+            return _Settings.GameConfig.PacSpeed * WeaponRules.GetSpeedScale(effect.Kind) * (float)elapsed.TotalSeconds;
         }
 
         /// <summary>
@@ -2332,7 +2370,7 @@ namespace EatMeServer
                 return true;
             }
 
-            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+            var ghostRadius = PacRules.GHOST_RADIUS;
 
             foreach (var ghost in _Ghosts)
             {
@@ -2349,9 +2387,9 @@ namespace EatMeServer
             return false;
         }
 
-        private bool UpdateShot(WeaponEffect effect, float deltaSeconds)
+        private bool UpdateShot(WeaponEffect effect, TimeSpan elapsed)
         {
-            var moved = MazeMovement.Move(Map, effect, null, GetWeaponDistance(effect, deltaSeconds), canWarp: true, blocked: eGridDef.Wall);
+            var moved = MazeMovement.Move(Map, effect, null, GetWeaponDistance(effect, elapsed), canWarp: true, blocked: eGridDef.Wall);
             return !HitFirstThing(effect) && moved;
         }
 
@@ -2377,7 +2415,7 @@ namespace EatMeServer
                 KillPacBy(pac, owner);
             }
 
-            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+            var ghostRadius = PacRules.GHOST_RADIUS;
 
             foreach (var ghost in _Ghosts)
                 if (ghost.Alive && WeaponRules.IsTouchingGhost(effect.Location, ghost.Location, ghostRadius))
@@ -2413,7 +2451,7 @@ namespace EatMeServer
             MazeMovement.Move(Map, effect, wanted, distance, canWarp: true, blocked: eGridDef.Wall);
         }
 
-        private bool UpdateBlueShell(WeaponEffect effect, float deltaSeconds)
+        private bool UpdateBlueShell(WeaponEffect effect, TimeSpan elapsed)
         {
             var target = WeaponRules.PickBlueShellTarget(effect.Team, _Living);
 
@@ -2422,7 +2460,7 @@ namespace EatMeServer
 
             if (!WeaponRules.IsTouchingPac(effect.Location, target.Location, target.Size))
             {
-                MoveSeeker(effect, MazeMovement.GetCell(target.Location), GetWeaponDistance(effect, deltaSeconds));
+                MoveSeeker(effect, MazeMovement.GetCell(target.Location), GetWeaponDistance(effect, elapsed));
 
                 if (!WeaponRules.IsTouchingPac(effect.Location, target.Location, target.Size))
                     return true;
@@ -2433,9 +2471,9 @@ namespace EatMeServer
             return false;
         }
 
-        private bool UpdatePokeBall(WeaponEffect effect, float deltaSeconds)
+        private bool UpdatePokeBall(WeaponEffect effect, TimeSpan elapsed)
         {
-            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+            var ghostRadius = PacRules.GHOST_RADIUS;
 
             if (effect.IsHoldingGhost)
                 return !TryReleaseGhost(effect, ghostRadius);
@@ -2448,7 +2486,7 @@ namespace EatMeServer
                 return true;
 
             (int X, int Y)? goal = null;
-            var distance = GetWeaponDistance(effect, deltaSeconds);
+            var distance = GetWeaponDistance(effect, elapsed);
 
             // the nearest ghost only matters for the turn at the next cell centre
             if (MazeMovement.GetDistanceToCentre(effect.Location, effect.Facing) <= distance)
@@ -2533,7 +2571,7 @@ namespace EatMeServer
         /// </summary>
         public void HandleAction(Player player)
         {
-            if (player == null || !player.Alive || player.PowerUpMs <= 0 || player.ActionCooldownMs > 0)
+            if (player == null || IsFrozen || !player.Alive || player.PowerUpMs <= 0 || player.ActionCooldownMs > 0)
                 return;
 
             var acted = false;
@@ -2647,7 +2685,7 @@ namespace EatMeServer
         /// it, and pops it (a DecoyPopped event, nobody hurt) when a living enemy pac or ghost that isn't stunned
         /// touches it. It is gone once its owner's Cherry Twin isn't active (ran out, replaced, died or left).
         /// </summary>
-        private bool UpdateDecoy(WeaponEffect effect, float deltaSeconds)
+        private bool UpdateDecoy(WeaponEffect effect, TimeSpan elapsed)
         {
             var owner = FindPlayer(effect.OwnerId);
 
@@ -2656,7 +2694,7 @@ namespace EatMeServer
 
             var config = _Settings.GameConfig;
             var blocked = MazeMovement.GetPacBlocked(owner.Team);
-            var distance = PacRules.GetSpeed(config.PacSpeed, owner.Size, config.PacMaxSize) * deltaSeconds;
+            var distance = PacRules.GetSpeed(config.PacSpeed, owner.Size, config.PacMaxSize) * (float)elapsed.TotalSeconds;
             eFacing? wanted = null;
 
             if (MazeMovement.GetDistanceToCentre(effect.Location, effect.Facing) <= distance)
@@ -2688,7 +2726,7 @@ namespace EatMeServer
                 if (pac.Alive && pac.Team != effect.Team && !pac.IsStunned && PacRules.IsTouchingPac(effect.Location, effect.Size, pac.Location, pac.Size))
                     return true;
 
-            var ghostRadius = PacRules.GetGhostRadius(CurrentLevel.IsRainbow);
+            var ghostRadius = PacRules.GHOST_RADIUS;
 
             foreach (var ghost in _Ghosts)
                 if (ghost.Alive && !ghost.IsStunned && PacRules.IsTouchingGhost(effect.Location, effect.Size, ghost.Location, ghostRadius))
@@ -2778,12 +2816,12 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// When a team reaches MaxScore, tells everyone who won, with every player's score, and starts the
-        /// intermission: the game pauses for IntermissionTimeMs, then the next level starts. Returns true if it did.
+        /// When a team reaches MaxScore, tells everyone who won with a VictoryMessage and freezes the game for
+        /// LevelPhases.VICTORY_MS, after which ShowResults starts the intermission. Returns true if it did.
         /// </summary>
         public bool CheckLevelWon()
         {
-            if (IsIntermission)
+            if (IsIntermission || IsVictory)
                 return false;
 
             var winner = GetWinner(RedScore, BlueScore, _Settings.GameConfig.MaxScore);
@@ -2794,30 +2832,71 @@ namespace EatMeServer
             ServerLog.Write(eLogType.Level, $"{winner.Value} wins level {CurrentLevel.Level} ({RedScore} to {BlueScore})");
             UpdateHighScores(DateTime.Now);
 
+            _VictoryTeam = winner.Value;
+            _VictoryMs = LevelPhases.VICTORY_MS;
+            Broadcast(BuildVictory());
+            return true;
+        }
+
+        /// <summary>
+        /// Counts down the frozen phases at either end of the level: the start countdown, then play begins; "Victory!",
+        /// then the results (ShowResults).
+        /// </summary>
+        public void UpdateLevelPhases(TimeSpan elapsed)
+        {
+            if (_CountdownMs > 0)
+                _CountdownMs = Math.Max(0, _CountdownMs - (int)elapsed.TotalMilliseconds);
+
+            if (!IsVictory)
+                return;
+
+            _VictoryMs -= (int)elapsed.TotalMilliseconds;
+
+            if (_VictoryMs <= 0)
+                ShowResults();
+        }
+
+        /// <summary>
+        /// Ends the victory pause: tells everyone who won, with every player's score, and starts the intermission:
+        /// the game pauses for IntermissionTimeMs, then the next level starts.
+        /// </summary>
+        public void ShowResults()
+        {
+            if (!IsVictory)
+                return;
+
+            var winner = _VictoryTeam.Value;
+            _VictoryTeam = null;
+            _VictoryMs = 0;
+
             var intermissionTimeMs = _Settings.GameConfig.IntermissionTimeMs;
 
             if (intermissionTimeMs <= 0)
             {
-                Broadcast(BuildLevelWon(winner.Value, 0));
+                Broadcast(BuildLevelWon(winner, 0));
                 StartLevel(GetNextLevel());
-                return true;
+                return;
             }
 
             _IntermissionMs = intermissionTimeMs;
-            _LevelWon = BuildLevelWon(winner.Value, intermissionTimeMs);
+            _LevelWon = BuildLevelWon(winner, intermissionTimeMs);
             Broadcast(_LevelWon);
-            return true;
+        }
+
+        private VictoryMessage BuildVictory()
+        {
+            return new VictoryMessage { WinningTeam = _VictoryTeam ?? eTeam.Red, MsRemaining = Math.Max(0, _VictoryMs) };
         }
 
         /// <summary>
         /// Counts down the results screen and starts the next level when it runs out.
         /// </summary>
-        public void UpdateIntermission(int elapsedMs)
+        public void UpdateIntermission(TimeSpan elapsed)
         {
             if (!IsIntermission)
                 return;
 
-            _IntermissionMs -= elapsedMs;
+            _IntermissionMs -= (int)elapsed.TotalMilliseconds;
 
             if (_IntermissionMs <= 0)
                 StartLevel(GetNextLevel());
@@ -3184,6 +3263,10 @@ namespace EatMeServer
             // and tell everyone, the new player included, about the new player
             Broadcast(BuildPlayerJoined(player));
 
+            // joining while "Victory!" shows: show it too, for the time that's left
+            if (IsVictory)
+                Send(connection, BuildVictory());
+
             // joining while the results are shown: show them too, with the time that's left
             if (IsIntermission)
             {
@@ -3483,7 +3566,7 @@ namespace EatMeServer
 
         private LevelStartMessage BuildLevelStart()
         {
-            return new LevelStartMessage { Level = CurrentLevel.Level, WallColor = CurrentLevel.WallColor, WallFillColor = CurrentLevel.WallFillColor, BackgroundColor = CurrentLevel.BackgroundColor };
+            return new LevelStartMessage { Level = CurrentLevel.Level, WallColor = CurrentLevel.WallColor, WallFillColor = CurrentLevel.WallFillColor, BackgroundColor = CurrentLevel.BackgroundColor, CountdownMs = _CountdownMs };
         }
 
         /// <summary>

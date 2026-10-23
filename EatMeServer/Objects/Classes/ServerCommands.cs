@@ -270,7 +270,7 @@ namespace EatMeServer
         public static string GetStatus(GameServer game)
         {
             var level = game.CurrentLevel;
-            var state = game.IsPaused ? "paused" : game.IsIntermission ? "intermission" : "playing";
+            var state = game.IsPaused ? "paused" : game.IsIntermission ? "intermission" : game.IsVictory ? "victory" : game.IsCountdown ? "countdown" : "playing";
 
             // blue on the left, red on the right, as everywhere else
             return $"Level {level.Level} {level.Name} ({state}), Blue {game.BlueScore}, Red {game.RedScore} of {game.Settings.GameConfig.MaxScore}\n"

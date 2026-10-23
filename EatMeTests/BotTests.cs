@@ -16,7 +16,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { MinPlayers = minPlayers, MaxPlayers = maxPlayers },
             };
 
-            return new GameServer(settings, [], botNames: botNames);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, [], botNames: botNames));
         }
 
         private static FakeConnection Join(GameServer server, int id, string name, eTeamPreference team = eTeamPreference.Red)
@@ -296,7 +296,7 @@ namespace EatMeTests
             var start = bots.ToDictionary(p => p.Player.Id, p => p.Player.Location);
 
             for (var i = 0; i < 100; i++)
-                server.Update(20);
+                server.Update(TimeSpan.FromMilliseconds(20));
 
             Assert.That(bots.Count(p => p.Player.Location != start[p.Player.Id]), Is.EqualTo(3));
         }
@@ -308,7 +308,7 @@ namespace EatMeTests
             Join(server, 1, "Human");
 
             for (var i = 0; i < 50; i++)
-                server.Update(20);
+                server.Update(TimeSpan.FromMilliseconds(20));
 
             server.StartLevel(2);
 

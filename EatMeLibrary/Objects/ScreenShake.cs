@@ -17,13 +17,13 @@ namespace EatMeLibrary
         /// <summary>
         /// How long a shake lasts when Start is given no duration.
         /// </summary>
-        public const float DEFAULT_DURATION_SECONDS = 0.6f;
+        public const int DEFAULT_DURATION_MS = 600;
 
         /// <summary>
         /// A Blast event (the POW block, a bomb), and smashed walls.
         /// </summary>
         public const float BLAST_AMPLITUDE_PIXELS = 18f;
-        public const float BLAST_DURATION_SECONDS = 0.6f;
+        public const int BLAST_DURATION_MS = 600;
 
         /// <summary>
         /// Up and down bounces a second.
@@ -48,43 +48,51 @@ namespace EatMeLibrary
         /// <summary>
         /// How long the running shake lasts.
         /// </summary>
-        public float DurationSeconds { get; private set; }
+        public TimeSpan Duration { get; private set; }
 
         /// <summary>
-        /// Seconds since the running shake started.
+        /// How long since the running shake started.
         /// </summary>
-        public float ElapsedSeconds { get; private set; }
+        public TimeSpan Elapsed { get; private set; }
 
-        public bool IsShaking => ElapsedSeconds < DurationSeconds;
+        public bool IsShaking => Elapsed < Duration;
+
+        /// <summary>
+        /// Starts a shake of DEFAULT_AMPLITUDE_PIXELS for DEFAULT_DURATION_MS.
+        /// </summary>
+        public void Start()
+        {
+            Start(DEFAULT_AMPLITUDE_PIXELS, TimeSpan.FromMilliseconds(DEFAULT_DURATION_MS));
+        }
 
         /// <summary>
         /// Starts a shake. A shake already running carries on instead if it is still bouncing higher than the new one
         /// would start, so a small jolt never cuts a big one short.
         /// </summary>
-        public void Start(float amplitudePixels = DEFAULT_AMPLITUDE_PIXELS, float durationSeconds = DEFAULT_DURATION_SECONDS)
+        public void Start(float amplitudePixels, TimeSpan duration)
         {
-            if (amplitudePixels <= 0f || durationSeconds <= 0f)
+            if (amplitudePixels <= 0f || duration <= TimeSpan.Zero)
                 return;
 
-            if (IsShaking && GetHeight(ElapsedSeconds, AmplitudePixels, DurationSeconds) > amplitudePixels)
+            if (IsShaking && GetHeight(Elapsed, AmplitudePixels, Duration) > amplitudePixels)
                 return;
 
             AmplitudePixels = amplitudePixels;
-            DurationSeconds = durationSeconds;
-            ElapsedSeconds = 0f;
+            Duration = duration;
+            Elapsed = TimeSpan.Zero;
         }
 
-        public void Update(float deltaSeconds)
+        public void Update(TimeSpan elapsed)
         {
             if (IsShaking)
-                ElapsedSeconds += deltaSeconds;
+                Elapsed += elapsed;
         }
 
         public void Stop()
         {
             AmplitudePixels = 0f;
-            DurationSeconds = 0f;
-            ElapsedSeconds = 0f;
+            Duration = TimeSpan.Zero;
+            Elapsed = TimeSpan.Zero;
         }
 
         /// <summary>
@@ -92,34 +100,33 @@ namespace EatMeLibrary
         /// </summary>
         public (float X, float Y) GetOffset()
         {
-            return GetOffset(ElapsedSeconds, AmplitudePixels, DurationSeconds);
+            return GetOffset(Elapsed, AmplitudePixels, Duration);
         }
 
         /// <summary>
-        /// The board's offset in whole pixels a time in seconds after a shake of the given height and length started;
-        /// (0, 0) before it starts and once it is over.
+        /// The board's offset in whole pixels a time after a shake of the given height and length started; (0, 0)
+        /// before it starts and once it is over.
         /// </summary>
-        public static (float X, float Y) GetOffset(float secondsSinceStart, float amplitudePixels, float durationSeconds)
+        public static (float X, float Y) GetOffset(TimeSpan sinceStart, float amplitudePixels, TimeSpan duration)
         {
-            if (secondsSinceStart < 0f || secondsSinceStart >= durationSeconds)
+            if (sinceStart < TimeSpan.Zero || sinceStart >= duration)
                 return (0f, 0f);
 
-            var height = GetHeight(secondsSinceStart, amplitudePixels, durationSeconds);
-            var angle = 2f * MathF.PI * BOUNCES_PER_SECOND * secondsSinceStart;
+            var height = GetHeight(sinceStart, amplitudePixels, duration);
+            var angle = 2f * MathF.PI * BOUNCES_PER_SECOND * (float)sinceStart.TotalSeconds;
 
             return (MathF.Round(height * SIDEWAYS_SHARE * MathF.Sin(angle * 1.3f)), MathF.Round(height * MathF.Cos(angle)));
         }
 
         /// <summary>
-        /// How high the bounce is a time in seconds into a shake, dying away by DECAY_SHARE of its duration; 0 once
-        /// it is over.
+        /// How high the bounce is a time into a shake, dying away by DECAY_SHARE of its duration; 0 once it is over.
         /// </summary>
-        public static float GetHeight(float secondsSinceStart, float amplitudePixels, float durationSeconds)
+        public static float GetHeight(TimeSpan sinceStart, float amplitudePixels, TimeSpan duration)
         {
-            if (secondsSinceStart < 0f || secondsSinceStart >= durationSeconds)
+            if (sinceStart < TimeSpan.Zero || sinceStart >= duration)
                 return 0f;
 
-            return amplitudePixels * MathF.Exp(-secondsSinceStart / (durationSeconds * DECAY_SHARE));
+            return amplitudePixels * MathF.Exp((float)(-sinceStart.TotalMilliseconds / (duration.TotalMilliseconds * DECAY_SHARE)));
         }
     }
 }

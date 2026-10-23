@@ -30,7 +30,7 @@ namespace EatMeClient
         private ToggleControl _DisplayToggle;
         private ToggleControl _PacShapeToggle;
         private Texture2D _PacSheet;
-        private float _AnimationTime;
+        private TimeSpan _AnimationTime;
         private SliderControl _BrightnessSlider;
         private SliderControl _BloomSlider;
         private readonly Action _OnBack;
@@ -91,7 +91,7 @@ namespace EatMeClient
 
         public void Update(GameTime gameTime, Viewport viewport)
         {
-            _AnimationTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            _AnimationTime += gameTime.ElapsedGameTime;
 
             // exit screen?
             if (InputManager.KeyPressed(Keys.Escape) || InputManager.GamePadButtonPressed(Buttons.B) || InputManager.GamePadButtonPressed(Buttons.Back))

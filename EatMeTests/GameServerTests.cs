@@ -17,7 +17,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { MaxPlayers = maxPlayers },
             };
 
-            return new GameServer(settings, ["Line one", "Line two"]);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, ["Line one", "Line two"]));
         }
 
         private static FakeConnection Join(GameServer server, int id, string name, eTeamPreference team = eTeamPreference.Red)
@@ -287,7 +287,7 @@ namespace EatMeTests
 
             // one second at 50 ticks a second
             for (var i = 0; i < 50; i++)
-                server.Update(20);
+                server.Update(TimeSpan.FromMilliseconds(20));
 
             Assert.That(connection.ReceivedOf<SnapshotMessage>().Count, Is.InRange(CLIENT_UPDATES_PER_SECOND - 1, CLIENT_UPDATES_PER_SECOND));
         }

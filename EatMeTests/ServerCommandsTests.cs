@@ -16,7 +16,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { MinPlayers = minPlayers, MaxPlayers = 128 },
             };
 
-            return new GameServer(settings, [], level: startingLevel);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, [], level: startingLevel));
         }
 
         private static FakeConnection Join(GameServer server, int id, string name, eTeamPreference team = eTeamPreference.Red)

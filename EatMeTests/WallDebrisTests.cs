@@ -64,14 +64,14 @@ namespace EatMeTests
             Assert.That(WallDebris.GetY(piece), Is.EqualTo(5f));
 
             // the top of the arc is at VelocityY / GRAVITY seconds
-            piece.AgeSeconds = 12f / WallDebris.GRAVITY;
+            piece.Age = TimeSpan.FromSeconds(12f / WallDebris.GRAVITY);
             Assert.That(WallDebris.GetY(piece), Is.EqualTo(5f - 12f * 12f / (2f * WallDebris.GRAVITY)).Within(0.0001f));
-            Assert.That(WallDebris.GetX(piece), Is.EqualTo(5f + 2f * piece.AgeSeconds).Within(0.0001f));
-            Assert.That(WallDebris.GetRotation(piece), Is.EqualTo(3f * piece.AgeSeconds).Within(0.0001f));
+            Assert.That(WallDebris.GetX(piece), Is.EqualTo(5f + 2f * (float)piece.Age.TotalSeconds).Within(0.0001f));
+            Assert.That(WallDebris.GetRotation(piece), Is.EqualTo(3f * (float)piece.Age.TotalSeconds).Within(0.0001f));
             Assert.That(WallDebris.IsFalling(piece), Is.False);
 
             // back at the start height, coming down
-            piece.AgeSeconds = 2f * 12f / WallDebris.GRAVITY;
+            piece.Age = TimeSpan.FromSeconds(2f * 12f / WallDebris.GRAVITY);
             Assert.That(WallDebris.GetY(piece), Is.EqualTo(5f).Within(0.0001f));
             Assert.That(WallDebris.IsFalling(piece), Is.True);
         }
@@ -83,7 +83,7 @@ namespace EatMeTests
 
             Assert.That(WallDebris.IsGone(piece, 20f), Is.False);
 
-            piece.AgeSeconds = 1.5f;
+            piece.Age = TimeSpan.FromMilliseconds(1500);
             Assert.That(WallDebris.GetY(piece), Is.GreaterThan(20.5f));
             Assert.That(WallDebris.IsGone(piece, 20f), Is.True);
         }
@@ -91,7 +91,7 @@ namespace EatMeTests
         [Test]
         public void IsGone_NotWhileStillRisingBelowTheBottom()
         {
-            var piece = new WallDebrisPiece { StartY = 30f, VelocityY = 10f, AgeSeconds = 0.1f };
+            var piece = new WallDebrisPiece { StartY = 30f, VelocityY = 10f, Age = TimeSpan.FromMilliseconds(100) };
 
             Assert.That(WallDebris.IsGone(piece, 20f), Is.False);
         }
@@ -99,7 +99,7 @@ namespace EatMeTests
         [Test]
         public void IsGone_AfterMaxSecondsWherever()
         {
-            var piece = new WallDebrisPiece { StartY = 5f, VelocityY = 10f, AgeSeconds = WallDebris.MAX_SECONDS };
+            var piece = new WallDebrisPiece { StartY = 5f, VelocityY = 10f, Age = TimeSpan.FromMilliseconds(WallDebris.MAX_AGE_MS) };
 
             Assert.That(WallDebris.IsGone(piece, 1000f), Is.True);
         }

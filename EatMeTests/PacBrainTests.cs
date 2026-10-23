@@ -478,7 +478,7 @@ namespace EatMeTests
                 var (nx, ny) = MazeMovement.GetNeighbor(x, y, choice, width, height);
                 me.Location = new Point2(nx + 0.5f, ny + 0.5f);
                 me.Facing = choice;
-                memory?.Update(msPerStep);
+                memory?.Update(TimeSpan.FromMilliseconds(msPerStep));
             }
 
             return turnBacks;
@@ -504,10 +504,10 @@ namespace EatMeTests
             Assert.That(Pick(), Is.EqualTo(eFacing.Left), "carries on toward the ghost it has only just seen");
             Assert.That(memory.IsFleeing, Is.False);
 
-            memory.Update(BotMemory.REACTION_MS - 1);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.REACTION_MS - 1));
             Assert.That(Pick(), Is.EqualTo(eFacing.Left));
 
-            memory.Update(1);
+            memory.Update(TimeSpan.FromMilliseconds(1));
             Assert.That(Pick(), Is.EqualTo(eFacing.Right), "runs once its reaction time is up");
             Assert.That(memory.IsFleeing, Is.True);
         }
@@ -518,7 +518,7 @@ namespace EatMeTests
             var memory = new BotMemory();
 
             memory.NoticeThreat();
-            memory.Update(BotMemory.REACTION_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.REACTION_MS));
             Assert.That(memory.HasReacted, Is.True);
 
             memory.ForgetThreat();
@@ -527,7 +527,7 @@ namespace EatMeTests
             memory.NoticeThreat();
             Assert.That(memory.HasReacted, Is.False);
             memory.NoticeThreat();
-            memory.Update(BotMemory.REACTION_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.REACTION_MS));
             Assert.That(memory.HasReacted, Is.True, "seeing it again doesn't restart the time");
         }
 
@@ -559,7 +559,7 @@ namespace EatMeTests
             Assert.That(memory.IsFleeing, Is.True);
 
             // past FLEE_MIN_MS and past DANGER_DISTANCE, but still within CALM_DISTANCE
-            memory.Update(BotMemory.FLEE_MIN_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.FLEE_MIN_MS));
             me.Location = new Point2(8.5f, 1.5f);
             me.Facing = eFacing.Right;
             Assert.That(ChooseWithMemory(world, me, memory), Is.EqualTo(eFacing.Right));
@@ -589,7 +589,7 @@ namespace EatMeTests
             Assert.That(ChooseWithMemory(world, me, memory), Is.EqualTo(eFacing.Right));
             Assert.That(memory.IsFleeing, Is.True);
 
-            memory.Update(BotMemory.FLEE_MIN_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.FLEE_MIN_MS));
             ChooseWithMemory(world, me, memory);
             Assert.That(memory.IsFleeing, Is.False);
         }
@@ -610,7 +610,7 @@ namespace EatMeTests
             memory.StopFleeing(map.GetLength(0), map.GetLength(1));
             Assert.That(ChooseWithMemory(world, me, memory), Is.EqualTo(eFacing.Left), "goes the other way round");
 
-            memory.Update(BotMemory.AVOID_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.AVOID_MS));
             memory.ClearGoal();
             Assert.That(ChooseWithMemory(world, me, memory), Is.EqualTo(eFacing.Right), "back to the short way once avoiding is over");
         }
@@ -630,7 +630,7 @@ namespace EatMeTests
             world.Pacs = [me, MakePac(2, eTeam.Blue, 7, 1)];
             Assert.That(ChooseWithMemory(world, me, memory), Is.EqualTo(eFacing.Left));
 
-            memory.Update(BotMemory.GOAL_COMMIT_MAX_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.GOAL_COMMIT_MAX_MS));
             Assert.That(ChooseWithMemory(world, me, memory), Is.EqualTo(eFacing.Right));
             Assert.That(memory.Goal, Is.EqualTo(eBotGoal.Hunt));
         }
@@ -702,7 +702,7 @@ namespace EatMeTests
             }
 
             Assert.That(memory.IsCommitted, Is.True);
-            memory.Update(BotMemory.GOAL_COMMIT_MAX_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.GOAL_COMMIT_MAX_MS));
             Assert.That(memory.IsCommitted, Is.False);
             Assert.That(memory.GoalMsLeft, Is.Zero);
         }
@@ -715,7 +715,7 @@ namespace EatMeTests
             Assert.That(memory.CanTurnBack, Is.True);
             memory.TurnedBack();
             Assert.That(memory.CanTurnBack, Is.False);
-            memory.Update(BotMemory.TURN_BACK_COOLDOWN_MS);
+            memory.Update(TimeSpan.FromMilliseconds(BotMemory.TURN_BACK_COOLDOWN_MS));
             Assert.That(memory.CanTurnBack, Is.True);
         }
 

@@ -56,15 +56,15 @@ namespace EatMeLibrary
         /// <summary>
         /// A pac charging on its own spawn (PacState.SpawnFeeding) blinks purple, showing it for this long out of every two.
         /// </summary>
-        public const float SPAWN_CHARGE_BLINK_SECONDS = 0.15f;
+        public const int SPAWN_CHARGE_BLINK_MS = 150;
 
         /// <summary>
-        /// True if a pac charging on its spawn is drawn purple at a time in seconds (otherwise its own color): purple for
-        /// the first SPAWN_CHARGE_BLINK_SECONDS of every two.
+        /// True if a pac charging on its spawn is drawn purple at a time (otherwise its own color): purple for the first
+        /// SPAWN_CHARGE_BLINK_MS of every two.
         /// </summary>
-        public static bool IsSpawnChargeBlinkPurple(float seconds)
+        public static bool IsSpawnChargeBlinkPurple(TimeSpan time)
         {
-            return seconds % (SPAWN_CHARGE_BLINK_SECONDS * 2f) < SPAWN_CHARGE_BLINK_SECONDS;
+            return time.TotalMilliseconds % (SPAWN_CHARGE_BLINK_MS * 2) < SPAWN_CHARGE_BLINK_MS;
         }
 
         /// <summary>
@@ -76,11 +76,6 @@ namespace EatMeLibrary
         /// A ghost counts as a circle one cell across.
         /// </summary>
         public const float GHOST_RADIUS = 0.5f;
-
-        /// <summary>
-        /// How much bigger ghosts are on a rainbow level (LevelInfo.IsRainbow).
-        /// </summary>
-        public const float RAINBOW_GHOST_SCALE = 2f;
 
         /// <summary>
         /// Size after eating one dot that adds gain. Dots never take a pac past maxSize, and a pac already past it
@@ -95,12 +90,12 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Growth for a pac standing on its own team's spawn for the given seconds: the same rate as running over a line of
+        /// Growth for a pac standing on its own team's spawn for the elapsed time: the same rate as running over a line of
         /// dots, one dot (dotGain) for every cell it would move at speed (cells a second).
         /// </summary>
-        public static float GetSpawnFeedGain(float dotGain, float speed, float seconds)
+        public static float GetSpawnFeedGain(float dotGain, float speed, TimeSpan elapsed)
         {
-            return dotGain * speed * seconds;
+            return dotGain * speed * (float)elapsed.TotalSeconds;
         }
 
         /// <summary>
@@ -147,11 +142,11 @@ namespace EatMeLibrary
         public const float START_SIZE = 0f;
 
         /// <summary>
-        /// Size after starving for the given seconds, losing perSecond each second, but never below START_SIZE.
+        /// Size after starving for the elapsed time, losing perSecond each second, but never below START_SIZE.
         /// </summary>
-        public static float Starve(float size, float perSecond, float seconds)
+        public static float Starve(float size, float perSecond, TimeSpan elapsed)
         {
-            return MathF.Max(START_SIZE, size - perSecond * seconds);
+            return MathF.Max(START_SIZE, size - perSecond * (float)elapsed.TotalSeconds);
         }
 
         /// <summary>
@@ -226,19 +221,11 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if a pac overlaps a ghost of the given radius (GetGhostRadius).
+        /// True if a pac overlaps a ghost of the given radius.
         /// </summary>
         public static bool IsTouchingGhost(Point2 pacPosition, float size, Point2 ghostPosition, float ghostRadius = GHOST_RADIUS)
         {
             return AreTouching(pacPosition, GetRadius(size), ghostPosition, ghostRadius);
-        }
-
-        /// <summary>
-        /// A ghost's radius in cells on a level: GHOST_RADIUS, or RAINBOW_GHOST_SCALE times that on a rainbow level.
-        /// </summary>
-        public static float GetGhostRadius(bool isRainbow)
-        {
-            return isRainbow ? GHOST_RADIUS * RAINBOW_GHOST_SCALE : GHOST_RADIUS;
         }
 
         /// <summary>

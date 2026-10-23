@@ -5,13 +5,13 @@ namespace EatMeLibrary
 {
     /// <summary>
     /// The speed trails behind pacs with an effect that leaves one (PowerUpEffects.HasSpeedTrail): the last few
-    /// positions (in map cells) of each such pac, newest first, sampled every TRAIL_SAMPLE_SECONDS. A pac's trail is
+    /// positions (in map cells) of each such pac, newest first, sampled every TRAIL_SAMPLE_MS. A pac's trail is
     /// dropped when it loses the effect, dies, leaves the snapshot or jumps further than MAX_TRAIL_STEP in one sample (a warp tunnel or a
     /// respawn), so no streak is drawn across the map.
     /// </summary>
     public class PacTrails
     {
-        public const float TRAIL_SAMPLE_SECONDS = 0.04f;
+        public const int TRAIL_SAMPLE_MS = 40;
 
         /// <summary>
         /// Positions kept per pac, so copies drawn behind it.
@@ -31,18 +31,18 @@ namespace EatMeLibrary
         private readonly Dictionary<int, List<(float X, float Y)>> _Trails = new();
         private readonly HashSet<int> _Seen = new();
         private readonly List<int> _Stale = new();
-        private float _SampleTimer;
+        private TimeSpan _SampleTimer;
 
         /// <summary>
         /// Takes this frame's pacs and how long the frame took.
         /// </summary>
-        public void Update(IEnumerable<PacState> pacs, float deltaSeconds)
+        public void Update(IEnumerable<PacState> pacs, TimeSpan elapsed)
         {
-            _SampleTimer += deltaSeconds;
-            var sample = _SampleTimer >= TRAIL_SAMPLE_SECONDS;
+            _SampleTimer += elapsed;
+            var sample = _SampleTimer.TotalMilliseconds >= TRAIL_SAMPLE_MS;
 
             if (sample)
-                _SampleTimer %= TRAIL_SAMPLE_SECONDS;
+                _SampleTimer = TimeSpan.FromTicks(_SampleTimer.Ticks % (TRAIL_SAMPLE_MS * TimeSpan.TicksPerMillisecond));
 
             _Seen.Clear();
 
@@ -96,7 +96,7 @@ namespace EatMeLibrary
         public void Clear()
         {
             _Trails.Clear();
-            _SampleTimer = 0f;
+            _SampleTimer = TimeSpan.Zero;
         }
 
         /// <summary>

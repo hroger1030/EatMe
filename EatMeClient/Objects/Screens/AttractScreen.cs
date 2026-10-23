@@ -7,10 +7,10 @@ using System.Collections.Generic;
 namespace EatMeClient
 {
     /// <summary>
-    /// Shown after the title menu has sat idle (AttractMath.IDLE_SECONDS): on black, the story, every ghost and every
+    /// Shown after the title menu has sat idle (AttractMath.IDLE_MS): on black, the story, every ghost and every
     /// power up (alphabetically: sprite and name side by side, centred, and a short description under them across the
     /// centre third of the screen), and the two teams' pacs, scrolling up slowly
-    /// until the bottom is on screen, then back to the title after AttractMath.HOLD_SECONDS. Any key, gamepad button
+    /// until the bottom is on screen, then back to the title after AttractMath.HOLD_MS. Any key, gamepad button
     /// or mouse button goes back at once.
     /// </summary>
     public class AttractScreen
@@ -67,7 +67,7 @@ namespace EatMeClient
         private float _StoryWidth = -1f;
         private readonly Dictionary<string, List<string>> _BlurbLines = [];
         private float _BlurbWidth = -1f;
-        private float _Seconds;
+        private TimeSpan _Time;
 
         public AttractScreen(Action onDone)
         {
@@ -97,7 +97,7 @@ namespace EatMeClient
         /// </summary>
         public void Activate()
         {
-            _Seconds = 0f;
+            _Time = TimeSpan.Zero;
         }
 
         public void Update(GameTime gameTime, Viewport viewport)
@@ -108,15 +108,15 @@ namespace EatMeClient
                 return;
             }
 
-            _Seconds += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            _Time += gameTime.ElapsedGameTime;
 
-            if (AttractMath.IsFinished(_Seconds, Layout(null, viewport, 0f), viewport.Height))
+            if (AttractMath.IsFinished(_Time, Layout(null, viewport, 0f), viewport.Height))
                 _OnDone();
         }
 
         public void Draw(SpriteBatch spriteBatch, Viewport viewport)
         {
-            var offset = AttractMath.GetScrollOffset(_Seconds, Layout(null, viewport, 0f), viewport.Height);
+            var offset = AttractMath.GetScrollOffset(_Time, Layout(null, viewport, 0f), viewport.Height);
 
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             Layout(spriteBatch, viewport, -offset);
@@ -170,7 +170,7 @@ namespace EatMeClient
 
             if (spriteBatch != null && IsOnScreen(viewport, y, STAR_PAC_PIXELS))
             {
-                var source = MultiPlayerGameScreen.GetPacSource(_PacSheet, PacShapes.DEFAULT, MultiPlayerGameScreen.GetChompFrame(_Seconds));
+                var source = MultiPlayerGameScreen.GetPacSource(_PacSheet, PacShapes.DEFAULT, MultiPlayerGameScreen.GetChompFrame(_Time));
                 var left = (viewport.Width - STAR_PAC_PIXELS * 2 - STAR_PAC_GAP) / 2;
 
                 spriteBatch.Draw(_PacSheet, new Rectangle(left, (int)y, STAR_PAC_PIXELS, STAR_PAC_PIXELS), source, ClientColors.COLOR_PAC_BLUE);

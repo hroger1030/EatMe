@@ -11,10 +11,10 @@ namespace EatMeClient
     public class TitleScreen : Game
     {
         private const float MENU_OPTION_SPACING = 1.25f;
-        private const float EXIT_DELAY_SECONDS = 1.5f;
+        private const int EXIT_DELAY_MS = 1500;
         private const float LOGO_WIDTH_RATIO = 0.5f;
         private const float TITLE_CENTER_Y_RATIO = 1f / 4f;
-        private const float DISPLAY_SETTLE_SECONDS = 0.25f;
+        private const int DISPLAY_SETTLE_MS = 250;
         private const float PERF_OVERLAY_MARGIN = 16f;
 
         /// <summary>
@@ -60,14 +60,14 @@ namespace EatMeClient
         private RenderTarget2D _BloomBlurTarget;
         private eScreenState _CurrentScreen = eScreenState.TitleMenu;
         private int _SelectedMenuIndex;
-        private float? _ExitTimeRemaining;
-        private float _DisplayStableSeconds;
-        private float _LogoSeconds;
+        private TimeSpan? _ExitTimeRemaining;
+        private TimeSpan _DisplayStableTime;
+        private TimeSpan _LogoTime;
         private Texture2D _Pixel;
 
-        // seconds the title menu has had no input, and how long it has been fading to the attract screen (null if not)
-        private float _IdleSeconds;
-        private float? _FadeSeconds;
+        // how long the title menu has had no input, and how long it has been fading to the attract screen (null if not)
+        private TimeSpan _IdleTime;
+        private TimeSpan? _FadeTime;
 
         public TitleScreen()
         {
@@ -170,7 +170,7 @@ namespace EatMeClient
             AssetCache.LoadTexts([Const.TEXT_STORY]);
 
             // shaders
-            AssetCache.LoadEffects([Const.EFFECT_BRIGHTNESS, Const.EFFECT_PIXEL_ART, Const.EFFECT_BLOOM]);
+            AssetCache.LoadEffects([Const.EFFECT_BRIGHTNESS, Const.EFFECT_PIXEL_ART, Const.EFFECT_BLOOM, Const.EFFECT_RAINBOW_WALL]);
         }
 
         /// <summary>
@@ -205,8 +205,8 @@ namespace EatMeClient
         private void ActivateTitleMenu()
         {
             _SelectedMenuIndex = 0;
-            _IdleSeconds = 0f;
-            _FadeSeconds = null;
+            _IdleTime = TimeSpan.Zero;
+            _FadeTime = null;
 
             // Loops until a game starts; Play is a no-op if the theme is already playing
             MusicManager.Play(Const.SONG_TITLE_THEME);
@@ -241,15 +241,15 @@ namespace EatMeClient
 
             // Restart the settle timer whenever the window isn't at full screen size yet
             if (IsDisplaySettled(Window.ClientBounds, _Graphics.PreferredBackBufferWidth, _Graphics.PreferredBackBufferHeight))
-                _DisplayStableSeconds += (float)gameTime.ElapsedGameTime.TotalSeconds;
+                _DisplayStableTime += gameTime.ElapsedGameTime;
             else
-                _DisplayStableSeconds = 0f;
+                _DisplayStableTime = TimeSpan.Zero;
 
             if (_ExitTimeRemaining.HasValue)
             {
-                _ExitTimeRemaining -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+                _ExitTimeRemaining -= gameTime.ElapsedGameTime;
 
-                if (_ExitTimeRemaining <= 0f)
+                if (_ExitTimeRemaining <= TimeSpan.Zero)
                     Exit();
 
                 base.Update(gameTime);
@@ -294,10 +294,10 @@ namespace EatMeClient
                 return;
             }
 
-            // the logo only animates while it shows, wrapped at one loop so the clock never grows large
-            _LogoSeconds = (_LogoSeconds + (float)gameTime.ElapsedGameTime.TotalSeconds) % (LogoSprites.FRAME_COUNT * LogoSprites.FRAME_SECONDS);
+            // the logo only animates while it shows
+            _LogoTime += gameTime.ElapsedGameTime;
 
-            if (UpdateIdle((float)gameTime.ElapsedGameTime.TotalSeconds))
+            if (UpdateIdle(gameTime.ElapsedGameTime))
             {
                 base.Update(gameTime);
                 return;
@@ -337,26 +337,26 @@ namespace EatMeClient
 
         /// <summary>
         /// Counts how long the title menu has had no input (no key, gamepad button, mouse button or mouse move): after
-        /// AttractMath.IDLE_SECONDS it fades to black over AttractMath.FADE_SECONDS and then shows the attract screen.
+        /// AttractMath.IDLE_MS it fades to black over AttractMath.FADE_MS and then shows the attract screen.
         /// Any input starts the count again and cancels a fade. Returns true once the attract screen has started.
         /// </summary>
-        private bool UpdateIdle(float deltaSeconds)
+        private bool UpdateIdle(TimeSpan elapsed)
         {
             if (InputManager.AnyButtonPressed() || InputManager.MouseMoved())
             {
-                _IdleSeconds = 0f;
-                _FadeSeconds = null;
+                _IdleTime = TimeSpan.Zero;
+                _FadeTime = null;
                 return false;
             }
 
-            _IdleSeconds += deltaSeconds;
+            _IdleTime += elapsed;
 
-            if (_IdleSeconds < AttractMath.IDLE_SECONDS)
+            if (_IdleTime.TotalMilliseconds < AttractMath.IDLE_MS)
                 return false;
 
-            _FadeSeconds = (_FadeSeconds ?? 0f) + deltaSeconds;
+            _FadeTime = (_FadeTime ?? TimeSpan.Zero) + elapsed;
 
-            if (AttractMath.GetFadeAlpha(_FadeSeconds.Value) < 1f)
+            if (AttractMath.GetFadeAlpha(_FadeTime.Value) < 1f)
                 return false;
 
             _CurrentScreen = eScreenState.Attract;
@@ -424,7 +424,7 @@ namespace EatMeClient
 
         private void RequestExit()
         {
-            _ExitTimeRemaining = EXIT_DELAY_SECONDS;
+            _ExitTimeRemaining = TimeSpan.FromMilliseconds(EXIT_DELAY_MS);
         }
 
         private void UpdateMouseSelection()
@@ -533,7 +533,7 @@ namespace EatMeClient
             DrawFrame(gameTime);
 
             // after the brightness pass, so neither brightness nor bloom touch it
-            if (_Perf.IsVisible && _DisplayStableSeconds >= DISPLAY_SETTLE_SECONDS)
+            if (_Perf.IsVisible && _DisplayStableTime.TotalMilliseconds >= DISPLAY_SETTLE_MS)
             {
                 _SpriteBatch.Begin();
                 _PerfOverlay.Draw(_SpriteBatch, GetPerfOverlayPosition(), _Perf.Lines);
@@ -560,7 +560,7 @@ namespace EatMeClient
             GraphicsDevice.Clear(Color.Black);
 
             // Draw nothing but black until the switch to full screen has finished
-            if (_DisplayStableSeconds < DISPLAY_SETTLE_SECONDS)
+            if (_DisplayStableTime.TotalMilliseconds < DISPLAY_SETTLE_MS)
             {
                 base.Draw(gameTime);
                 return;
@@ -717,7 +717,7 @@ namespace EatMeClient
             // Logo in place of the title text, point sampled so the pixel art stays crisp
             _SpriteBatch.Begin(samplerState: SamplerState.PointClamp);
             var (titlePosition, titleSize) = GetTitleLayout(viewport);
-            var logoFrame = LogoSprites.GetFrame(_LogoSeconds);
+            var logoFrame = LogoSprites.GetFrame(_LogoTime);
             var logoSource = new Rectangle(LogoSprites.GetCellX(logoFrame), LogoSprites.GetCellY(logoFrame), LogoSprites.FRAME_WIDTH, LogoSprites.FRAME_HEIGHT);
             _SpriteBatch.Draw(_Logo, new Rectangle((int)titlePosition.X, (int)titlePosition.Y, (int)titleSize.X, (int)titleSize.Y), logoSource, Color.White);
             _SpriteBatch.End();
@@ -739,8 +739,8 @@ namespace EatMeClient
             _MessageScroller.Draw(_SpriteBatch, viewport);
 
             // fading to black on the way to the attract screen
-            if (_FadeSeconds.HasValue)
-                _SpriteBatch.Draw(_Pixel, viewport.Bounds, Color.Black * AttractMath.GetFadeAlpha(_FadeSeconds.Value));
+            if (_FadeTime.HasValue)
+                _SpriteBatch.Draw(_Pixel, viewport.Bounds, Color.Black * AttractMath.GetFadeAlpha(_FadeTime.Value));
 
             _SpriteBatch.End();
         }

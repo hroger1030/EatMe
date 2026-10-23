@@ -43,7 +43,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { PowerUpSpawnTimerMs = spawnTimer },
             };
 
-            return new GameServer(settings, []);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, []));
         }
 
         private static (Player Player, FakeConnection Connection) Join(GameServer server, int id)
@@ -82,11 +82,11 @@ namespace EatMeTests
         [Test]
         public void GetHoverOffset_IsASineWaveWithinTheHoverHeight()
         {
-            Assert.That(PowerUpRules.GetHoverOffset(0, 0), Is.EqualTo(0f).Within(0.0001f));
-            Assert.That(PowerUpRules.GetHoverOffset(PowerUpRules.HOVER_PERIOD_SECONDS * 0.25, 0), Is.EqualTo(PowerUpRules.HOVER_CELLS).Within(0.0001f));
-            Assert.That(PowerUpRules.GetHoverOffset(PowerUpRules.HOVER_PERIOD_SECONDS * 0.75, 0), Is.EqualTo(-PowerUpRules.HOVER_CELLS).Within(0.0001f));
+            Assert.That(PowerUpRules.GetHoverOffset(TimeSpan.Zero, 0), Is.EqualTo(0f).Within(0.0001f));
+            Assert.That(PowerUpRules.GetHoverOffset(TimeSpan.FromMilliseconds(PowerUpRules.HOVER_PERIOD_MS * 0.25), 0), Is.EqualTo(PowerUpRules.HOVER_CELLS).Within(0.0001f));
+            Assert.That(PowerUpRules.GetHoverOffset(TimeSpan.FromMilliseconds(PowerUpRules.HOVER_PERIOD_MS * 0.75), 0), Is.EqualTo(-PowerUpRules.HOVER_CELLS).Within(0.0001f));
 
-            for (var t = 0.0; t < 5.0; t += 0.01)
+            for (var t = TimeSpan.Zero; t < TimeSpan.FromSeconds(5); t += TimeSpan.FromMilliseconds(10))
                 Assert.That(Math.Abs(PowerUpRules.GetHoverOffset(t, 3)), Is.LessThanOrEqualTo(PowerUpRules.HOVER_CELLS + 0.0001f));
         }
 
@@ -102,7 +102,7 @@ namespace EatMeTests
         [Test]
         public void GetHoverOffset_DifferentIds_BobOutOfStep()
         {
-            Assert.That(PowerUpRules.GetHoverOffset(1.0, 1), Is.Not.EqualTo(PowerUpRules.GetHoverOffset(1.0, 2)).Within(0.001f));
+            Assert.That(PowerUpRules.GetHoverOffset(TimeSpan.FromSeconds(1), 1), Is.Not.EqualTo(PowerUpRules.GetHoverOffset(TimeSpan.FromSeconds(1), 2)).Within(0.001f));
         }
 
         [Test]
@@ -206,13 +206,13 @@ namespace EatMeTests
         {
             var server = MakeServer(spawnTimer: 30000);
 
-            server.UpdatePowerUps(0f, 29999);
+            server.UpdatePowerUps(TimeSpan.FromMilliseconds(29999));
             Assert.That(server.PowerUps, Is.Empty);
 
-            server.UpdatePowerUps(0f, 1);
+            server.UpdatePowerUps(TimeSpan.FromMilliseconds(1));
             Assert.That(server.PowerUps, Has.Count.EqualTo(1));
 
-            server.UpdatePowerUps(0f, 30000);
+            server.UpdatePowerUps(TimeSpan.FromMilliseconds(30000));
             Assert.That(server.PowerUps, Has.Count.EqualTo(2));
         }
 
@@ -221,7 +221,7 @@ namespace EatMeTests
         {
             var server = MakeServer(spawnTimer: 0);
 
-            server.UpdatePowerUps(0f, 1_000_000);
+            server.UpdatePowerUps(TimeSpan.FromMilliseconds(1_000_000));
 
             Assert.That(server.PowerUps, Is.Empty);
         }
@@ -230,7 +230,7 @@ namespace EatMeTests
         public void StartLevel_ClearsPowerUpsAndRestartsTheTimer()
         {
             var server = MakeServer(spawnTimer: 30000);
-            server.UpdatePowerUps(0f, 45000);
+            server.UpdatePowerUps(TimeSpan.FromMilliseconds(45000));
 
             server.StartLevel(2);
 
@@ -246,7 +246,7 @@ namespace EatMeTests
 
             for (var tick = 0; tick < 100_000 && server.PowerUps.Count > 0; tick++)
             {
-                server.UpdatePowerUps(0.016f, 16);
+                server.UpdatePowerUps(TimeSpan.FromMilliseconds(16));
 
                 if (server.PowerUps.Count > 0)
                 {
@@ -266,7 +266,7 @@ namespace EatMeTests
             var powerUp = server.SpawnPowerUp();
             player.Location = powerUp.Location;
 
-            server.UpdatePowerUps(0f, 0);
+            server.UpdatePowerUps(TimeSpan.Zero);
 
             Assert.That(server.PowerUps, Is.Empty);
             var eaten = connection.Received.OfType<GameEventMessage>().Single(e => e.EventType == eGameEvent.PowerUpEaten);
@@ -282,7 +282,7 @@ namespace EatMeTests
             var powerUp = server.SpawnPowerUp();
             player.Location = powerUp.Location;
 
-            server.UpdatePowerUps(0f, 0);
+            server.UpdatePowerUps(TimeSpan.Zero);
 
             Assert.That(player.PowerUpsEaten, Is.EqualTo(1));
         }
@@ -296,7 +296,7 @@ namespace EatMeTests
             player.Location = powerUp.Location;
             player.Alive = false;
 
-            server.UpdatePowerUps(0f, 0);
+            server.UpdatePowerUps(TimeSpan.Zero);
 
             Assert.That(server.PowerUps, Has.Count.EqualTo(1));
         }
@@ -309,8 +309,8 @@ namespace EatMeTests
             var ghost = server.Ghosts[0];
             ghost.Location = powerUp.Location;
 
-            server.UpdateGhosts(0f, 0);
-            server.UpdatePowerUps(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
+            server.UpdatePowerUps(TimeSpan.Zero);
 
             Assert.That(server.PowerUps, Has.Count.EqualTo(1));
             Assert.That(ghost.Alive, Is.True);

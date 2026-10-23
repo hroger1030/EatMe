@@ -1,6 +1,7 @@
 using EatMeLibrary;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
 
 namespace EatMeClient
 {
@@ -8,16 +9,16 @@ namespace EatMeClient
     {
         private readonly string _TextMessage;
         private readonly Color _TextColor;
-        private readonly float _FadeDuration;
+        private readonly TimeSpan _FadeDuration;
         private readonly SpriteFont _Font;
         private readonly eElementAlignment _Alignment;
 
-        private float _Elapsed;
+        private TimeSpan _Elapsed;
         private Texture2D _Texture;
 
         public bool IsComplete => (_Elapsed >= _FadeDuration);
 
-        public GameTitle(string textMessage, Color textColor, float fadeDuration, SpriteFont font, eElementAlignment alignment)
+        public GameTitle(string textMessage, Color textColor, TimeSpan fadeDuration, SpriteFont font, eElementAlignment alignment)
         {
             _TextMessage = textMessage;
             _TextColor = textColor;
@@ -26,12 +27,12 @@ namespace EatMeClient
             _Alignment = alignment;
         }
 
-        public void Update(float deltaTime)
+        public void Update(TimeSpan elapsed)
         {
             if (IsComplete)
                 return;
 
-            _Elapsed += deltaTime;
+            _Elapsed += elapsed;
         }
 
         public void Skip()

@@ -11,14 +11,14 @@ namespace EatMeClient
     /// </summary>
     public class TextInputControl
     {
-        private const float CURSOR_BLINK_SECONDS = 0.5f;
+        private const int CURSOR_BLINK_MS = 500;
         private const string CURSOR = "_";
         private const float LABEL_GAP = 30f;
         private const float BOX_PADDING = 8f;
         private const char FIRST_PRINTABLE = ' ';
         private const char LAST_PRINTABLE = '~';
 
-        private float _BlinkTime;
+        private TimeSpan _BlinkTime;
         private float _AverageCharacterWidth = -1f;
         private Texture2D _Pixel;
 
@@ -115,7 +115,7 @@ namespace EatMeClient
             var bounds = new Rectangle((int)position.X, (int)position.Y, (int)GetWidth(), (int)GetHeight());
             IsHovered = bounds.Contains(new Point(InputManager.MouseState.X, InputManager.MouseState.Y));
 
-            _BlinkTime = (_BlinkTime + (float)gameTime.ElapsedGameTime.TotalSeconds) % (CURSOR_BLINK_SECONDS * 2f);
+            _BlinkTime += gameTime.ElapsedGameTime;
 
             if (!isFocused)
                 return;
@@ -206,7 +206,7 @@ namespace EatMeClient
                 valueX += BOX_PADDING;
             }
 
-            var showCursor = isFocused && _BlinkTime < CURSOR_BLINK_SECONDS;
+            var showCursor = isFocused && _BlinkTime.TotalMilliseconds % (CURSOR_BLINK_MS * 2) < CURSOR_BLINK_MS;
             TextHelper.DrawShadowedString(spriteBatch, Font, showCursor ? Value + CURSOR : Value, new Vector2(valueX, position.Y), textColor);
         }
     }

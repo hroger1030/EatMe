@@ -14,12 +14,19 @@ namespace EatMeLibrary
         public FastColor WallFillColor { get; set; }
         public FastColor BackgroundColor { get; set; }
 
+        /// <summary>
+        /// ms of the start countdown left (LevelPhases.START_COUNTDOWN_MS when the level begins, less for a player
+        /// who joins during it), during which the game is frozen.
+        /// </summary>
+        public int CountdownMs { get; set; }
+
         public void Write(BinaryWriter writer)
         {
             writer.Write(Level);
             NetworkHelper.WriteColor(writer, WallColor);
             NetworkHelper.WriteColor(writer, WallFillColor);
             NetworkHelper.WriteColor(writer, BackgroundColor);
+            writer.Write(CountdownMs);
         }
 
         public void Read(BinaryReader reader)
@@ -28,6 +35,7 @@ namespace EatMeLibrary
             WallColor = NetworkHelper.ReadColor(reader);
             WallFillColor = NetworkHelper.ReadColor(reader);
             BackgroundColor = NetworkHelper.ReadColor(reader);
+            CountdownMs = reader.ReadInt32();
         }
     }
 }

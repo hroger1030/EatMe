@@ -25,11 +25,14 @@ namespace EatMeClient
         private static readonly Rectangle POWER_PILL_SOURCE = new Rectangle(PowerUpSprites.GetCellX(ePowerUp.PowerPill), PowerUpSprites.GetCellY(ePowerUp.PowerPill),
             PowerUpSprites.CELL_PIXELS, PowerUpSprites.CELL_PIXELS);
 
-        private const float PING_INTERVAL_SECONDS = 2f;
-        private const float PAC_FRAME_SECONDS = 0.08f;
+        private const int PING_INTERVAL_MS = 2000;
+        private const int PAC_FRAME_MS = 120;
 
         // space between the respawn countdown's text and the edge of its panel
         private const float RESPAWN_PANEL_PADDING = 24f;
+
+        // how far the start countdown's black drop shadow reaches, drawn solid from the text out, for strong contrast
+        private const int COUNTDOWN_SHADOW_PIXELS = 6;
         public const int PAC_FRAME_COUNT = 4;
         private const float HUD_MARGIN = 20f;
 
@@ -46,17 +49,14 @@ namespace EatMeClient
         /// <summary>
         /// Power pills blink: shown for this long, then hidden for this long.
         /// </summary>
-        private const float POWER_PILL_BLINK_SECONDS = 0.5f;
+        private const int POWER_PILL_BLINK_MS = 500;
 
         /// <summary>
         /// Flag bases blink between their team's color and yellow, showing each for this long.
         /// </summary>
-        private const float FLAG_BASE_BLINK_SECONDS = 0.5f;
+        private const int FLAG_BASE_BLINK_MS = 500;
 
         public const int GHOST_FRAME_COUNT = 4;
-
-        // rainbow ghost sheets, each moved round the gradient a little further, so the rainbow scrolls as ghosts move
-        private const int RAINBOW_GHOST_PHASES = 16;
 
         /// <summary>
         /// The results screen's title and countdown are the UI font drawn this many times bigger.
@@ -103,6 +103,7 @@ namespace EatMeClient
         // Assets
         private SpriteFont _Font;
         private SpriteFont _NameFont;
+        private SpriteFont _PhaseFont;
         private Texture2D _Pixel;
         private Texture2D _DotTexture;
         private Texture2D _PacBaseTexture;
@@ -128,7 +129,6 @@ namespace EatMeClient
         private Texture2D _WeaponEffectSheet;
         private Texture2D _PacDeathSheet;
         private Texture2D[] _GhostSheets;
-        private Texture2D[] _RainbowGhostSheets;
         private Texture2D _GhostEyesSheet;
 
         /// <summary>
@@ -140,6 +140,7 @@ namespace EatMeClient
         private Texture2D _PointerTexture;
         private Texture2D _Background;
         private PixelArtEffect _PixelArt;
+        private RainbowWallEffect _RainbowWall;
         private SoundEffectInstance _EatLoop;
         private SoundEffectInstance _SirenLoop;
         private SoundEffectInstance _PowerPillLoop;
@@ -210,8 +211,8 @@ namespace EatMeClient
         /// </summary>
         public int HudBarHeight => GetHudBarHeight();
         private readonly Stopwatch _Clock = Stopwatch.StartNew();
-        private float _PingTimer;
-        private float _AnimationTime;
+        private TimeSpan _PingTimer;
+        private TimeSpan _AnimationTime;
 
         /// <summary>
         /// The board's shake (ShakeScreen), added to the camera every frame.
@@ -236,6 +237,7 @@ namespace EatMeClient
         {
             _Font = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48);
             _NameFont = AssetCache.GetFont(Const.FONT_ARIAL20);
+            _PhaseFont = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC96);
             _PlayerState = new PlayerState(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30),
                 AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48));
             _PlayerList = new PlayerList(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30));
@@ -255,6 +257,7 @@ namespace EatMeClient
             _PointerTexture = AssetCache.GetTexture(Const.IMAGE_POINTER);
             _Background = AssetCache.GetTexture(Const.IMAGE_TITLE_BACKGROUND);
             _PixelArt = new PixelArtEffect(AssetCache.GetEffect(Const.EFFECT_PIXEL_ART));
+            _RainbowWall = new RainbowWallEffect(AssetCache.GetEffect(Const.EFFECT_RAINBOW_WALL), CELL_PIXELS);
 
             var whiteGhost = AssetCache.GetTexture(Const.IMAGE_GHOST);
             // one sheet per personality, indexed by GhostPersonality.Id
@@ -263,10 +266,6 @@ namespace EatMeClient
                 _GhostSheets[personality.Id] = ImageFactory.GenerateGhostSheet(whiteGhost, ClientColors.ToColor(personality.Color));
 
             _GhostEyesSheet = ImageFactory.GenerateGhostEyesSheet(whiteGhost);
-
-            _RainbowGhostSheets = new Texture2D[RAINBOW_GHOST_PHASES];
-            for (var phase = 0; phase < RAINBOW_GHOST_PHASES; phase++)
-                _RainbowGhostSheets[phase] = ImageFactory.GenerateRainbowGhostSheet(whiteGhost, GHOST_FRAME_COUNT, phase * (1f / RAINBOW_GHOST_PHASES));
 
             _EatLoop = AssetCache.GetSfx(Const.SFX_EAT).CreateInstance();
             _EatLoop.IsLooped = true;
@@ -309,7 +308,7 @@ namespace EatMeClient
                 RedDotColor = ClientColors.ToFastColor(ClientColors.COLOR_PAC_DOTS_RED),
             };
             _Client = new NetworkClient();
-            _PingTimer = 0f;
+            _PingTimer = TimeSpan.Zero;
             _LastDirection = eDirection.None;
             _InputSequence = 0;
 
@@ -400,17 +399,17 @@ namespace EatMeClient
 
         public void Update(GameTime gameTime, Viewport viewport)
         {
-            var deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-            _AnimationTime += deltaTime;
+            var elapsed = gameTime.ElapsedGameTime;
+            _AnimationTime += elapsed;
 
             var board = GetBoardViewport(viewport);
             _BoardSize = new Vector2(board.Width, board.Height);
 
             // the server keeps going while the menu is open, so keep up with it
             ReceiveMessages();
-            _Trails.Update(_State.Snapshot?.Pacs, deltaTime);
-            UpdateDebris(deltaTime);
-            _State.UpdateGhostEyes(deltaTime);
+            _Trails.Update(_State.Snapshot?.Pacs, elapsed);
+            UpdateDebris(elapsed);
+            _State.UpdateGhostEyes(elapsed);
 
             // paused, the game is silent: only the menus' own sounds play
             if (ConfigManager.Settings.Paused)
@@ -450,16 +449,18 @@ namespace EatMeClient
             if (InputManager.KeyPressed(Keys.Space) || InputManager.GamePadButtonPressed(Buttons.A))
                 _Client.Send(new ActionMessage());
 
-            UpdateLoopSound(_EatLoop, !_State.IsIntermission && _State.IsOwnPacEating());
-            UpdateLoopSound(_SirenLoop, !_State.IsIntermission && _State.IsOwnPacNotEating());
-            UpdateLoopSound(_PowerPillLoop, !_State.IsIntermission && _State.IsOwnPacPowered());
-            UpdateLoopSound(_SpawnChargeLoop, !_State.IsIntermission && _State.IsOwnPacSpawnFeeding());
+            // the loops are silent while the game is frozen, at either end of the level and during the results
+            var playing = !_State.IsIntermission && !_State.IsFrozen(_Clock.ElapsedMilliseconds);
+            UpdateLoopSound(_EatLoop, playing && _State.IsOwnPacEating());
+            UpdateLoopSound(_SirenLoop, playing && _State.IsOwnPacNotEating());
+            UpdateLoopSound(_PowerPillLoop, playing && _State.IsOwnPacPowered());
+            UpdateLoopSound(_SpawnChargeLoop, playing && _State.IsOwnPacSpawnFeeding());
             UpdatePowerUpLoop();
 
-            _PingTimer += deltaTime;
-            if (_PingTimer >= PING_INTERVAL_SECONDS)
+            _PingTimer += elapsed;
+            if (_PingTimer.TotalMilliseconds >= PING_INTERVAL_MS)
             {
-                _PingTimer = 0f;
+                _PingTimer = TimeSpan.Zero;
                 _Client.Send(new PingMessage { ClientTime = _Clock.ElapsedMilliseconds });
             }
 
@@ -467,13 +468,13 @@ namespace EatMeClient
             if (ownPac.HasValue)
                 _Camera.Position = CellToWorld(ownPac.Value.X, ownPac.Value.Y);
 
-            _Shake.Update(deltaTime);
+            _Shake.Update(elapsed);
             var (shakeX, shakeY) = _Shake.GetOffset();
             _Camera.ShakeOffset = new Vector2(shakeX, shakeY);
 
             for (int i = DeathAnimations.Count - 1; i > -1; i--)
             {
-                DeathAnimations[i].Update(deltaTime);
+                DeathAnimations[i].Update(elapsed);
 
                 if (DeathAnimations[i].IsComplete)
                     DeathAnimations.RemoveAt(i);
@@ -484,7 +485,7 @@ namespace EatMeClient
         /// Takes the pieces of newly smashed walls, moves every piece along its arc and drops those that have fallen off
         /// the bottom of the board.
         /// </summary>
-        private void UpdateDebris(float deltaTime)
+        private void UpdateDebris(TimeSpan elapsed)
         {
             _Debris.AddRange(_State.NewDebris);
             _State.NewDebris.Clear();
@@ -493,7 +494,7 @@ namespace EatMeClient
 
             for (int i = _Debris.Count - 1; i > -1; i--)
             {
-                _Debris[i].AgeSeconds += deltaTime;
+                _Debris[i].Age += elapsed;
 
                 if (WallDebris.IsGone(_Debris[i], bottomY))
                     _Debris.RemoveAt(i);
@@ -525,7 +526,7 @@ namespace EatMeClient
             var volume = 0f;
             var powerUps = _State.Snapshot?.PowerUps;
 
-            if (!_State.IsIntermission && powerUps != null)
+            if (!_State.IsIntermission && !_State.IsFrozen(_Clock.ElapsedMilliseconds) && powerUps != null)
             {
                 foreach (var powerUp in powerUps)
                 {
@@ -603,11 +604,11 @@ namespace EatMeClient
 
                             // an area effect's shockwave shakes the board for everyone inside its radius, the pac that set it off included
                             if (PowerUpEffects.ShakesScreen(gameEvent.EventType) && _State.IsOwnPacInEffectRange(gameEvent))
-                                ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, ScreenShake.BLAST_DURATION_SECONDS);
+                                ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, TimeSpan.FromMilliseconds(ScreenShake.BLAST_DURATION_MS));
 
                             // smashed walls shake every board, wherever the player is
                             if (PowerUpEffects.ShakesEveryScreen(gameEvent.EventType))
-                                ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, ScreenShake.BLAST_DURATION_SECONDS);
+                                ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, TimeSpan.FromMilliseconds(ScreenShake.BLAST_DURATION_MS));
                         }
 
                         StartDeathAnimation(gameEvent);
@@ -641,12 +642,20 @@ namespace EatMeClient
 
         /// <summary>
         /// Shakes the game board (not the bars, mini map or panel) for any effect that should jolt the player's view:
-        /// a bounce amplitudePixels high that dies away over durationSeconds. A stronger shake already running
-        /// carries on instead (ScreenShake.Start).
+        /// a bounce amplitudePixels high that dies away over duration. A stronger shake already running carries on
+        /// instead (ScreenShake.Start).
         /// </summary>
-        public void ShakeScreen(float amplitudePixels = ScreenShake.DEFAULT_AMPLITUDE_PIXELS, float durationSeconds = ScreenShake.DEFAULT_DURATION_SECONDS)
+        public void ShakeScreen(float amplitudePixels, TimeSpan duration)
         {
-            _Shake.Start(amplitudePixels, durationSeconds);
+            _Shake.Start(amplitudePixels, duration);
+        }
+
+        /// <summary>
+        /// Shakes the game board by ScreenShake.DEFAULT_AMPLITUDE_PIXELS for ScreenShake.DEFAULT_DURATION_MS.
+        /// </summary>
+        public void ShakeScreen()
+        {
+            _Shake.Start();
         }
 
         private void PlayEventSound(GameEventMessage gameEvent)
@@ -710,7 +719,7 @@ namespace EatMeClient
 
             var location = CellToWorld(gameEvent.X, gameEvent.Y).ToGeometryPoint();
             var death = ImageFactory.GeneratePlayerDeath(_PacDeathSheet, location, CELL_PIXELS * PacRules.GetDiameter(size), color);
-            death.Update(0f);
+            death.Update(TimeSpan.Zero);
             DeathAnimations.Add(death);
         }
 
@@ -851,7 +860,10 @@ namespace EatMeClient
                         var ownSize = ownPac.HasValue ? (int)Math.Round(ownPac.Value.Size) : 0;
                         _PlayerState.Draw(spriteBatch, GetPlayerStateBounds(viewport), _State.GetOwnPowerUpEffect(), _State.GetOwnPowerUpFill(), ownSize, _State.GetOwnHungerFill(), _State.IsOwnPacStunned());
                         if (!ConfigManager.Settings.Paused)
+                        {
                             DrawRespawnCountdown(spriteBatch, viewport);
+                            DrawLevelPhaseText(spriteBatch, viewport);
+                        }
 
                         if (_PlayerListHeld && _State.HasPlayerList)
                             _PlayerList.Draw(spriteBatch, GetBoardViewport(viewport).Bounds, _State.BluePlayerList, _State.RedPlayerList, _State.PlayerId);
@@ -878,6 +890,17 @@ namespace EatMeClient
 
                 case eDrawLayer.Maze:
                     DrawMaze(spriteBatch, board);
+
+                    if (IsRainbowLevel)
+                    {
+                        // a batch of its own, since the rainbow shader colors everything it draws
+                        spriteBatch.End();
+                        _RainbowWall.SetView(board, -_Camera.ToScreenPosition(Vector2.Zero, board), _AnimationTime);
+                        spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _RainbowWall);
+                        DrawRainbowMaze(spriteBatch, board);
+                        spriteBatch.End();
+                        spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
+                    }
                     break;
 
                 case eDrawLayer.Items:
@@ -955,6 +978,67 @@ namespace EatMeClient
 
             TextureHelper.FillRounded(spriteBatch, _Pixel, panel, MiniMap.CORNER_RADIUS, ClientColors.COLOR_TEXT_PANEL);
             spriteBatch.DrawString(_Font, text, position, Color.White);
+        }
+
+        /// <summary>
+        /// Over the frozen board at either end of the level, centred on it on a half-transparent panel with rounded corners
+        /// (like the respawn countdown's): the start countdown ("Starting in... 3") in white with a heavy black drop shadow,
+        /// or the flashing "Victory!" in the winning team's color with a black drop shadow, the panel staying while it flashes.
+        /// </summary>
+        private void DrawLevelPhaseText(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            var nowMs = _Clock.ElapsedMilliseconds;
+            var board = GetBoardViewport(viewport);
+
+            if (_State.IsVictory)
+            {
+                var victoryPosition = GetCentredPosition(board, Const.STRING_VICTORY);
+                DrawPhasePanel(spriteBatch, victoryPosition, Const.STRING_VICTORY);
+
+                if (_State.IsVictoryTextOn(nowMs))
+                    TextHelper.DrawShadowedString(spriteBatch, _PhaseFont, Const.STRING_VICTORY, victoryPosition, ClientColors.GetTeamColor(_State.VictoryTeam.Value));
+                return;
+            }
+
+            var number = _State.GetCountdownNumber(nowMs);
+            if (number <= 0)
+                return;
+
+            var text = LevelPhases.GetCountdownText(number);
+            var position = GetCentredPosition(board, text);
+            DrawPhasePanel(spriteBatch, position, text);
+
+            for (var offset = COUNTDOWN_SHADOW_PIXELS; offset > 0; offset--)
+                spriteBatch.DrawString(_PhaseFont, text, position + new Vector2(offset, offset), ClientColors.COLOR_TEXT_SHADOW);
+
+            spriteBatch.DrawString(_PhaseFont, text, position, Color.White);
+        }
+
+        /// <summary>
+        /// The standard tinted panel with rounded corners behind level phase text at position, RESPAWN_PANEL_PADDING
+        /// bigger than the text all round.
+        /// </summary>
+        private void DrawPhasePanel(SpriteBatch spriteBatch, Vector2 position, string text)
+        {
+            var size = _PhaseFont.MeasureString(text);
+            var panel = new Rectangle(
+                (int)(position.X - RESPAWN_PANEL_PADDING),
+                (int)(position.Y - RESPAWN_PANEL_PADDING),
+                (int)(size.X + RESPAWN_PANEL_PADDING * 2f),
+                (int)(size.Y + RESPAWN_PANEL_PADDING * 2f));
+
+            TextureHelper.FillRounded(spriteBatch, _Pixel, panel, MiniMap.CORNER_RADIUS, ClientColors.COLOR_TEXT_PANEL);
+        }
+
+        /// <summary>
+        /// Where text in the level phase font goes to sit centred on the board, in whole pixels.
+        /// </summary>
+        private Vector2 GetCentredPosition(Viewport board, string text)
+        {
+            var size = _PhaseFont.MeasureString(text);
+            return new Vector2(
+                (float)Math.Round(board.X + (board.Width - size.X) * 0.5f),
+                (float)Math.Round(board.Y + (board.Height - size.Y) * 0.5f));
         }
 
         /// <summary>
@@ -1194,7 +1278,7 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// The bar across the bottom: our pac's running total score, flag captures, ghost kills, enemies eaten, flag rescues
+        /// The bar across the bottom: "Stats:", then our pac's running total score, flag captures, ghost kills, enemies eaten, flag rescues
         /// and power ups eaten on the left and its ping on the right.
         /// </summary>
         private void DrawStatsBar(SpriteBatch spriteBatch, Viewport viewport)
@@ -1209,7 +1293,7 @@ namespace EatMeClient
 
             var pac = ownPac.Value;
             var textY = barTop + (float)Math.Round((barHeight - _Font.LineSpacing) * 0.5f);
-            var size = $"{Const.STRING_SCORE} {pac.TotalScore}  ";
+            var size = $"{Const.STRING_STATS}  {Const.STRING_SCORE} {pac.TotalScore}  ";
             var stats = $"{Const.STRING_FLAGS} {pac.FlagCaps}  {Const.STRING_GHOSTS} {pac.GhostKills}  {Const.STRING_CHOMPS} {pac.PlayerKills}  {Const.STRING_RESCUES} {pac.Rescues}  {Const.STRING_POWER_UPS} {pac.PowerUps}";
 
             spriteBatch.DrawString(_Font, size + stats, new Vector2(HUD_MARGIN, textY), ClientColors.COLOR_PAC_WHITE);
@@ -1253,23 +1337,37 @@ namespace EatMeClient
         }
 
         /// <summary>
+        /// True on a rainbow level (LevelInfo.IsRainbow), whose wall tubes, dots and power pills DrawRainbowMaze draws.
+        /// </summary>
+        private bool IsRainbowLevel => _State.LevelInfo != null && _State.LevelInfo.IsRainbow;
+
+        /// <summary>
+        /// The first and last cells on screen each way.
+        /// </summary>
+        private void GetVisibleCells(Viewport viewport, eGridDef[,] map, out int firstX, out int firstY, out int lastX, out int lastY)
+        {
+            var topLeft = _Camera.Position - new Vector2(viewport.Width * 0.5f, viewport.Height * 0.5f);
+            firstX = Math.Max(0, (int)Math.Floor(topLeft.X / CELL_PIXELS));
+            firstY = Math.Max(0, (int)Math.Floor(topLeft.Y / CELL_PIXELS));
+            lastX = Math.Min(map.GetLength(0) - 1, (int)Math.Ceiling((topLeft.X + viewport.Width) / CELL_PIXELS));
+            lastY = Math.Min(map.GetLength(1) - 1, (int)Math.Ceiling((topLeft.Y + viewport.Height) / CELL_PIXELS));
+        }
+
+        /// <summary>
         /// Draws only the cells on screen: walls in the level's colors, the ghost pen floor and flag bases, then dots and power pills.
+        /// On a rainbow level the wall tubes, dots and power pills are left to DrawRainbowMaze.
         /// </summary>
         private void DrawMaze(SpriteBatch spriteBatch, Viewport viewport)
         {
             var map = _State.Map;
             var wallColor = ClientColors.ToColor(_State.WallColor);
             var wallFillColor = ClientColors.ToColor(_State.WallFillColor);
-            var isRainbow = _State.LevelInfo != null && _State.LevelInfo.IsRainbow;
+            var isRainbow = IsRainbowLevel;
             var dotColors = _State.DotColors;
 
-            var topLeft = _Camera.Position - new Vector2(viewport.Width * 0.5f, viewport.Height * 0.5f);
-            var firstX = Math.Max(0, (int)Math.Floor(topLeft.X / CELL_PIXELS));
-            var firstY = Math.Max(0, (int)Math.Floor(topLeft.Y / CELL_PIXELS));
-            var lastX = Math.Min(map.GetLength(0) - 1, (int)Math.Ceiling((topLeft.X + viewport.Width) / CELL_PIXELS));
-            var lastY = Math.Min(map.GetLength(1) - 1, (int)Math.Ceiling((topLeft.Y + viewport.Height) / CELL_PIXELS));
-            var showPowerPills = _AnimationTime % (POWER_PILL_BLINK_SECONDS * 2f) < POWER_PILL_BLINK_SECONDS;
-            var showBaseTeamColor = _AnimationTime % (FLAG_BASE_BLINK_SECONDS * 2f) < FLAG_BASE_BLINK_SECONDS;
+            GetVisibleCells(viewport, map, out var firstX, out var firstY, out var lastX, out var lastY);
+            var showPowerPills = _AnimationTime.TotalMilliseconds % (POWER_PILL_BLINK_MS * 2) < POWER_PILL_BLINK_MS;
+            var showBaseTeamColor = _AnimationTime.TotalMilliseconds % (FLAG_BASE_BLINK_MS * 2) < FLAG_BASE_BLINK_MS;
 
             DrawFloors(spriteBatch, viewport, map);
 
@@ -1287,7 +1385,7 @@ namespace EatMeClient
 
                     if (cell.HasFlag(eGridDef.Wall))
                     {
-                        DrawWall(spriteBatch, map, x, y, bounds, wallColor, wallFillColor, isRainbow);
+                        DrawWall(spriteBatch, map, x, y, bounds, wallColor, wallFillColor, !isRainbow);
                         continue;
                     }
 
@@ -1296,10 +1394,47 @@ namespace EatMeClient
                     else if (cell.HasFlag(eGridDef.FlagBaseBlue))
                         spriteBatch.Draw(_FlagBaseTexture, bounds, showBaseTeamColor ? ClientColors.GetTeamColor(eTeam.Blue) : ClientColors.COLOR_PAC_YELLOW);
 
+                    if (isRainbow)
+                        continue;
+
                     if (cell.HasFlag(eGridDef.Food))
                         spriteBatch.Draw(_DotTexture, bounds, ClientColors.ToColor(dotColors[x, y]));
                     else if (cell.HasFlag(eGridDef.PowerPill) && showPowerPills)
                         spriteBatch.Draw(_PowerUpSheet, bounds, POWER_PILL_SOURCE, ClientColors.ToColor(dotColors[x, y]));
+                }
+            }
+        }
+
+        /// <summary>
+        /// The wall tubes, dots and power pills on screen on a rainbow level, drawn white in the rainbow shader's batch
+        /// (RainbowWallEffect), which colors them from where they are with the flowing gradient.
+        /// </summary>
+        private void DrawRainbowMaze(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            var map = _State.Map;
+            var showPowerPills = _AnimationTime.TotalMilliseconds % (POWER_PILL_BLINK_MS * 2) < POWER_PILL_BLINK_MS;
+
+            GetVisibleCells(viewport, map, out var firstX, out var firstY, out var lastX, out var lastY);
+
+            for (var x = firstX; x <= lastX; x++)
+            {
+                for (var y = firstY; y <= lastY; y++)
+                {
+                    var cell = map[x, y];
+
+                    if (cell.HasFlag(eGridDef.TetrisBlock))
+                        continue;
+
+                    var screen = _Camera.ToScreenPosition(CellToWorld(x, y), viewport);
+                    var bounds = new Rectangle((int)screen.X, (int)screen.Y, CELL_PIXELS, CELL_PIXELS);
+
+                    // the fill was drawn by DrawMaze, so only the tube here
+                    if (cell.HasFlag(eGridDef.Wall))
+                        DrawWall(spriteBatch, map, x, y, bounds, Color.White, Color.Transparent, true);
+                    else if (cell.HasFlag(eGridDef.Food))
+                        spriteBatch.Draw(_DotTexture, bounds, Color.White);
+                    else if (cell.HasFlag(eGridDef.PowerPill) && showPowerPills)
+                        spriteBatch.Draw(_PowerUpSheet, bounds, POWER_PILL_SOURCE, Color.White);
                 }
             }
         }
@@ -1354,11 +1489,11 @@ namespace EatMeClient
 
         /// <summary>
         /// Draws a wall cell as four quarters cut from the corner tile, each turned about the cell centre to join the walls around it.
-        /// On a rainbow level each quarter is tinted from the rainbow gradient (Rainbow.GetWallColor) instead of the wall color.
         /// Unless the fill color is transparent, each quarter's inside is first filled with it: the matching quarter of the fill mask,
-        /// or the whole quarter inside a solid block.
+        /// or the whole quarter inside a solid block. The tube is drawn in wallColor only with drawTube (on a rainbow level
+        /// DrawRainbowMaze draws it instead).
         /// </summary>
-        private void DrawWall(SpriteBatch spriteBatch, eGridDef[,] map, int x, int y, Rectangle bounds, Color wallColor, Color wallFillColor, bool isRainbow)
+        private void DrawWall(SpriteBatch spriteBatch, eGridDef[,] map, int x, int y, Rectangle bounds, Color wallColor, Color wallFillColor, bool drawTube)
         {
             var half = CELL_PIXELS / 2;
             var center = new Vector2(bounds.X + half, bounds.Y + half);
@@ -1389,15 +1524,16 @@ namespace EatMeClient
                 if (isFilled)
                     spriteBatch.Draw(_WallFillTexture, center, source, wallFillColor, rotation, origin, 1f, SpriteEffects.None, 0f);
 
-                var tint = isRainbow ? ClientColors.ToColor(Rainbow.GetWallColor(x, y, quarter)) : wallColor;
-                spriteBatch.Draw(_WallTexture, center, source, tint, rotation, origin, 1f, SpriteEffects.None, 0f);
+                if (drawTube)
+                    spriteBatch.Draw(_WallTexture, center, source, wallColor, rotation, origin, 1f, SpriteEffects.None, 0f);
             }
         }
 
         /// <summary>
         /// Every piece of smashed wall in flight, over everything else on the board: its quarter of the wall as it looked
         /// (fill, then tube, as DrawWall), turned by its quarter turns plus its spin about its own centre. A solid quarter is
-        /// just the fill color, so it isn't drawn when the walls are hollow.
+        /// just the fill color, so it isn't drawn when the walls are hollow. On a rainbow level the tube is the rainbow's
+        /// shade where the piece is now (Rainbow.GetShade), so it matches the walls it flies past.
         /// </summary>
         private void DrawDebris(SpriteBatch spriteBatch, Viewport viewport)
         {
@@ -1409,7 +1545,7 @@ namespace EatMeClient
             var wallColor = ClientColors.ToColor(_State.WallColor);
             var wallFillColor = ClientColors.ToColor(_State.WallFillColor);
             var isFilled = wallFillColor.A > 0;
-            var isRainbow = _State.LevelInfo != null && _State.LevelInfo.IsRainbow;
+            var isRainbow = IsRainbowLevel;
 
             foreach (var piece in _Debris)
             {
@@ -1437,7 +1573,7 @@ namespace EatMeClient
                 if (isFilled)
                     spriteBatch.Draw(_WallFillTexture, center, source, wallFillColor, rotation, quarterOrigin, 1f, SpriteEffects.None, 0f);
 
-                var tint = isRainbow ? ClientColors.ToColor(Rainbow.GetWallColor(piece.CellX, piece.CellY, piece.Quarter)) : wallColor;
+                var tint = isRainbow ? ClientColors.ToColor(Rainbow.GetShade(WallDebris.GetX(piece), WallDebris.GetY(piece), _AnimationTime)) : wallColor;
                 spriteBatch.Draw(_WallTexture, center, source, tint, rotation, quarterOrigin, 1f, SpriteEffects.None, 0f);
             }
         }
@@ -1758,7 +1894,7 @@ namespace EatMeClient
                     if (WeaponEffectSprites.IsDrawnAsPac(effect.Kind) || WeaponEffectSprites.IsOnFloor(effect.Kind) != (pass == 0))
                         continue;
 
-                    var frame = WeaponEffectSprites.GetFrame(_AnimationTime + effect.Id * WeaponEffectSprites.FRAME_SECONDS);
+                    var frame = WeaponEffectSprites.GetFrame(_AnimationTime + TimeSpan.FromMilliseconds(effect.Id * WeaponEffectSprites.FRAME_MS));
                     var source = new Rectangle(WeaponEffectSprites.GetCellX(frame), WeaponEffectSprites.GetCellY(effect.Kind),
                         WeaponEffectSprites.CELL_PIXELS, WeaponEffectSprites.CELL_PIXELS);
                     var center = _Camera.ToScreenPosition(CellToWorld(effect.X, effect.Y), viewport);
@@ -1775,16 +1911,14 @@ namespace EatMeClient
         /// <summary>
         /// Draws every living ghost one cell wide, looking the way it's going, with its name below it. Each ghost uses
         /// the sheet recolored in LoadContent for its personality (ClientGameState.GetGhostPersonality), and its name is
-        /// in the same color. On a rainbow level every ghost is drawn PacRules.RAINBOW_GHOST_SCALE times as wide, from the
-        /// rainbow sheet for where it is (Rainbow.GetScrollPhase), with its name in white.
+        /// in the same color.
         /// </summary>
         private void DrawGhosts(SpriteBatch spriteBatch, Viewport viewport)
         {
             if (_State.Snapshot == null)
                 return;
 
-            var isRainbow = _State.LevelInfo != null && _State.LevelInfo.IsRainbow;
-            var size = (int)(PacRules.GetGhostRadius(isRainbow) * 2f * CELL_PIXELS);
+            var size = (int)(PacRules.GHOST_RADIUS * 2f * CELL_PIXELS);
             var halfSize = size * 0.5f;
 
             foreach (var ghost in _State.Snapshot.Ghosts)
@@ -1793,9 +1927,7 @@ namespace EatMeClient
                     continue;
 
                 var personality = _State.GetGhostPersonality(ghost.GhostId);
-                var sheet = isRainbow
-                    ? _RainbowGhostSheets[Rainbow.GetScrollPhase(ghost.X, ghost.Y, RAINBOW_GHOST_PHASES)]
-                    : _GhostSheets[personality.Id];
+                var sheet = _GhostSheets[personality.Id];
                 var frameWidth = sheet.Width / GHOST_FRAME_COUNT;
                 var source = new Rectangle(GetGhostFrame(ghost.Facing) * frameWidth, 0, frameWidth, sheet.Height);
                 var center = _Camera.ToScreenPosition(CellToWorld(ghost.X, ghost.Y), viewport);
@@ -1813,7 +1945,7 @@ namespace EatMeClient
                     spriteBatch.Draw(sheet, bounds, source, Color.White);
                 }
 
-                DrawName(spriteBatch, personality.Name, center, size, isRainbow ? Color.White : ClientColors.ToColor(personality.Color));
+                DrawName(spriteBatch, personality.Name, center, size, ClientColors.ToColor(personality.Color));
             }
         }
 
@@ -1826,8 +1958,7 @@ namespace EatMeClient
             if (_State.Eyes.Count == 0)
                 return;
 
-            var isRainbow = _State.LevelInfo != null && _State.LevelInfo.IsRainbow;
-            var size = (int)(PacRules.GetGhostRadius(isRainbow) * 2f * CELL_PIXELS);
+            var size = (int)(PacRules.GHOST_RADIUS * 2f * CELL_PIXELS);
             var halfSize = size * 0.5f;
             var frameWidth = _GhostEyesSheet.Width / GHOST_FRAME_COUNT;
             var onBoard = new Rectangle(0, 0, viewport.Width, viewport.Height);
@@ -1862,10 +1993,10 @@ namespace EatMeClient
         /// <summary>
         /// Mouth frame for a chomp that opens and closes: 0, 1, 2, 3, 2, 1, 0, ...
         /// </summary>
-        public static int GetChompFrame(float time)
+        public static int GetChompFrame(TimeSpan time)
         {
             var cycle = PAC_FRAME_COUNT * 2 - 2;
-            var step = (int)(time / PAC_FRAME_SECONDS) % cycle;
+            var step = (int)(time.TotalMilliseconds / PAC_FRAME_MS) % cycle;
             return step < PAC_FRAME_COUNT ? step : cycle - step;
         }
 

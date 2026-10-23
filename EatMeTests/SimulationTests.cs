@@ -18,7 +18,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { GhostCount = ghosts, MaxScore = maxScore, IntermissionTimeMs = intermissionTimeMs },
             };
 
-            return new GameServer(settings, []);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, []));
         }
 
         private static GameConfiguration Config => new();
@@ -53,7 +53,7 @@ namespace EatMeTests
             var cell = FindCell(server, eGridDef.Food);
             PutOn(red, cell);
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             Assert.That(red.Size, Is.EqualTo(PacRules.GrowFromDot(GameServer.PAC_START_SIZE, Config.DotSizeGain, Config.PacMaxSize)));
             Assert.That(red.DotsEaten, Is.EqualTo(1));
@@ -72,7 +72,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { GhostCount = 0, MinPlayers = 0, DotRegenPercent = percent },
             };
 
-            return new GameServer(settings, []);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, []));
         }
 
         private static List<(int X, int Y)> FindCells(GameServer server, eGridDef item)
@@ -107,15 +107,15 @@ namespace EatMeTests
             for (var i = 0; i < threshold; i++)
             {
                 PutOn(red, dots[i]);
-                server.UpdateEating(0);
+                server.UpdateEating(TimeSpan.Zero);
             }
 
             Assert.That(server.Map[dots[0].X, dots[0].Y].HasFlag(eGridDef.Food), Is.False);
             Assert.That(server.EatenDots.Count, Is.EqualTo(threshold));
 
             PutOn(red, dots[threshold]);
-            server.UpdateEating(0);
-            server.Update(0);
+            server.UpdateEating(TimeSpan.Zero);
+            server.Update(TimeSpan.Zero);
 
             Assert.That(server.Map[dots[0].X, dots[0].Y].HasFlag(eGridDef.Food), Is.True);
             Assert.That(server.Map[dots[threshold].X, dots[threshold].Y].HasFlag(eGridDef.Food), Is.False);
@@ -134,7 +134,7 @@ namespace EatMeTests
             var cell = FindCell(server, eGridDef.Food);
             PutOn(red, cell);
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             Assert.That(red.DotsEaten, Is.EqualTo(1));
             Assert.That(server.Map[cell.X, cell.Y].HasFlag(eGridDef.Food), Is.True);
@@ -147,7 +147,7 @@ namespace EatMeTests
             var server = MakeDotRegenServer(50);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             PutOn(red, FindCell(server, eGridDef.Food));
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             server.StartLevel(2);
 
@@ -162,15 +162,15 @@ namespace EatMeTests
             var cell = FindCell(server, eGridDef.PowerPill);
             PutOn(red, cell);
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
             Assert.That(server.Map[cell.X, cell.Y].HasFlag(eGridDef.PowerPill), Is.False);
 
             // move off so it isn't eaten again as soon as it grows back
             PutOn(red, FindCell(server, eGridDef.SpawnPointRed));
-            server.UpdateRegens(Config.PowerPillRegenTimeMs - 1);
+            server.UpdateRegens(TimeSpan.FromMilliseconds(Config.PowerPillRegenTimeMs - 1));
             Assert.That(server.Map[cell.X, cell.Y].HasFlag(eGridDef.PowerPill), Is.False);
 
-            server.UpdateRegens(1);
+            server.UpdateRegens(TimeSpan.FromMilliseconds(1));
             Assert.That(server.Map[cell.X, cell.Y].HasFlag(eGridDef.PowerPill), Is.True);
             Assert.That(server.Regens, Is.Empty);
         }
@@ -183,7 +183,7 @@ namespace EatMeTests
             var cell = FindCell(server, eGridDef.Food);
             PutOn(red, cell);
 
-            server.Update(0);
+            server.Update(TimeSpan.Zero);
 
             var change = connection.ReceivedOf<CellsChangedMessage>().Single().Cells.Single();
             Assert.That((change.X, change.Y), Is.EqualTo(((ushort)cell.X, (ushort)cell.Y)));
@@ -197,15 +197,15 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             PutOn(red, FindCell(server, eGridDef.Food));
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
             Assert.That(red.Eating, Is.True);
             Assert.That(server.BuildSnapshot().Pacs.Single().Eating, Is.True);
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
             Assert.That(red.Eating, Is.True, "still in the cell it just emptied");
 
             PutOn(red, FindCell(server, eGridDef.SpawnPointRed));
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
             Assert.That(red.Eating, Is.False);
             Assert.That(server.BuildSnapshot().Pacs.Single().Eating, Is.False);
         }
@@ -218,7 +218,7 @@ namespace EatMeTests
             PutOn(red, FindCell(server, eGridDef.PowerPill));
             red.Size = 10f;
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             Assert.That(red.Size, Is.EqualTo(PacRules.GrowFromPowerPill(10f, Config.PowerPillSizeGain)));
         }
@@ -231,17 +231,17 @@ namespace EatMeTests
             PutOn(red, FindCell(server, eGridDef.PowerPill));
             red.Size = 50f;
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
             Assert.That(red.Size, Is.EqualTo(150f), "can go past the max size without exploding");
             Assert.That(red.Alive && red.IsPowered, Is.True);
             Assert.That(server.BuildSnapshot().Pacs.Single().Powered, Is.True);
 
             // onto the enemy spawn (never any food, and only the own spawn feeds); short ticks so it doesn't start starving
             PutOn(red, FindCell(server, eGridDef.SpawnPointBlue));
-            server.UpdateEating(Config.PowerUpDurationMs - 1);
+            server.UpdateEating(TimeSpan.FromMilliseconds(Config.PowerUpDurationMs - 1));
             Assert.That(red.IsPowered, Is.True);
 
-            server.UpdateEating(1);
+            server.UpdateEating(TimeSpan.FromMilliseconds(1));
             Assert.That(red.IsPowered, Is.False);
             Assert.That(red.Size, Is.LessThanOrEqualTo(50f));
             Assert.That(server.BuildSnapshot().Pacs.Single().Powered, Is.False);
@@ -257,7 +257,7 @@ namespace EatMeTests
             red.PowerUpEffect = ePowerUp.PowerPill;
             red.PowerUpMs = 1;
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             Assert.That(red.Size, Is.EqualTo(120f));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs));
@@ -319,7 +319,7 @@ namespace EatMeTests
             red.Size = 10f;
             server.StartPowerUpEffect(red, ePowerUp.Strawberry);
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             Assert.That(red.Size, Is.EqualTo(10f + Config.DotSizeGain * PacRules.SWEET_TOOTH_DOT_GAIN_SCALE).Within(0.0001f));
         }
@@ -342,12 +342,12 @@ namespace EatMeTests
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             PutOn(red, FindCell(server, eGridDef.Food));
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
             red.Size = 50f;
             red.MsSinceEaten = Config.MsUntilStarvation;
             server.StartPowerUpEffect(red, ePowerUp.Orange);
 
-            server.UpdateEating(Config.PowerUpDurationMs - 1000);
+            server.UpdateEating(TimeSpan.FromMilliseconds(Config.PowerUpDurationMs - 1000));
 
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Orange));
             Assert.That(red.PowerUpMs, Is.EqualTo(1000), "the buff bar counts down");
@@ -362,7 +362,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             server.StartPowerUpEffect(red, ePowerUp.Orange);
 
-            server.UpdateEating(Config.PowerUpDurationMs);
+            server.UpdateEating(TimeSpan.FromMilliseconds(Config.PowerUpDurationMs));
 
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
         }
@@ -380,7 +380,7 @@ namespace EatMeTests
             server.StartPowerUpEffect(red, ePowerUp.Orange);
             red.Alive = false;
             red.RespawnTimer = 0;
-            server.UpdateRespawns(1);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(1));
 
             Assert.That(red.Alive, Is.True);
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
@@ -396,10 +396,10 @@ namespace EatMeTests
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Apple));
             Assert.That(red.RepelsGhosts, Is.True);
 
-            server.UpdateEating(Config.PowerUpDurationMs / 2);
+            server.UpdateEating(TimeSpan.FromMilliseconds(Config.PowerUpDurationMs / 2));
             Assert.That(red.PowerUpMs, Is.EqualTo(Config.PowerUpDurationMs - Config.PowerUpDurationMs / 2), "the buff bar counts down");
 
-            server.UpdateEating(Config.PowerUpDurationMs);
+            server.UpdateEating(TimeSpan.FromMilliseconds(Config.PowerUpDurationMs));
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
             Assert.That(red.RepelsGhosts, Is.False);
         }
@@ -410,7 +410,7 @@ namespace EatMeTests
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             PutOn(red, FindCell(server, eGridDef.Food));
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
             red.Size = 30f;
             red.MsSinceEaten = Config.MsUntilStarvation;
 
@@ -418,11 +418,11 @@ namespace EatMeTests
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Melon));
             Assert.That(red.Size, Is.EqualTo(30f + PacRules.MELON_BELLY_SIZE_GAIN));
 
-            server.UpdateEating(Config.PowerUpDurationMs - 1);
+            server.UpdateEating(TimeSpan.FromMilliseconds(Config.PowerUpDurationMs - 1));
             Assert.That(red.MsSinceEaten, Is.EqualTo(0), "hunger doesn't start");
             Assert.That(red.Size, Is.EqualTo(30f + PacRules.MELON_BELLY_SIZE_GAIN), "doesn't shrink");
 
-            server.UpdateEating(1);
+            server.UpdateEating(TimeSpan.FromMilliseconds(1));
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
             Assert.That(red.Size, Is.EqualTo(30f), "the gain wears off");
         }
@@ -466,11 +466,11 @@ namespace EatMeTests
             Assert.That(server.IsSpawnLocked(eTeam.Blue), Is.True);
             Assert.That(server.IsSpawnLocked(eTeam.Red), Is.False, "doesn't lock its own team");
 
-            server.UpdateRespawns(1000);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(1000));
             Assert.That(blue.Alive, Is.False);
 
             server.EndPowerUpEffect(red);
-            server.UpdateRespawns(1);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(1));
             Assert.That(blue.Alive, Is.True, "comes back as soon as the lock lifts");
         }
 
@@ -486,7 +486,7 @@ namespace EatMeTests
 
             red.Alive = false;
             red.RespawnTimer = 5000;
-            server.UpdateRespawns(1);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(1));
 
             Assert.That(blue.Alive, Is.True);
         }
@@ -515,8 +515,8 @@ namespace EatMeTests
             twisted.StartPowerUpEffect(red, ePowerUp.Pretzel);
 
             var start = alone.Location;
-            normal.MovePacs(0.1f, 100);
-            twisted.MovePacs(0.1f, 100);
+            normal.MovePacs(TimeSpan.FromMilliseconds(100));
+            twisted.MovePacs(TimeSpan.FromMilliseconds(100));
 
             var aloneMoved = MathF.Abs(alone.Location.X - start.X) + MathF.Abs(alone.Location.Y - start.Y);
             var slowedMoved = MathF.Abs(slowed.Location.X - start.X) + MathF.Abs(slowed.Location.Y - start.Y);
@@ -534,8 +534,8 @@ namespace EatMeTests
             rushed.StartPowerUpEffect(fast, ePowerUp.Galaxian);
 
             var start = slow.Location;
-            normal.MovePacs(0.1f, 100);
-            rushed.MovePacs(0.1f, 100);
+            normal.MovePacs(TimeSpan.FromMilliseconds(100));
+            rushed.MovePacs(TimeSpan.FromMilliseconds(100));
 
             var slowMoved = MathF.Abs(slow.Location.X - start.X) + MathF.Abs(slow.Location.Y - start.Y);
             var fastMoved = MathF.Abs(fast.Location.X - start.X) + MathF.Abs(fast.Location.Y - start.Y);
@@ -551,7 +551,7 @@ namespace EatMeTests
             PutOn(red, FindCell(server, eGridDef.Food));
             red.Size = Config.PacMaxSize;
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             Assert.That(red.Size, Is.EqualTo(Config.PacMaxSize));
             Assert.That(red.Alive, Is.True);
@@ -567,11 +567,11 @@ namespace EatMeTests
 
             // spawn cells never have food, and only the own spawn feeds
             PutOn(red, FindCell(server, eGridDef.SpawnPointBlue));
-            server.UpdateEating(Config.MsUntilStarvation - 1);
+            server.UpdateEating(TimeSpan.FromMilliseconds(Config.MsUntilStarvation - 1));
             Assert.That(red.Size, Is.EqualTo(50f));
 
-            server.UpdateEating(500);
-            Assert.That(red.Size, Is.EqualTo(PacRules.Starve(50f, Config.PacShrinkPerSecond, 0.5f)).Within(0.0001f));
+            server.UpdateEating(TimeSpan.FromMilliseconds(500));
+            Assert.That(red.Size, Is.EqualTo(PacRules.Starve(50f, Config.PacShrinkPerSecond, TimeSpan.FromMilliseconds(500))).Within(0.0001f));
         }
 
         [Test]
@@ -581,7 +581,7 @@ namespace EatMeTests
             var (red, connection) = Join(server, 1, eTeamPreference.Red);
             red.Size = Config.PacMaxSize * 3f;
 
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.True);
             Assert.That(connection.ReceivedOf<GameEventMessage>(), Is.Empty);
@@ -593,12 +593,12 @@ namespace EatMeTests
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Location = server.Ghosts[0].Location;
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
-            server.UpdateRespawns(Config.PlayerRespawnTimeMs - 1);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(Config.PlayerRespawnTimeMs - 1));
             Assert.That(red.Alive, Is.False);
 
-            server.UpdateRespawns(1);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(1));
             Assert.That(red.Alive, Is.True);
             Assert.That(red.Size, Is.EqualTo(GameServer.PAC_START_SIZE));
             Assert.That(server.Map[(int)red.Location.X, (int)red.Location.Y].HasFlag(eGridDef.SpawnPointRed), Is.True);
@@ -681,7 +681,7 @@ namespace EatMeTests
             red.Size = 0f;
             server.StartPowerUpEffect(red, ePowerUp.Starman);
 
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.True);
             Assert.That(server.Ghosts[0].Alive, Is.False);
@@ -769,7 +769,7 @@ namespace EatMeTests
                     pac.Facing = inward;
                     server.Players.Single(p => p.Player == pac).Input = MazeMovement.ToDirection(inward);
 
-                    server.MovePacs(1.5f / PacRules.GetSpeed(Config.PacSpeed, pac.Size, Config.PacMaxSize), 0);
+                    server.MovePacs(TimeSpan.FromSeconds(1.5f / PacRules.GetSpeed(Config.PacSpeed, pac.Size, Config.PacMaxSize)));
 
                     Assert.That(pac.Location.X, Is.EqualTo(ox + 0.5f).Within(0.0001f));
                     Assert.That(pac.Location.Y, Is.EqualTo(oy + 0.5f).Within(0.0001f));
@@ -794,7 +794,7 @@ namespace EatMeTests
             blue.Facing = inward;
             server.Players.Single(p => p.Player == blue).Input = MazeMovement.ToDirection(inward);
 
-            server.MovePacs(0.75f / PacRules.GetSpeed(Config.PacSpeed, blue.Size, Config.PacMaxSize), 0);
+            server.MovePacs(TimeSpan.FromSeconds(0.75f / PacRules.GetSpeed(Config.PacSpeed, blue.Size, Config.PacMaxSize)));
             Assert.That(MazeMovement.GetCell(blue.Location), Is.EqualTo(spawn));
 
             server.UpdateFlags();
@@ -845,7 +845,7 @@ namespace EatMeTests
             red.Location = server.Ghosts[0].Location;
             red.Size = Config.PacMaxSize;
 
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.False);
         }
@@ -939,18 +939,18 @@ namespace EatMeTests
             var pacStart = red.Location;
             var ghostStart = ghost.Location;
 
-            server.UpdateStuns(PowerUpEffects.POW_STUN_MS - 1);
-            server.MovePacs(0.5f, 500);
-            server.UpdateGhosts(0.5f, 500);
+            server.UpdateStuns(TimeSpan.FromMilliseconds(PowerUpEffects.POW_STUN_MS - 1));
+            server.MovePacs(TimeSpan.FromMilliseconds(500));
+            server.UpdateGhosts(TimeSpan.FromMilliseconds(500));
 
             Assert.That(red.Location, Is.EqualTo(pacStart));
             Assert.That(ghost.Location, Is.EqualTo(ghostStart));
 
-            server.UpdateStuns(1);
+            server.UpdateStuns(TimeSpan.FromMilliseconds(1));
             Assert.That(red.IsStunned, Is.False);
             Assert.That(ghost.IsStunned, Is.False);
 
-            server.MovePacs(0.5f, 500);
+            server.MovePacs(TimeSpan.FromMilliseconds(500));
             Assert.That(red.Location, Is.Not.EqualTo(pacStart), "moves again once the stun wears off");
         }
 
@@ -962,7 +962,7 @@ namespace EatMeTests
             server.Ghosts[0].StunMs = PowerUpEffects.POW_STUN_MS;
             red.Location = server.Ghosts[0].Location;
 
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.True);
             Assert.That(server.Ghosts[0].Alive, Is.True);
@@ -978,7 +978,7 @@ namespace EatMeTests
             red.PowerUpEffect = ePowerUp.Starman;
             red.PowerUpMs = 1000;
 
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.True);
             Assert.That(server.Ghosts[0].Alive, Is.False);
@@ -991,7 +991,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Location = server.Ghosts[0].Location;
 
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.False);
             Assert.That(server.Ghosts[0].Alive, Is.True);
@@ -1008,14 +1008,14 @@ namespace EatMeTests
             red.PowerUpEffect = ePowerUp.PowerPill;
             red.PowerUpMs = Config.PowerUpDurationMs;
 
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.True);
             Assert.That(ghost.Alive, Is.False);
             Assert.That(red.GhostKills, Is.EqualTo(1));
             Assert.That(server.RedScore, Is.EqualTo(Config.GhostKill));
 
-            server.UpdateGhosts(0f, Config.GhostRegenTimeMs);
+            server.UpdateGhosts(TimeSpan.FromMilliseconds(Config.GhostRegenTimeMs));
             Assert.That(ghost.Alive, Is.True);
         }
 
@@ -1028,7 +1028,7 @@ namespace EatMeTests
             PutOn(red, FindCell(server, eGridDef.SpawnPointBlue));
 
             for (var i = 0; i < 100; i++)
-                server.UpdateEating(Config.MsUntilStarvation);
+                server.UpdateEating(TimeSpan.FromMilliseconds(Config.MsUntilStarvation));
 
             Assert.That(red.Size, Is.EqualTo(PacRules.START_SIZE));
         }
@@ -1055,7 +1055,7 @@ namespace EatMeTests
             var before = GhostBrain.GetDistanceSquared(ghost.Location, red.Location);
 
             for (var i = 0; i < 10; i++)
-                server.UpdateGhosts(TICK_MS / 1000f, TICK_MS);
+                server.UpdateGhosts(TimeSpan.FromMilliseconds(TICK_MS));
 
             Assert.That(ghost.Alive, Is.True);
             Assert.That(ghost.CurrentTarget, Is.Null);
@@ -1090,7 +1090,7 @@ namespace EatMeTests
                     foreach (var (player, connection) in players)
                         server.HandleMessage(connection, new InputMessage { Sequence = ++sequence, Direction = directions[(tick / 45 + player.Id) % directions.Length] });
 
-                server.Update(TICK_MS);
+                server.Update(TimeSpan.FromMilliseconds(TICK_MS));
 
                 foreach (var pac in server.BuildSnapshot().Pacs.Where(p => p.Alive))
                     Assert.That(server.Map[(int)pac.X, (int)pac.Y].HasFlag(eGridDef.Wall), Is.False, $"pac {pac.PlayerId} tick {tick}");
@@ -1103,7 +1103,7 @@ namespace EatMeTests
         }
 
         [Test]
-        public void ReachingMaxScore_SendsResultsAndStartsIntermission()
+        public void ReachingMaxScore_ShowsVictory_ThenSendsResultsAndStartsIntermission()
         {
             var server = MakeServer(maxScore: 1);
             var (red, connection) = Join(server, 1, eTeamPreference.Red);
@@ -1115,6 +1115,15 @@ namespace EatMeTests
             Assert.That(server.CheckLevelWon(), Is.True);
             Assert.That(server.CheckLevelWon(), Is.False, "only won once");
 
+            var victory = connection.ReceivedOf<VictoryMessage>().Single();
+            Assert.That(victory.WinningTeam, Is.EqualTo(eTeam.Red));
+            Assert.That(victory.MsRemaining, Is.EqualTo(LevelPhases.VICTORY_MS));
+            Assert.That(server.IsVictory, Is.True);
+            Assert.That(connection.ReceivedOf<LevelWonMessage>(), Is.Empty, "the results wait for the victory pause");
+
+            server.ShowResults();
+
+            Assert.That(server.IsVictory, Is.False);
             var won = connection.ReceivedOf<LevelWonMessage>().Single();
             Assert.That(won.WinningTeam, Is.EqualTo(eTeam.Red));
             Assert.That(won.RedScore, Is.EqualTo(1));
@@ -1135,15 +1144,16 @@ namespace EatMeTests
             red.Size = 60f;
             server.UpdatePacFights();
             server.CheckLevelWon();
+            server.ShowResults();
 
             var location = red.Location;
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Left });
-            server.Update(500);
+            server.Update(TimeSpan.FromMilliseconds(500));
 
             Assert.That(red.Location, Is.EqualTo(location), "nothing moves during the intermission");
             Assert.That(server.CurrentLevel.Level, Is.EqualTo(1));
 
-            server.Update(500);
+            server.Update(TimeSpan.FromMilliseconds(500));
 
             Assert.That(server.IsIntermission, Is.False);
             Assert.That(server.CurrentLevel.Level, Is.EqualTo(2));
@@ -1164,8 +1174,103 @@ namespace EatMeTests
             server.UpdatePacFights();
 
             Assert.That(server.CheckLevelWon(), Is.True);
+            server.ShowResults();
+
             Assert.That(server.IsIntermission, Is.False);
             Assert.That(server.CurrentLevel.Level, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Victory_FreezesTheGame_ThenShowsTheResults()
+        {
+            var server = MakeServer(maxScore: 1, intermissionTimeMs: 1000);
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            blue.Location = red.Location;
+            red.Size = 60f;
+            server.UpdatePacFights();
+            server.CheckLevelWon();
+
+            var location = red.Location;
+            red.PowerUpEffect = ePowerUp.PowBlock;
+            red.PowerUpMs = 5000;
+            server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Left });
+            server.HandleAction(red);
+            server.Update(TimeSpan.FromMilliseconds(LevelPhases.VICTORY_MS - 1));
+
+            Assert.That(red.Location, Is.EqualTo(location), "nothing moves while Victory shows");
+            Assert.That(red.ActionCooldownMs, Is.Zero, "the action button does nothing");
+            Assert.That(red.PowerUpMs, Is.EqualTo(5000), "timers don't run");
+            Assert.That(server.IsVictory, Is.True);
+            Assert.That(connection.ReceivedOf<LevelWonMessage>(), Is.Empty);
+
+            server.Update(TimeSpan.FromMilliseconds(1));
+
+            Assert.That(server.IsVictory, Is.False);
+            Assert.That(server.IsIntermission, Is.True);
+            Assert.That(connection.ReceivedOf<LevelWonMessage>().Single().MsRemaining, Is.EqualTo(1000));
+        }
+
+        [Test]
+        public void JoiningDuringVictory_GetsVictoryWithTimeLeft()
+        {
+            var server = MakeServer(maxScore: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (blue, _) = Join(server, 2, eTeamPreference.Blue);
+            blue.Location = red.Location;
+            red.Size = 60f;
+            server.UpdatePacFights();
+            server.CheckLevelWon();
+            server.Update(TimeSpan.FromMilliseconds(1000));
+
+            var (_, late) = Join(server, 3, eTeamPreference.Blue);
+
+            var victory = late.ReceivedOf<VictoryMessage>().Single();
+            Assert.That(victory.WinningTeam, Is.EqualTo(eTeam.Red));
+            Assert.That(victory.MsRemaining, Is.EqualTo(LevelPhases.VICTORY_MS - 1000));
+            Assert.That(late.Received.IndexOf(victory), Is.GreaterThan(late.Received.IndexOf(late.ReceivedOf<LevelStartMessage>().Single())), "after the LevelStart, so the client keeps it");
+        }
+
+        [Test]
+        public void StartCountdown_FreezesTheGame_ThenPlayBegins()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            server.StartLevel(2);
+
+            Assert.That(connection.ReceivedOf<LevelStartMessage>().Last().CountdownMs, Is.EqualTo(LevelPhases.START_COUNTDOWN_MS));
+            Assert.That(server.IsCountdown, Is.True);
+
+            var location = red.Location;
+            red.PowerUpEffect = ePowerUp.PowBlock;
+            red.PowerUpMs = 5000;
+            var snapshots = connection.ReceivedOf<SnapshotMessage>().Count();
+            server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Left });
+            server.HandleAction(red);
+            server.Update(TimeSpan.FromMilliseconds(LevelPhases.START_COUNTDOWN_MS - 1));
+
+            Assert.That(red.Location, Is.EqualTo(location), "nothing moves during the countdown");
+            Assert.That(red.ActionCooldownMs, Is.Zero, "the action button does nothing");
+            Assert.That(red.PowerUpMs, Is.EqualTo(5000), "timers don't run");
+            Assert.That(connection.ReceivedOf<SnapshotMessage>().Count(), Is.GreaterThan(snapshots), "snapshots still go out");
+            Assert.That(server.IsCountdown, Is.True);
+
+            server.Update(TimeSpan.FromMilliseconds(1));
+
+            Assert.That(server.IsCountdown, Is.False);
+        }
+
+        [Test]
+        public void JoiningDuringCountdown_GetsTheTimeLeft()
+        {
+            var server = MakeServer();
+            Join(server, 1, eTeamPreference.Red);
+            server.StartLevel(2);
+            server.Update(TimeSpan.FromMilliseconds(1000));
+
+            var (_, late) = Join(server, 2, eTeamPreference.Blue);
+
+            Assert.That(late.ReceivedOf<LevelStartMessage>().Single().CountdownMs, Is.EqualTo(LevelPhases.START_COUNTDOWN_MS - 1000));
         }
 
         [Test]
@@ -1178,7 +1283,8 @@ namespace EatMeTests
             red.Size = 60f;
             server.UpdatePacFights();
             server.CheckLevelWon();
-            server.Update(250);
+            server.ShowResults();
+            server.Update(TimeSpan.FromMilliseconds(250));
 
             var (_, late) = Join(server, 3, eTeamPreference.Blue);
 
@@ -1197,7 +1303,7 @@ namespace EatMeTests
             Assert.That(server.IsPaused, Is.True);
 
             for (var i = 0; i < 60; i++)
-                server.Update(TICK_MS);
+                server.Update(TimeSpan.FromMilliseconds(TICK_MS));
 
             Assert.That(server.Tick, Is.Zero);
             Assert.That(server.Ghosts.Select(g => g.Location), Is.EqualTo(ghosts), "ghosts don't move");
@@ -1210,13 +1316,13 @@ namespace EatMeTests
             var (_, connection) = Join(server, 1, eTeamPreference.Red);
 
             Assert.That(server.IsPaused, Is.False);
-            server.Update(TICK_MS);
+            server.Update(TimeSpan.FromMilliseconds(TICK_MS));
             Assert.That(server.Tick, Is.EqualTo(1));
 
             server.HandleEvent(new NetworkEvent(eNetworkEventType.Disconnected, connection));
 
             Assert.That(server.IsPaused, Is.True);
-            server.Update(TICK_MS);
+            server.Update(TimeSpan.FromMilliseconds(TICK_MS));
             Assert.That(server.Tick, Is.EqualTo(1));
         }
 
@@ -1230,10 +1336,11 @@ namespace EatMeTests
             red.Size = 60f;
             server.UpdatePacFights();
             server.CheckLevelWon();
+            server.ShowResults();
 
             server.HandleEvent(new NetworkEvent(eNetworkEventType.Disconnected, redConnection));
             server.HandleEvent(new NetworkEvent(eNetworkEventType.Disconnected, blueConnection));
-            server.Update(2000);
+            server.Update(TimeSpan.FromMilliseconds(2000));
 
             Assert.That(server.IsIntermission, Is.True);
             Assert.That(server.CurrentLevel.Level, Is.EqualTo(1));
@@ -1281,7 +1388,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var cell = FindCell(server, eGridDef.Food);
             PutOn(red, cell);
-            server.UpdateEating(0);
+            server.UpdateEating(TimeSpan.Zero);
 
             var (_, late) = Join(server, 2, eTeamPreference.Blue);
 

@@ -7,10 +7,10 @@ namespace EatMeTests
         [Test]
         public void GetFrame_StepsEveryFrameSecondsAndLoops()
         {
-            Assert.That(LogoSprites.GetFrame(-1f), Is.EqualTo(0));
-            Assert.That(LogoSprites.GetFrame(0.09f), Is.EqualTo(0));
-            Assert.That(LogoSprites.GetFrame(0.11f), Is.EqualTo(1));
-            Assert.That(LogoSprites.GetFrame(LogoSprites.FRAME_SECONDS * (LogoSprites.FRAME_COUNT + 2.5f)), Is.EqualTo(2));
+            Assert.That(LogoSprites.GetFrame(TimeSpan.FromSeconds(-1)), Is.EqualTo(0));
+            Assert.That(LogoSprites.GetFrame(TimeSpan.FromMilliseconds(90)), Is.EqualTo(0));
+            Assert.That(LogoSprites.GetFrame(TimeSpan.FromMilliseconds(110)), Is.EqualTo(1));
+            Assert.That(LogoSprites.GetFrame(TimeSpan.FromMilliseconds(LogoSprites.FRAME_MS * (LogoSprites.FRAME_COUNT + 2.5))), Is.EqualTo(2));
         }
 
         [Test]

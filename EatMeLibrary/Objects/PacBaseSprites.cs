@@ -5,7 +5,7 @@ namespace EatMeLibrary
     /// <summary>
     /// Where each floor frame is on the base sheet (Const.IMAGE_PAC_BASE): a 2x3 grid of CELL_PIXELS squares,
     /// red's row on top, blue's below and the ghost pen's at the bottom, with FRAME_COUNT animation frames left to right.
-    /// Every spawn area and ghost pen blinks between its row's two frames, each shown FRAME_SECONDS. The sprites are drawn
+    /// Every spawn area and ghost pen blinks between its row's two frames, each shown FRAME_MS. The sprites are drawn
     /// in their own colors (not tinted).
     /// </summary>
     public static class PacBaseSprites
@@ -16,17 +16,17 @@ namespace EatMeLibrary
         /// <summary>
         /// How long each animation frame shows.
         /// </summary>
-        public const float FRAME_SECONDS = 0.5f;
+        public const int FRAME_MS = 500;
 
         /// <summary>
-        /// Which animation frame shows at a time in seconds, looping through FRAME_COUNT.
+        /// Which animation frame shows at a time, looping through FRAME_COUNT.
         /// </summary>
-        public static int GetFrame(float seconds)
+        public static int GetFrame(TimeSpan time)
         {
-            if (seconds <= 0f)
+            if (time <= TimeSpan.Zero)
                 return 0;
 
-            return (int)(seconds / FRAME_SECONDS) % FRAME_COUNT;
+            return (int)(time.TotalMilliseconds / FRAME_MS) % FRAME_COUNT;
         }
 
         /// <summary>

@@ -107,10 +107,12 @@ namespace EatMeLibrary
         public bool IsCommitted => Goal != eBotGoal.None && GoalMsLeft > 0;
 
         /// <summary>
-        /// Counts every timer down by ms. Avoiding ends when its time is up.
+        /// Counts every timer down by the elapsed time. Avoiding ends when its time is up.
         /// </summary>
-        public void Update(int ms)
+        public void Update(TimeSpan elapsed)
         {
+            var ms = (int)elapsed.TotalMilliseconds;
+
             GoalMsLeft = Math.Max(0, GoalMsLeft - ms);
             FleeMsLeft = Math.Max(0, FleeMsLeft - ms);
             AvoidMsLeft = Math.Max(0, AvoidMsLeft - ms);

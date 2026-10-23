@@ -12,7 +12,7 @@ namespace EatMeClient
     /// </summary>
     public class JoinGameScreen
     {
-        private const float SEARCH_INTERVAL_SECONDS = 3f;
+        private const int SEARCH_INTERVAL_MS = 3000;
         private const float ITEM_SPACING = 20f;
         private const float LAN_HEADING_GAP = 60f;
         private const float HEADING_Y_RATIO = 0.1f;
@@ -52,7 +52,7 @@ namespace EatMeClient
         private TextInputControl _AddressInput;
         private IReadOnlyList<ServerListing> _LanGames = [];
         private int _SelectedIndex;
-        private float _SearchTimer;
+        private TimeSpan _SearchTimer;
         private string _Error;
 
         /// <param name="onJoin">Called with host and port when the player picks a server.</param>
@@ -91,7 +91,7 @@ namespace EatMeClient
             _SelectedIndex = 0;
             _Error = null;
             _LanGames = [];
-            _SearchTimer = 0f;
+            _SearchTimer = TimeSpan.Zero;
             _Browser.Start();
         }
 
@@ -105,11 +105,11 @@ namespace EatMeClient
 
         public void Update(GameTime gameTime, Viewport viewport)
         {
-            _SearchTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            _SearchTimer += gameTime.ElapsedGameTime;
 
-            if (_SearchTimer >= SEARCH_INTERVAL_SECONDS)
+            if (_SearchTimer.TotalMilliseconds >= SEARCH_INTERVAL_MS)
             {
-                _SearchTimer = 0f;
+                _SearchTimer = TimeSpan.Zero;
                 _Browser.Search();
             }
 

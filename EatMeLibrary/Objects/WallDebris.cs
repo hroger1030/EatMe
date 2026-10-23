@@ -41,7 +41,7 @@ namespace EatMeLibrary
         /// Radians a second, clockwise.
         /// </summary>
         public float Spin { get; set; }
-        public float AgeSeconds { get; set; }
+        public TimeSpan Age { get; set; }
     }
 
     /// <summary>
@@ -69,7 +69,7 @@ namespace EatMeLibrary
         /// <summary>
         /// A piece is dropped after this long wherever it is, so one that flew off a side doesn't live for ever.
         /// </summary>
-        public const float MAX_SECONDS = 4f;
+        public const int MAX_AGE_MS = 4000;
 
         private const float QUARTER_NEAR = 0.25f;
         private const float QUARTER_FAR = 0.75f;
@@ -112,7 +112,7 @@ namespace EatMeLibrary
 
         public static float GetX(WallDebrisPiece piece)
         {
-            return piece.StartX + piece.VelocityX * piece.AgeSeconds;
+            return piece.StartX + piece.VelocityX * (float)piece.Age.TotalSeconds;
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace EatMeLibrary
         /// </summary>
         public static float GetY(WallDebrisPiece piece)
         {
-            var t = piece.AgeSeconds;
+            var t = (float)piece.Age.TotalSeconds;
             return piece.StartY - piece.VelocityY * t + HALF * GRAVITY * t * t;
         }
 
@@ -129,21 +129,21 @@ namespace EatMeLibrary
         /// </summary>
         public static float GetRotation(WallDebrisPiece piece)
         {
-            return piece.Spin * piece.AgeSeconds;
+            return piece.Spin * (float)piece.Age.TotalSeconds;
         }
 
         public static bool IsFalling(WallDebrisPiece piece)
         {
-            return GRAVITY * piece.AgeSeconds > piece.VelocityY;
+            return GRAVITY * (float)piece.Age.TotalSeconds > piece.VelocityY;
         }
 
         /// <summary>
         /// True once the piece has fallen past <paramref name="bottomY"/> (the bottom of the board on screen, in cells),
-        /// or has flown for MAX_SECONDS. A piece still rising below the bottom isn't gone yet, as it may come into view.
+        /// or has flown for MAX_AGE_MS. A piece still rising below the bottom isn't gone yet, as it may come into view.
         /// </summary>
         public static bool IsGone(WallDebrisPiece piece, float bottomY)
         {
-            if (piece.AgeSeconds >= MAX_SECONDS)
+            if (piece.Age.TotalMilliseconds >= MAX_AGE_MS)
                 return true;
 
             return IsFalling(piece) && GetY(piece) - HALF > bottomY;

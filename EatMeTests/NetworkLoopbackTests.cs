@@ -52,7 +52,7 @@ namespace EatMeTests
                 while (_Network.TryGetEvent(out var networkEvent))
                     _Game.HandleEvent(networkEvent);
 
-                _Game.Update(TICK_MS);
+                _Game.Update(TimeSpan.FromMilliseconds(TICK_MS));
 
                 foreach (var (client, state) in clients)
                     while (client.TryGetMessage(out var message))

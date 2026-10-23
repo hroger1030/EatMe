@@ -30,6 +30,7 @@ namespace EatMeLibrary
         ServerPing = 31,
         GameConfig = 32,
         PlayerList = 33,
+        Victory = 34,
 
         // LAN discovery over UDP
         DiscoveryRequest = 40,

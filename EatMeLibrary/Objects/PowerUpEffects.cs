@@ -173,7 +173,7 @@ namespace EatMeLibrary
         /// <summary>
         /// A pac with Fireball (fire flower) flashes white this often.
         /// </summary>
-        public const float FIRE_FLASH_SECONDS = 0.05f;
+        public const int FIRE_FLASH_MS = 50;
 
         /// <summary>
         /// True if a pac with this effect flashes white (IsFireFlashWhite): Fireball and Screw Attack.
@@ -200,11 +200,11 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if a flashing pac (FlashesWhite) is drawn white at a time in seconds (otherwise its normal color).
+        /// True if a flashing pac (FlashesWhite) is drawn white at a time (otherwise its normal color).
         /// </summary>
-        public static bool IsFireFlashWhite(float seconds)
+        public static bool IsFireFlashWhite(TimeSpan time)
         {
-            return seconds % (FIRE_FLASH_SECONDS * 2f) < FIRE_FLASH_SECONDS;
+            return time.TotalMilliseconds % (FIRE_FLASH_MS * 2) < FIRE_FLASH_MS;
         }
 
         /// <summary>
@@ -260,12 +260,12 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// The angle (radians, 0 to 2 pi) a stunned pac or ghost is turned to at a time in seconds, spinning
+        /// The angle (radians, 0 to 2 pi) a stunned pac or ghost is turned to at a time, spinning
         /// STUN_SPIN_TURNS_PER_SECOND clockwise.
         /// </summary>
-        public static float GetStunSpinAngle(float seconds)
+        public static float GetStunSpinAngle(TimeSpan time)
         {
-            var turns = seconds * STUN_SPIN_TURNS_PER_SECOND;
+            var turns = (float)time.TotalSeconds * STUN_SPIN_TURNS_PER_SECOND;
             return (turns - MathF.Floor(turns)) * MathF.PI * 2f;
         }
 
@@ -345,15 +345,15 @@ namespace EatMeLibrary
         /// <summary>
         /// An invincible pac switches between its team color and yellow this often.
         /// </summary>
-        public const float STAR_BLINK_SECONDS = 0.08f;
+        public const int STAR_BLINK_MS = 80;
 
         /// <summary>
-        /// True if an invincible pac is drawn yellow at a time in seconds (otherwise its team color): yellow for the
-        /// first STAR_BLINK_SECONDS of every two.
+        /// True if an invincible pac is drawn yellow at a time (otherwise its team color): yellow for the first
+        /// STAR_BLINK_MS of every two.
         /// </summary>
-        public static bool IsStarBlinkYellow(float seconds)
+        public static bool IsStarBlinkYellow(TimeSpan time)
         {
-            return seconds % (STAR_BLINK_SECONDS * 2f) < STAR_BLINK_SECONDS;
+            return time.TotalMilliseconds % (STAR_BLINK_MS * 2) < STAR_BLINK_MS;
         }
 
         /// <summary>

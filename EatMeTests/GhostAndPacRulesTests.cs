@@ -120,15 +120,15 @@ namespace EatMeTests
         [Test]
         public void Starve_TakesPerSecondTimesSecondsOff()
         {
-            Assert.That(PacRules.Starve(60f, 3f, 1f), Is.EqualTo(57f).Within(0.0001f));
-            Assert.That(PacRules.Starve(60f, 3f, 0.5f), Is.EqualTo(58.5f).Within(0.0001f));
+            Assert.That(PacRules.Starve(60f, 3f, TimeSpan.FromSeconds(1)), Is.EqualTo(57f).Within(0.0001f));
+            Assert.That(PacRules.Starve(60f, 3f, TimeSpan.FromMilliseconds(500)), Is.EqualTo(58.5f).Within(0.0001f));
         }
 
         [Test]
         public void Starve_NeverGoesBelowStartSize()
         {
-            Assert.That(PacRules.Starve(PacRules.START_SIZE, 3f, 1f), Is.EqualTo(PacRules.START_SIZE));
-            Assert.That(PacRules.Starve(2f, 3f, 1f), Is.EqualTo(PacRules.START_SIZE));
+            Assert.That(PacRules.Starve(PacRules.START_SIZE, 3f, TimeSpan.FromSeconds(1)), Is.EqualTo(PacRules.START_SIZE));
+            Assert.That(PacRules.Starve(2f, 3f, TimeSpan.FromSeconds(1)), Is.EqualTo(PacRules.START_SIZE));
         }
 
         [TestCase(0, 1000, 0f)]
@@ -249,28 +249,12 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsTouchingGhost_RainbowGhostIsTwoCellsWide()
-        {
-            var radius = PacRules.GetGhostRadius(isRainbow: true);
-
-            Assert.That(radius, Is.EqualTo(PacRules.GHOST_RADIUS * 2f));
-            Assert.That(PacRules.IsTouchingGhost(new Point2(0f, 0f), 0f, new Point2(1.4f, 0f), radius), Is.True);
-            Assert.That(PacRules.IsTouchingGhost(new Point2(0f, 0f), 0f, new Point2(1.6f, 0f), radius), Is.False);
-        }
-
-        [Test]
-        public void GetGhostRadius_NormalLevel_IsGhostRadius()
-        {
-            Assert.That(PacRules.GetGhostRadius(isRainbow: false), Is.EqualTo(PacRules.GHOST_RADIUS));
-        }
-
-        [Test]
         public void IsSpawnChargeBlinkPurple_IsPurpleForTheFirstBlinkOfEveryTwo()
         {
-            Assert.That(PacRules.IsSpawnChargeBlinkPurple(0f), Is.True);
-            Assert.That(PacRules.IsSpawnChargeBlinkPurple(PacRules.SPAWN_CHARGE_BLINK_SECONDS * 0.5f), Is.True);
-            Assert.That(PacRules.IsSpawnChargeBlinkPurple(PacRules.SPAWN_CHARGE_BLINK_SECONDS * 1.5f), Is.False);
-            Assert.That(PacRules.IsSpawnChargeBlinkPurple(PacRules.SPAWN_CHARGE_BLINK_SECONDS * 2.5f), Is.True);
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(TimeSpan.Zero), Is.True);
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(TimeSpan.FromMilliseconds(PacRules.SPAWN_CHARGE_BLINK_MS * 0.5)), Is.True);
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(TimeSpan.FromMilliseconds(PacRules.SPAWN_CHARGE_BLINK_MS * 1.5)), Is.False);
+            Assert.That(PacRules.IsSpawnChargeBlinkPurple(TimeSpan.FromMilliseconds(PacRules.SPAWN_CHARGE_BLINK_MS * 2.5)), Is.True);
         }
     }
 }

@@ -97,6 +97,7 @@ namespace EatMeLibrary
                 eMessageType.ServerPing => new ServerPingMessage(),
                 eMessageType.GameConfig => new GameConfigMessage(),
                 eMessageType.PlayerList => new PlayerListMessage(),
+                eMessageType.Victory => new VictoryMessage(),
                 eMessageType.DiscoveryRequest => new DiscoveryRequestMessage(),
                 eMessageType.DiscoveryResponse => new DiscoveryResponseMessage(),
                 _ => throw new InvalidDataException($"Unknown message type: {(byte)messageType}"),

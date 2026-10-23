@@ -124,7 +124,7 @@ while (!shutdown.IsCancellationRequested)
 
     // whole ms from the stopwatch's own count, so the game clock never drifts from it
     var nowMs = stopwatch.ElapsedMilliseconds;
-    var elapsedMs = (int)(nowMs - lastTickMs);
+    var elapsed = TimeSpan.FromMilliseconds(nowMs - lastTickMs);
     lastTickMs = nowMs;
 
     // the tick's parts are timed for perf logging; Record returns now, the next part's start
@@ -147,7 +147,7 @@ while (!shutdown.IsCancellationRequested)
     }
 
     game.Perf.Record(ePerfSection.Commands, perfStart);
-    game.Update(elapsedMs);
+    game.Update(elapsed);
 
     // the prompt follows window resizes and its uptime
     ServerLog.Refresh();

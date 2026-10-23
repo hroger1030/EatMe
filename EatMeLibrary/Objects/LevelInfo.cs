@@ -37,7 +37,7 @@ namespace EatMeLibrary
         public string BackgroundImage { get; }
 
         /// <summary>
-        /// A rainbow level: rainbow dots and walls (Rainbow), and ghosts twice the size (PacRules.GetGhostRadius).
+        /// A rainbow level: its walls, dots and power pills are drawn with the flowing rainbow gradient (Rainbow).
         /// </summary>
         public bool IsRainbow { get; }
 

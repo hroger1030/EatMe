@@ -28,10 +28,10 @@ namespace EatMeTests
         [Test]
         public void GetFrame_Alternates()
         {
-            Assert.That(WeaponEffectSprites.GetFrame(0f), Is.EqualTo(0));
-            Assert.That(WeaponEffectSprites.GetFrame(WeaponEffectSprites.FRAME_SECONDS * 1.5f), Is.EqualTo(1));
-            Assert.That(WeaponEffectSprites.GetFrame(WeaponEffectSprites.FRAME_SECONDS * 2.5f), Is.EqualTo(0));
-            Assert.That(WeaponEffectSprites.GetFrame(-1f), Is.EqualTo(0));
+            Assert.That(WeaponEffectSprites.GetFrame(TimeSpan.Zero), Is.EqualTo(0));
+            Assert.That(WeaponEffectSprites.GetFrame(TimeSpan.FromMilliseconds(WeaponEffectSprites.FRAME_MS * 1.5)), Is.EqualTo(1));
+            Assert.That(WeaponEffectSprites.GetFrame(TimeSpan.FromMilliseconds(WeaponEffectSprites.FRAME_MS * 2.5)), Is.EqualTo(0));
+            Assert.That(WeaponEffectSprites.GetFrame(TimeSpan.FromSeconds(-1)), Is.EqualTo(0));
         }
     }
 }

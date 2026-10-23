@@ -11,12 +11,12 @@ namespace EatMeClient
         /// <summary>
         /// Flags flicker between yellow and their team's color, showing each for this long.
         /// </summary>
-        public const float FLAG_FLICKER_SECONDS = 0.1f;
+        public const int FLAG_FLICKER_MS = 100;
 
         /// <summary>
         /// A pac with a power pill working pulses from its color to white and back once in this time.
         /// </summary>
-        public const float POWER_PULSE_SECONDS = 1.0f;
+        public const int POWER_PULSE_MS = 1000;
 
         // Basic colors
 
@@ -137,17 +137,17 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// A pac's tint at animationTime seconds, the same on the board and the mini map: its color (GetPacColor), pulsing
+        /// A pac's tint at animationTime, the same on the board and the mini map: its color (GetPacColor), pulsing
         /// to white with a power pill, blinking yellow while invincible, flashing white with Fire Flower or Screw Attack,
         /// and blinking purple while it charges on its spawn.
         /// </summary>
-        public static Color GetPacTint(PacState pac, bool isOwn, float animationTime)
+        public static Color GetPacTint(PacState pac, bool isOwn, TimeSpan animationTime)
         {
             var tint = GetPacColor(pac.Team, isOwn);
 
             if (pac.Powered)
             {
-                var amount = 0.5f - 0.5f * MathF.Cos(animationTime * MathHelper.TwoPi / POWER_PULSE_SECONDS);
+                var amount = 0.5f - 0.5f * MathF.Cos((float)(animationTime.TotalMilliseconds / POWER_PULSE_MS) * MathHelper.TwoPi);
                 tint = Color.Lerp(tint, Color.White, amount);
             }
 
@@ -172,11 +172,11 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// A flag's tint at animationTime seconds: it flickers between yellow and its team's color.
+        /// A flag's tint at animationTime: it flickers between yellow and its team's color.
         /// </summary>
-        public static Color GetFlagColor(eTeam team, float animationTime)
+        public static Color GetFlagColor(eTeam team, TimeSpan animationTime)
         {
-            var showTeamColor = animationTime % (FLAG_FLICKER_SECONDS * 2f) < FLAG_FLICKER_SECONDS;
+            var showTeamColor = animationTime.TotalMilliseconds % (FLAG_FLICKER_MS * 2) < FLAG_FLICKER_MS;
             return showTeamColor ? GetTeamColor(team) : COLOR_PAC_YELLOW;
         }
 

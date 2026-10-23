@@ -25,7 +25,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { MinPlayers = minPlayers, MaxScore = maxScore, IntermissionTimeMs = 0 },
             };
 
-            return new GameServer(settings, [], highScores: highScores, onHighScoresChanged: onChanged);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, [], highScores: highScores, onHighScoresChanged: onChanged));
         }
 
         private static ServerPlayer Join(GameServer server, int id, eTeamPreference team)
@@ -191,6 +191,7 @@ namespace EatMeTests
                 blue.Alive = true;
                 server.UpdatePacFights();
                 Assert.That(server.CheckLevelWon(), Is.True);
+                server.ShowResults();
             }
 
             Assert.That(red.Score, Is.Zero, "level score resets");

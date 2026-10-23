@@ -458,12 +458,12 @@ namespace EatMeTests
             var ghost = MakeGhost(0, 0f, 0f, eGhostBehavior.Sprinter);
             ghost.CurrentTarget = MakePac(1, 1f, 0f);
 
-            Assert.That(GhostBrain.UpdateAttention(ghost, GhostBrain.ATTENTION_MS - 1), Is.True);
-            Assert.That(GhostBrain.UpdateAttention(ghost, 1), Is.False);
+            Assert.That(GhostBrain.UpdateAttention(ghost, TimeSpan.FromMilliseconds(GhostBrain.ATTENTION_MS - 1)), Is.True);
+            Assert.That(GhostBrain.UpdateAttention(ghost, TimeSpan.FromMilliseconds(1)), Is.False);
             Assert.That(ghost.RestMs, Is.EqualTo(GhostBrain.REST_MS));
-            Assert.That(GhostBrain.UpdateAttention(ghost, GhostBrain.REST_MS / 2), Is.False);
-            Assert.That(GhostBrain.UpdateAttention(ghost, GhostBrain.REST_MS / 2), Is.False);
-            Assert.That(GhostBrain.UpdateAttention(ghost, 1), Is.True);
+            Assert.That(GhostBrain.UpdateAttention(ghost, TimeSpan.FromMilliseconds(GhostBrain.REST_MS / 2)), Is.False);
+            Assert.That(GhostBrain.UpdateAttention(ghost, TimeSpan.FromMilliseconds(GhostBrain.REST_MS / 2)), Is.False);
+            Assert.That(GhostBrain.UpdateAttention(ghost, TimeSpan.FromMilliseconds(1)), Is.True);
         }
 
         [Test]
@@ -471,10 +471,10 @@ namespace EatMeTests
         {
             var ghost = MakeGhost(0, 0f, 0f, eGhostBehavior.Sprinter);
             ghost.CurrentTarget = MakePac(1, 1f, 0f);
-            GhostBrain.UpdateAttention(ghost, GhostBrain.ATTENTION_MS - 1);
+            GhostBrain.UpdateAttention(ghost, TimeSpan.FromMilliseconds(GhostBrain.ATTENTION_MS - 1));
 
             ghost.CurrentTarget = null;
-            GhostBrain.UpdateAttention(ghost, 1);
+            GhostBrain.UpdateAttention(ghost, TimeSpan.FromMilliseconds(1));
 
             Assert.That(ghost.ChaseMs, Is.Zero);
         }
@@ -615,7 +615,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { GhostCount = ghosts, MinPlayers = 0 },
             };
 
-            return new GameServer(settings, []);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, []));
         }
 
         private static Player Join(GameServer server, int id)
@@ -637,15 +637,15 @@ namespace EatMeTests
             red.PowerUpEffect = ePowerUp.PowerPill;
             red.PowerUpMs = config.PowerUpDurationMs;
 
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
             Assert.That(ghost.GrudgeId, Is.EqualTo(red.Id));
 
-            server.UpdateGhosts(0f, config.GhostRegenTimeMs);
+            server.UpdateGhosts(TimeSpan.FromMilliseconds(config.GhostRegenTimeMs));
             red.PowerUpEffect = ePowerUp.None;
             red.PowerUpMs = 0;
             red.Size = PacRules.START_SIZE;
             red.Location = ghost.Location;
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(red.Alive, Is.False);
             Assert.That(ghost.GrudgeId, Is.EqualTo(Ghost.NO_GRUDGE));
@@ -660,17 +660,17 @@ namespace EatMeTests
             ghost.Personality = GhostPersonalities.ALL.First(p => p.Behavior == eGhostBehavior.Roamer);
 
             red.Location = new Point2(ghost.Location.X + GhostBrain.DIZZY_ATTACK_DISTANCE + 2f, ghost.Location.Y);
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
             Assert.That(ghost.CurrentTarget, Is.Null, "too far to bother with");
 
             red.Location = new Point2(ghost.Location.X + GhostBrain.DIZZY_ATTACK_DISTANCE - 2f, ghost.Location.Y);
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
             Assert.That(ghost.CurrentTarget, Is.SameAs(red));
 
             // the outer wall's corner is never picked, so any new pick differs from it
             ghost.WanderCell = (0, 0);
             red.Location = new Point2(ghost.Location.X + GhostBrain.DIZZY_ATTACK_DISTANCE + 2f, ghost.Location.Y);
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
             Assert.That(ghost.CurrentTarget, Is.Null);
             Assert.That(ghost.WanderCell, Is.Not.EqualTo(((int, int)?)(0, 0)), "lost its target, so it heads somewhere new");
         }
@@ -684,7 +684,7 @@ namespace EatMeTests
 
             for (var tick = 0; tick < 2000; tick++)
             {
-                server.Update(33);
+                server.Update(TimeSpan.FromMilliseconds(33));
 
                 foreach (var ghost in server.Ghosts.Where(g => g.Alive))
                 {

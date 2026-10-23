@@ -7,11 +7,11 @@ namespace EatMeClient
     public class AnimatedTexture : BaseObject
     {
         private int _AnimationFrame;
-        private float _AnimationFrameTime;
+        private TimeSpan _AnimationFrameTime;
 
         public int Rows { get; set; }
         public int Columns { get; set; }
-        public float AnimationDuration { get; set; }
+        public TimeSpan AnimationDuration { get; set; }
         public Color Tint { get; set; } = Color.White;
         public bool Loop { get; set; }
 
@@ -22,10 +22,10 @@ namespace EatMeClient
         public void Restart()
         {
             _AnimationFrame = 0;
-            _AnimationFrameTime = 0f;
+            _AnimationFrameTime = TimeSpan.Zero;
         }
 
-        public void Update(float deltaTime)
+        public void Update(TimeSpan elapsed)
         {
             if (IsComplete)
                 return;
@@ -33,7 +33,7 @@ namespace EatMeClient
             var frameCount = Rows * Columns;
             var frameDuration = AnimationDuration / frameCount;
 
-            _AnimationFrameTime += deltaTime;
+            _AnimationFrameTime += elapsed;
 
             if (_AnimationFrameTime >= frameDuration)
             {

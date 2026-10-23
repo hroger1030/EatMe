@@ -27,7 +27,7 @@ namespace EatMeLibrary
         /// <summary>
         /// One full pulse of the bubble's brightness takes this long.
         /// </summary>
-        public const float PULSE_SECONDS = 0.8f;
+        public const int PULSE_MS = 800;
 
         /// <summary>
         /// The bubble's brightness never pulses below this share of full.
@@ -37,7 +37,7 @@ namespace EatMeLibrary
         /// <summary>
         /// A sealed flag's triangle on the mini map switches to gold this often.
         /// </summary>
-        public const float MINI_MAP_BLINK_SECONDS = 0.25f;
+        public const int MINI_MAP_BLINK_MS = 250;
 
         /// <summary>
         /// Opacity (0 to 1) of pixel (x, y) of a bubble texture size pixels square: 0 outside the circle, 1 on the rim,
@@ -61,20 +61,20 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// The bubble's brightness at a time in seconds: a smooth pulse between PULSE_MIN and 1 every PULSE_SECONDS.
+        /// The bubble's brightness at a time: a smooth pulse between PULSE_MIN and 1 every PULSE_MS.
         /// </summary>
-        public static float GetPulse(float seconds)
+        public static float GetPulse(TimeSpan time)
         {
-            var wave = 0.5f - 0.5f * MathF.Cos(seconds * MathF.PI * 2f / PULSE_SECONDS);
+            var wave = 0.5f - 0.5f * MathF.Cos((float)(time.TotalMilliseconds / PULSE_MS) * MathF.PI * 2f);
             return PULSE_MIN + (1f - PULSE_MIN) * wave;
         }
 
         /// <summary>
-        /// True if a sealed flag's mini map triangle is drawn gold at a time in seconds (otherwise its usual color).
+        /// True if a sealed flag's mini map triangle is drawn gold at a time (otherwise its usual color).
         /// </summary>
-        public static bool IsMiniMapGold(float seconds)
+        public static bool IsMiniMapGold(TimeSpan time)
         {
-            return seconds % (MINI_MAP_BLINK_SECONDS * 2f) < MINI_MAP_BLINK_SECONDS;
+            return time.TotalMilliseconds % (MINI_MAP_BLINK_MS * 2) < MINI_MAP_BLINK_MS;
         }
     }
 }

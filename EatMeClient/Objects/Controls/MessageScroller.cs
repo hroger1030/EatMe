@@ -1,6 +1,7 @@
 using EatMeLibrary;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
 
 namespace EatMeClient
 {
@@ -16,7 +17,7 @@ namespace EatMeClient
         private SpriteFont _font;
         private Texture2D _pixel;
         private string _message = "";
-        private double _elapsedSeconds;
+        private TimeSpan _elapsed;
 
         public void LoadContent()
         {
@@ -29,12 +30,12 @@ namespace EatMeClient
         public void SetMessage(string message)
         {
             _message = message ?? "";
-            _elapsedSeconds = 0;
+            _elapsed = TimeSpan.Zero;
         }
 
         public void Update(GameTime gameTime)
         {
-            _elapsedSeconds += gameTime.ElapsedGameTime.TotalSeconds;
+            _elapsed += gameTime.ElapsedGameTime;
         }
 
         /// <summary>
@@ -55,7 +56,7 @@ namespace EatMeClient
             spriteBatch.Draw(_pixel, new Rectangle(0, barTop, viewport.Width, barHeight), Color.Black);
 
             var textWidth = _font.MeasureString(_message).X;
-            var x = ScrollerMath.GetTextX(viewport.Width, textWidth, _elapsedSeconds, SCROLL_PIXELS_PER_SECOND);
+            var x = ScrollerMath.GetTextX(viewport.Width, textWidth, _elapsed, SCROLL_PIXELS_PER_SECOND);
             spriteBatch.DrawString(_font, _message, new Vector2(x, barTop + SCROLLER_PADDING), ClientColors.COLOR_PAC_YELLOW);
         }
     }

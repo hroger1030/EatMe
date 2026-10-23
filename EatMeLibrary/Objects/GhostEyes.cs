@@ -41,12 +41,12 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Moves the eyes speed cells a second: straight to the nearest point on the circle round the pen's centre,
+        /// Moves the eyes for the elapsed time at speed cells a second: straight to the nearest point on the circle round the pen's centre,
         /// then round it.
         /// </summary>
-        public void Update(float seconds, float centreX, float centreY, float speed)
+        public void Update(TimeSpan elapsed, float centreX, float centreY, float speed)
         {
-            var step = speed * seconds;
+            var step = speed * (float)elapsed.TotalSeconds;
 
             if (step <= 0f)
                 return;

@@ -598,8 +598,10 @@ namespace EatMeLibrary
         /// Runs the Sprinter's attention for a tick and says whether it may keep its target: after ATTENTION_MS on one
         /// target it gives up and rests for REST_MS. Clears ChaseMs whenever it has no target.
         /// </summary>
-        public static bool UpdateAttention(Ghost ghost, int elapsedMs)
+        public static bool UpdateAttention(Ghost ghost, TimeSpan elapsed)
         {
+            var elapsedMs = (int)elapsed.TotalMilliseconds;
+
             if (ghost.RestMs > 0)
             {
                 ghost.RestMs -= elapsedMs;

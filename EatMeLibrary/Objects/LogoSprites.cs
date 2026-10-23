@@ -18,17 +18,17 @@ namespace EatMeLibrary
         /// <summary>
         /// How long each animation frame shows.
         /// </summary>
-        public const float FRAME_SECONDS = 0.10f;
+        public const int FRAME_MS = 100;
 
         /// <summary>
-        /// Which animation frame shows a time in seconds, looping through FRAME_COUNT.
+        /// Which animation frame shows a time, looping through FRAME_COUNT.
         /// </summary>
-        public static int GetFrame(float seconds)
+        public static int GetFrame(TimeSpan time)
         {
-            if (seconds <= 0f)
+            if (time <= TimeSpan.Zero)
                 return 0;
 
-            return (int)(seconds / FRAME_SECONDS) % FRAME_COUNT;
+            return (int)(time.TotalMilliseconds / FRAME_MS) % FRAME_COUNT;
         }
 
         /// <summary>

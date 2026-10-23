@@ -36,7 +36,7 @@ namespace EatMeClient
         /// ups, ghosts, pacs and flags.
         /// Carried flags aren't drawn.
         /// </summary>
-        public void Draw(SpriteBatch spriteBatch, Rectangle bounds, SnapshotMessage snapshot, eGridDef[,] map, int ownPlayerId, float animationTime)
+        public void Draw(SpriteBatch spriteBatch, Rectangle bounds, SnapshotMessage snapshot, eGridDef[,] map, int ownPlayerId, TimeSpan animationTime)
         {
             if (_pixel == null)
                 _pixel = TextureHelper.GetPixel(spriteBatch.GraphicsDevice);
@@ -153,7 +153,7 @@ namespace EatMeClient
         /// A dot for every Cherry Twin decoy whose owner is on the other team from the player, so to enemies it looks
         /// like one more pac. The owner's team doesn't see it.
         /// </summary>
-        private void DrawEnemyDecoys(SpriteBatch spriteBatch, Rectangle inner, int mapSize, SnapshotMessage snapshot, int ownPlayerId, float animationTime)
+        private void DrawEnemyDecoys(SpriteBatch spriteBatch, Rectangle inner, int mapSize, SnapshotMessage snapshot, int ownPlayerId, TimeSpan animationTime)
         {
             eTeam? ownTeam = null;
 

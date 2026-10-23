@@ -18,13 +18,9 @@ This is the feature manifest for the SRG client and server application. It will 
 ## Todo
 - run optimization checks
 - redo logo?
-- what is shit like this:         public void UpdatePowerUps(float deltaSeconds, int elapsedMs)
-- Rainbow shaders
 - sliding on ice level
 - alternate wall art
 - publishing signing?
-- more stun effects in power ups.
-- level should have start and end step
 - TAB button overlay needs help
 - Hammer should be at 45%
 
@@ -149,10 +145,12 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Players have unlimited lives.
 - Each team has a score. The first team to X points wins the level.
 - Every point a player wins for their team (eating enemy pacs, killing ghosts, rescues, captures) also counts towards that player's own score for the level.
-- Each player also has a total score: every point they have won since connecting. It never resets between levels and is shown in the bottom bar.
+- Each player also has a total score: every point they have won since connecting. It never resets between levels and is shown in the bottom bar, after the "Stats:" label at its far left.
 - At the end of each level, any human player whose total score is in the top 100 goes on the server's high score list (highscores.txt), one entry per player connection, updated as their total grows. Bots never go on the list.
 - Each client keeps its own top 100 high scores (its own highscores.txt), built from every list any server sends it, so scores from every server it has played on are kept. It keeps one entry per player name per date, raised when a higher score comes in; a kept score only drops off when 100 higher ones push it out. The High Scores screen shows the client's list, highest first, ranked 1), 2) and so on, in two columns side by side (left to right, then down) that scroll when they don't fit.
-- When a level is won, the game pauses for IntermissionTimeMs (10 seconds by default) and shows the results over the winning team's victory picture: which team won, both team scores, and each team's players ranked by their score for the level (blue on the left, red on the right, in as many columns as it takes to fit up to 128 players). Each team's score and player list sit on their own black panel fitted tightly around them. "Next Level in" and a countdown from 10 to 0 sit at the bottom, with a loading screen tip under it; both have a black drop shadow so they read over the picture. The level music stops and an 8-bit chiptune "Charge!" fanfare plays once if the player's team won, or a chiptune sad trumpet if it lost.
+- Every level starts with a 3 second countdown: everyone is on their spawn and all action is frozen (nothing moves, timers don't run and the action button does nothing) while "Starting in... n" counts down from 3 to 1 in the middle of the board in large white text with a heavy black drop shadow, on a half-transparent panel with rounded corners. Play starts when it runs out. A player who joins during it sees the rest of it.
+- When a team wins, all action freezes for 3 seconds while "Victory!" flashes on and off in the middle of the board in the winning team's color with a black drop shadow, on a half-transparent panel with rounded corners that stays while the text flashes. The music keeps playing; then the results come up. A player who joins during it sees the rest of it.
+- After the victory pause, the game pauses for IntermissionTimeMs (10 seconds by default) and shows the results over the winning team's victory picture: which team won, both team scores, and each team's players ranked by their score for the level (blue on the left, red on the right, in as many columns as it takes to fit up to 128 players). Each team's score and player list sit on their own black panel fitted tightly around them. "Next Level in" and a countdown from 10 to 0 sit at the bottom, with a loading screen tip under it; both have a black drop shadow so they read over the picture. The level music stops and an 8-bit chiptune "Charge!" fanfare plays once if the player's team won, or a chiptune sad trumpet if it lost.
 - When the countdown reaches 0, the game loads the next level in the level list and team and player scores start again from 0.
 - Server setting: RandomLevels (bool) defaults to false. When on, the game still starts on StartingLevel, but every level after it (when a level is won, and the `next level` command) is picked at random from the whole level list, never the level just played.
 - Pacs (players) are either red or blue.
@@ -222,7 +220,6 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Every ghost has a personality: a name, drawn below it in its body color, a body color, and a way of behaving. No two ghosts in a level share a personality, except Norm: once every personality is in use, every other ghost is a Norm, and every Norm is just called Norm.
 - Each level's ghosts are picked as part of building its map, so the same server seed and level always give the same ghosts. Odd levels always have a Norm; on even levels Norm is three times as likely to be picked as any other ghost.
 - Whatever their personality, all ghosts follow the ghost rules above: they never chase a pac with a power pill working and run from one that comes within their vision, never warp, never enter spawn tiles, and pass through each other.
-- On a rainbow level every ghost has the rainbow body instead of its own color (its name is drawn in white), but keeps its behavior.
 - The personalities ("vision" is the GhostVisionDistance setting, "speed" GhostSpeed):
 
 | Name | Color | Personality | Behavior |
@@ -294,7 +291,7 @@ This is basically a game of capture the flag. There are numerous notes about it 
 - Levels come from a fixed list. Each level has a name, a wall color, a wall fill color and a background color, and may have a background image.
 - After the last level in the list, play starts over from the first.
 - Power pills appear on every level.
-- Level 32 (Pac Paradise) is a rainbow level. Its dots and power pills are in diagonal stripes of the seven rainbow shades (red, orange, yellow, green, blue, indigo, violet), running from the top left corner towards the bottom right and repeating. Its walls have a rainbow gradient running the same way, lined up with the dots, and are hollow (a transparent fill). Behind the maze is a starfield on black, which shows through the walls. Its ghosts are twice the normal size, for catching pacs as well as on screen, and their bodies are a left to right rainbow gradient that scrolls as they move.
+- Level 32 (Pac Paradise) is a rainbow level. Its walls, dots and power pills share one smooth rainbow gradient of the seven rainbow shades (red, orange, yellow, green, blue, indigo, violet), running diagonally from the top left corner towards the bottom right, going once round the shades every seven cells and slowly flowing towards the bottom right. A dot or power pill is the color of the walls around it. The walls are hollow (a transparent fill). Behind the maze is a starfield on black, which shows through the walls. Its ghosts are the same as on every other level.
 - Bonus items aren't tied to levels: every item can appear on every level.
 - Level music is not tied to levels. The client plays its music tracks as a looping playlist, one track per level: every normal track in number order, then every "b" track in number order, then back to the first. Adding a track makes the playlist longer. The level's track loops while the level is being played.
 

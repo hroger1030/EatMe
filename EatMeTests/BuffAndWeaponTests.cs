@@ -11,7 +11,6 @@ namespace EatMeTests
     public class BuffAndWeaponTests
     {
         private const int TICK_MS = 16;
-        private const float TICK_SECONDS = TICK_MS / 1000f;
 
         private static GameServer MakeServer(int ghosts = 0)
         {
@@ -23,7 +22,7 @@ namespace EatMeTests
                 GameConfig = new GameConfiguration { GhostCount = ghosts },
             };
 
-            return new GameServer(settings, []);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, []));
         }
 
         private static GameConfiguration Config => new();
@@ -69,7 +68,7 @@ namespace EatMeTests
         private static void Tick(GameServer server, int ticks)
         {
             for (var i = 0; i < ticks; i++)
-                server.UpdateWeaponEffects(TICK_SECONDS, TICK_MS);
+                server.UpdateWeaponEffects(TimeSpan.FromMilliseconds(TICK_MS));
         }
 
         // Power pill item
@@ -103,7 +102,7 @@ namespace EatMeTests
 
             mate.Alive = false;
             mate.RespawnTimer = Config.PlayerRespawnTimeMs;
-            server.UpdateRespawns(1);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(1));
 
             Assert.That(mate.Alive, Is.True);
             Assert.That(mateConnection.ReceivedOf<GameEventMessage>().Count(e => e.EventType == eGameEvent.AngelicRespawn && e.TargetId == mate.Id), Is.EqualTo(1));
@@ -119,7 +118,7 @@ namespace EatMeTests
             blue.Alive = false;
             blue.RespawnTimer = Config.PlayerRespawnTimeMs;
 
-            server.UpdateRespawns(1);
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(1));
             Assert.That(blue.Alive, Is.False);
             Assert.That(server.IsReinforced(eTeam.Red), Is.True);
 
@@ -244,12 +243,12 @@ namespace EatMeTests
             PutOn(red, cell);
             ghost.Location = new Point2(ghostCell.X + 0.5f, ghostCell.Y + 0.5f);
 
-            server.UpdateGhosts(TICK_SECONDS, TICK_MS);
+            server.UpdateGhosts(TimeSpan.FromMilliseconds(TICK_MS));
             Assert.That(ghost.CurrentTarget, Is.SameAs(red), "no decoy yet");
 
             server.ApplyPowerUp(red, ePowerUp.Cherry);
             server.HandleAction(red);
-            server.UpdateGhosts(TICK_SECONDS, TICK_MS);
+            server.UpdateGhosts(TimeSpan.FromMilliseconds(TICK_MS));
 
             Assert.That(ghost.CurrentTarget, Is.SameAs(server.WeaponEffects.Single().StandIn));
         }
@@ -339,11 +338,11 @@ namespace EatMeTests
             server.EndPowerUpEffect(red);
             red.PowerUpEffect = ePowerUp.None;
 
-            server.UpdateWeaponEffects(0f, WeaponRules.BOMB_FUSE_MS - 1);
+            server.UpdateWeaponEffects(TimeSpan.FromMilliseconds(WeaponRules.BOMB_FUSE_MS - 1));
             Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.Bomb), Is.True, "still burning, buff or not");
             Assert.That(blue.IsStunned, Is.False);
 
-            server.UpdateWeaponEffects(0f, 1);
+            server.UpdateWeaponEffects(TimeSpan.FromMilliseconds(1));
             Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.Bomb), Is.False, "gone");
             Assert.That(blue.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
             Assert.That(ghost.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
@@ -384,7 +383,7 @@ namespace EatMeTests
             Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.SuperLeaf));
             Assert.That(red.PassesThrough, Is.True);
 
-            server.MovePacs(1f / PacRules.GetSpeed(Config.PacSpeed, red.Size, Config.PacMaxSize), 0);
+            server.MovePacs(TimeSpan.FromSeconds(1f / PacRules.GetSpeed(Config.PacSpeed, red.Size, Config.PacMaxSize)));
             Assert.That(MazeMovement.GetCell(red.Location), Is.EqualTo((cell.X - 1, cell.Y)), "into the wall");
 
             server.EndPowerUpEffect(red);
@@ -402,7 +401,7 @@ namespace EatMeTests
             red.Facing = eFacing.Left;
             server.Players.Single(p => p.Player == red).Input = eDirection.Left;
 
-            server.MovePacs(1f, 0);
+            server.MovePacs(TimeSpan.FromSeconds(1f));
 
             Assert.That(MazeMovement.GetCell(red.Location), Is.EqualTo(cell));
         }
@@ -488,7 +487,7 @@ namespace EatMeTests
             // a ghost in the way dies, and the shooter gets the kill
             server.Ghosts[0].Location = red.Location;
             blue.Location = new Point2(1.5f, 1.5f);
-            server.UpdateWeaponEffects(WeaponRules.ACTION_COOLDOWN_MS / 1000f, WeaponRules.ACTION_COOLDOWN_MS);
+            server.UpdateWeaponEffects(TimeSpan.FromMilliseconds(WeaponRules.ACTION_COOLDOWN_MS));
             server.HandleAction(red);
             Tick(server, 1);
             Assert.That(server.Ghosts[0].Alive, Is.False);
@@ -680,7 +679,7 @@ namespace EatMeTests
             // it holds still, and the ghost doesn't count down to respawn
             var held = ball.Location;
             Tick(server, 100);
-            server.UpdateGhosts(TICK_SECONDS, Config.GhostRegenTimeMs * 2);
+            server.UpdateGhosts(TimeSpan.FromMilliseconds(Config.GhostRegenTimeMs * 2));
             Assert.That(ball.Location, Is.EqualTo(held));
             Assert.That(ghost.Alive, Is.False);
 
@@ -936,13 +935,13 @@ namespace EatMeTests
             red.Size = 200f;
             red.Facing = eFacing.Right;
 
-            server.UpdateWeaponEffects(0f, 0);
+            server.UpdateWeaponEffects(TimeSpan.Zero);
             var hammer = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Hammer);
             var expected = WeaponRules.GetHammerLocation(red.Location, eFacing.Right, PacRules.GetRadius(red.Size), server.Map.GetLength(0), server.Map.GetLength(1));
             Assert.That(hammer.Location, Is.EqualTo(expected));
 
             server.Ghosts[0].Location = hammer.Location;
-            server.UpdateGhosts(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
 
             Assert.That(server.Ghosts[0].Alive, Is.False);
             Assert.That(red.Alive, Is.True);
@@ -956,12 +955,12 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             server.ApplyPowerUp(red, ePowerUp.Hammer);
             red.Facing = eFacing.Right;
-            server.UpdateWeaponEffects(0f, 0);
+            server.UpdateWeaponEffects(TimeSpan.Zero);
             red.StunMs = 1000;
 
             server.Ghosts[0].Location = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Hammer).Location;
-            server.UpdateGhosts(0f, 0);
-            server.UpdateWeaponEffects(0f, 0);
+            server.UpdateGhosts(TimeSpan.Zero);
+            server.UpdateWeaponEffects(TimeSpan.Zero);
 
             Assert.That(server.Ghosts[0].Alive, Is.True);
         }
@@ -1019,8 +1018,8 @@ namespace EatMeTests
             Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUp.SuperLeaf), Is.True);
             Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUp.Bomb), Is.False);
 
-            Assert.That(PowerUpEffects.IsFireFlashWhite(0f), Is.True);
-            Assert.That(PowerUpEffects.IsFireFlashWhite(PowerUpEffects.FIRE_FLASH_SECONDS * 1.5f), Is.False);
+            Assert.That(PowerUpEffects.IsFireFlashWhite(TimeSpan.Zero), Is.True);
+            Assert.That(PowerUpEffects.IsFireFlashWhite(TimeSpan.FromMilliseconds(PowerUpEffects.FIRE_FLASH_MS * 1.5)), Is.False);
 
             Assert.That(WeaponRules.CanThrowSword(WeaponRules.MAX_SWORDS - 1), Is.True);
             Assert.That(WeaponRules.CanThrowSword(WeaponRules.MAX_SWORDS), Is.False);

@@ -19,11 +19,11 @@ namespace EatMeTests
         [Test]
         public void GetFrame_AlternatesEveryHalfSecond()
         {
-            Assert.That(PacBaseSprites.GetFrame(0f), Is.EqualTo(0));
-            Assert.That(PacBaseSprites.GetFrame(0.4f), Is.EqualTo(0));
-            Assert.That(PacBaseSprites.GetFrame(0.6f), Is.EqualTo(1));
-            Assert.That(PacBaseSprites.GetFrame(1.1f), Is.EqualTo(0));
-            Assert.That(PacBaseSprites.GetFrame(-1f), Is.EqualTo(0));
+            Assert.That(PacBaseSprites.GetFrame(TimeSpan.Zero), Is.EqualTo(0));
+            Assert.That(PacBaseSprites.GetFrame(TimeSpan.FromMilliseconds(400)), Is.EqualTo(0));
+            Assert.That(PacBaseSprites.GetFrame(TimeSpan.FromMilliseconds(600)), Is.EqualTo(1));
+            Assert.That(PacBaseSprites.GetFrame(TimeSpan.FromMilliseconds(1100)), Is.EqualTo(0));
+            Assert.That(PacBaseSprites.GetFrame(TimeSpan.FromSeconds(-1)), Is.EqualTo(0));
         }
     }
 }

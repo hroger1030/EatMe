@@ -232,7 +232,7 @@ namespace EatMeTests
                 },
             };
 
-            return new GameServer(settings, []);
+            return ServerTestHelper.SkipCountdown(new GameServer(settings, []));
         }
 
         private static (ServerPlayer Player, FakeConnection Connection) JoinRed(GameServer server)
@@ -287,7 +287,7 @@ namespace EatMeTests
             player.StraightDistance = 1f;
 
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Up });
-            server.MovePacs(0.001f, 1);
+            server.MovePacs(TimeSpan.FromMilliseconds(1));
 
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Up));
             Assert.That(player.Player.Location.X, Is.EqualTo(junction.X + 0.5f));
@@ -303,7 +303,7 @@ namespace EatMeTests
             player.StraightDistance = 0.1f;
 
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Up });
-            server.MovePacs(0.001f, 1);
+            server.MovePacs(TimeSpan.FromMilliseconds(1));
 
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Right));
         }
@@ -317,7 +317,7 @@ namespace EatMeTests
             player.StraightDistance = 1f;
 
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Up });
-            server.MovePacs(0.001f, 1);
+            server.MovePacs(TimeSpan.FromMilliseconds(1));
 
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Right));
         }
@@ -331,7 +331,7 @@ namespace EatMeTests
             player.StraightDistance = 1f;
 
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Up });
-            server.MovePacs(0.001f, 1);
+            server.MovePacs(TimeSpan.FromMilliseconds(1));
 
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Right));
         }
@@ -347,7 +347,7 @@ namespace EatMeTests
             // a 100 ms round trip
             server.HandleMessage(connection, new ServerPongMessage { ServerTime = server.ClockMs - 100 });
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Up });
-            server.MovePacs(0.001f, 1);
+            server.MovePacs(TimeSpan.FromMilliseconds(1));
 
             Assert.That(player.Lag.SmoothedMs, Is.EqualTo(100));
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Up));
@@ -363,7 +363,7 @@ namespace EatMeTests
 
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Up });
             server.HandleMessage(connection, new InputMessage { Sequence = 2, Direction = eDirection.None });
-            server.MovePacs(0.6f / GetSpeed(player.Player), 0);
+            server.MovePacs(TimeSpan.FromSeconds(0.6f / GetSpeed(player.Player)));
 
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Up));
             Assert.That(player.Player.Location.X, Is.EqualTo(junction.X + 0.5f));
@@ -382,7 +382,7 @@ namespace EatMeTests
 
             // 0.06 s steps: the buffer runs out after the second, before the pac reaches the junction in the third
             for (var i = 0; i < 3; i++)
-                server.MovePacs(0.06f, 60);
+                server.MovePacs(TimeSpan.FromMilliseconds(60));
 
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Right));
             Assert.That(player.BufferedTurn, Is.Null);
@@ -397,7 +397,7 @@ namespace EatMeTests
 
             server.HandleMessage(connection, new InputMessage { Sequence = 1, Direction = eDirection.Up });
             server.HandleMessage(connection, new InputMessage { Sequence = 2, Direction = eDirection.None });
-            server.MovePacs(0.6f / GetSpeed(player.Player), 0);
+            server.MovePacs(TimeSpan.FromSeconds(0.6f / GetSpeed(player.Player)));
 
             Assert.That(player.Player.Facing, Is.EqualTo(eFacing.Right));
         }
@@ -408,11 +408,11 @@ namespace EatMeTests
             var server = MakeServer();
             var (player, connection) = JoinRed(server);
 
-            server.Update(16);
+            server.Update(TimeSpan.FromMilliseconds(16));
             var pings = connection.ReceivedOf<ServerPingMessage>();
             Assert.That(pings, Has.Count.EqualTo(1));
 
-            server.Update(50);
+            server.Update(TimeSpan.FromMilliseconds(50));
             server.HandleMessage(connection, new ServerPongMessage { ServerTime = pings[0].ServerTime });
 
             Assert.That(player.Lag.SmoothedMs, Is.EqualTo(server.ClockMs - pings[0].ServerTime));
@@ -425,11 +425,11 @@ namespace EatMeTests
             var server = MakeServer();
             var (_, connection) = JoinRed(server);
 
-            server.Update(16);
-            server.Update(LagEstimate.PING_INTERVAL_MS / 2);
+            server.Update(TimeSpan.FromMilliseconds(16));
+            server.Update(TimeSpan.FromMilliseconds(LagEstimate.PING_INTERVAL_MS / 2));
             Assert.That(connection.ReceivedOf<ServerPingMessage>(), Has.Count.EqualTo(1));
 
-            server.Update(LagEstimate.PING_INTERVAL_MS / 2);
+            server.Update(TimeSpan.FromMilliseconds(LagEstimate.PING_INTERVAL_MS / 2));
             Assert.That(connection.ReceivedOf<ServerPingMessage>(), Has.Count.EqualTo(2));
         }
     }

@@ -595,3 +595,9 @@
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
 /build:Effects/Bloom.fx
+
+#begin Effects/RainbowWall.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/RainbowWall.fx

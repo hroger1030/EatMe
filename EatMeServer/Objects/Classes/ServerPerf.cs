@@ -145,7 +145,7 @@ namespace EatMeServer
         private string BuildReport(GameServer game, double windowMs)
         {
             var tick = Stats.Sections[(int)ePerfSection.Tick];
-            var state = game.IsPaused ? "paused" : game.IsIntermission ? "intermission" : "playing";
+            var state = game.IsPaused ? "paused" : game.IsIntermission ? "intermission" : game.IsVictory ? "victory" : game.IsCountdown ? "countdown" : "playing";
             var text = new StringBuilder();
 
             text.Append($"\n Perf ({state}, {game.PlayerCount} players, {game.BotCount} bots): {GetRate(tick.Count, windowMs):0.0} ticks/s, ");

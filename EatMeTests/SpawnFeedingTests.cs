@@ -54,9 +54,9 @@ namespace EatMeTests
         [Test]
         public void GetSpawnFeedGain_IsOneDotPerCellMoved()
         {
-            Assert.That(PacRules.GetSpawnFeedGain(2f, 5f, 1f), Is.EqualTo(10f));
-            Assert.That(PacRules.GetSpawnFeedGain(2f, 5f, 0.5f), Is.EqualTo(5f));
-            Assert.That(PacRules.GetSpawnFeedGain(2f, 5f, 0f), Is.EqualTo(0f));
+            Assert.That(PacRules.GetSpawnFeedGain(2f, 5f, TimeSpan.FromSeconds(1)), Is.EqualTo(10f));
+            Assert.That(PacRules.GetSpawnFeedGain(2f, 5f, TimeSpan.FromMilliseconds(500)), Is.EqualTo(5f));
+            Assert.That(PacRules.GetSpawnFeedGain(2f, 5f, TimeSpan.Zero), Is.EqualTo(0f));
         }
 
         [Test]
@@ -69,9 +69,9 @@ namespace EatMeTests
             red.Size = 0f;
             red.MsSinceEaten = 1234;
 
-            server.UpdateEating(TICK_MS);
+            server.UpdateEating(TimeSpan.FromMilliseconds(TICK_MS));
 
-            var expected = PacRules.GetSpawnFeedGain(config.DotSizeGain, PacRules.GetSpeed(config.PacSpeed, 0f, config.PacMaxSize), TICK_MS / 1000f);
+            var expected = PacRules.GetSpawnFeedGain(config.DotSizeGain, PacRules.GetSpeed(config.PacSpeed, 0f, config.PacMaxSize), TimeSpan.FromMilliseconds(TICK_MS));
             Assert.That(red.Size, Is.EqualTo(Math.Min(expected, config.PacMaxSize)).Within(0.0001f));
             Assert.That(red.MsSinceEaten, Is.EqualTo(0));
             Assert.That(red.SpawnFeeding, Is.True);
@@ -85,7 +85,7 @@ namespace EatMeTests
             PutOnSpawn(server, red, eGridDef.SpawnPointBlue);
             red.Size = 0f;
 
-            server.UpdateEating(TICK_MS);
+            server.UpdateEating(TimeSpan.FromMilliseconds(TICK_MS));
 
             Assert.That(red.Size, Is.EqualTo(0f));
             Assert.That(red.SpawnFeeding, Is.False);
@@ -102,7 +102,7 @@ namespace EatMeTests
             blue.Size = config.PacMaxSize;
             blue.MsSinceEaten = 1234;
 
-            server.UpdateEating(TICK_MS);
+            server.UpdateEating(TimeSpan.FromMilliseconds(TICK_MS));
 
             Assert.That(blue.Size, Is.EqualTo(config.PacMaxSize));
             Assert.That(blue.SpawnFeeding, Is.False);
@@ -118,7 +118,7 @@ namespace EatMeTests
             red.Size = 0f;
             server.StartPowerUpEffect(red, ePowerUp.ScrewAttack);
 
-            server.UpdateEating(TICK_MS);
+            server.UpdateEating(TimeSpan.FromMilliseconds(TICK_MS));
 
             Assert.That(red.Size, Is.EqualTo(0f));
             Assert.That(red.SpawnFeeding, Is.False);
@@ -131,11 +131,11 @@ namespace EatMeTests
             var red = Join(server, 1, eTeamPreference.Red);
             PutOnSpawn(server, red, eGridDef.SpawnPointRed);
             red.Size = 0f;
-            server.UpdateEating(TICK_MS);
+            server.UpdateEating(TimeSpan.FromMilliseconds(TICK_MS));
             Assert.That(red.SpawnFeeding, Is.True);
 
             PutOnSpawn(server, red, eGridDef.SpawnPointBlue);
-            server.UpdateEating(TICK_MS);
+            server.UpdateEating(TimeSpan.FromMilliseconds(TICK_MS));
 
             Assert.That(red.SpawnFeeding, Is.False);
         }

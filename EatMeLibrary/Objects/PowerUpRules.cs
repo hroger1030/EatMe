@@ -36,9 +36,9 @@ namespace EatMeLibrary
         public const float HOVER_CELLS = 0.1f;
 
         /// <summary>
-        /// Seconds for one bob up and down.
+        /// How long one bob up and down takes.
         /// </summary>
-        public const float HOVER_PERIOD_SECONDS = 1.2f;
+        public const int HOVER_PERIOD_MS = 1200;
 
         /// <summary>
         /// Fraction of a bob each power up id is shifted by, so power ups side by side don't bob in step.
@@ -81,9 +81,9 @@ namespace EatMeLibrary
         /// <summary>
         /// Vertical offset, in cells, of a power up's sprite at the given time: a sine wave between -HOVER_CELLS and HOVER_CELLS.
         /// </summary>
-        public static float GetHoverOffset(double seconds, int powerUpId)
+        public static float GetHoverOffset(TimeSpan time, int powerUpId)
         {
-            var phase = (seconds / HOVER_PERIOD_SECONDS) + (powerUpId * HOVER_PHASE_PER_ID);
+            var phase = (time.TotalMilliseconds / HOVER_PERIOD_MS) + (powerUpId * HOVER_PHASE_PER_ID);
             return HOVER_CELLS * (float)Math.Sin(phase * 2.0 * Math.PI);
         }
 

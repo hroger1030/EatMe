@@ -7,5 +7,6 @@ namespace EatMeLibrary
         public const string EFFECT_BRIGHTNESS = "Effects/Brightness";
         public const string EFFECT_PIXEL_ART = "Effects/PixelArt";
         public const string EFFECT_BLOOM = "Effects/Bloom";
+        public const string EFFECT_RAINBOW_WALL = "Effects/RainbowWall";
     }
 }

@@ -123,19 +123,20 @@ namespace EatMeTests
             Assert.That(PowerUpEffects.GetName(ePowerUp.Starman), Is.EqualTo(Const.STRING_INVINCIBLE));
             Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Starman), Is.True);
 
-            Assert.That(PowerUpEffects.IsStarBlinkYellow(0f), Is.True);
-            Assert.That(PowerUpEffects.IsStarBlinkYellow(PowerUpEffects.STAR_BLINK_SECONDS * 1.5f), Is.False);
-            Assert.That(PowerUpEffects.IsStarBlinkYellow(PowerUpEffects.STAR_BLINK_SECONDS * 2.5f), Is.True);
+            Assert.That(PowerUpEffects.IsStarBlinkYellow(TimeSpan.Zero), Is.True);
+            Assert.That(PowerUpEffects.IsStarBlinkYellow(TimeSpan.FromMilliseconds(PowerUpEffects.STAR_BLINK_MS * 1.5)), Is.False);
+            Assert.That(PowerUpEffects.IsStarBlinkYellow(TimeSpan.FromMilliseconds(PowerUpEffects.STAR_BLINK_MS * 2.5)), Is.True);
         }
 
         [Test]
         public void GetStunSpinAngle_TurnsAtSpinRate()
         {
-            var quarterTurn = 0.25f / PowerUpEffects.STUN_SPIN_TURNS_PER_SECOND;
+            var quarterTurn = TimeSpan.FromSeconds(0.25 / PowerUpEffects.STUN_SPIN_TURNS_PER_SECOND);
+            var fullTurn = TimeSpan.FromSeconds(1.0 / PowerUpEffects.STUN_SPIN_TURNS_PER_SECOND);
 
-            Assert.That(PowerUpEffects.GetStunSpinAngle(0f), Is.EqualTo(0f));
+            Assert.That(PowerUpEffects.GetStunSpinAngle(TimeSpan.Zero), Is.EqualTo(0f));
             Assert.That(PowerUpEffects.GetStunSpinAngle(quarterTurn), Is.EqualTo(MathF.PI * 0.5f).Within(0.0001f));
-            Assert.That(PowerUpEffects.GetStunSpinAngle(quarterTurn + 1f / PowerUpEffects.STUN_SPIN_TURNS_PER_SECOND), Is.EqualTo(MathF.PI * 0.5f).Within(0.001f), "wraps every full turn");
+            Assert.That(PowerUpEffects.GetStunSpinAngle(quarterTurn + fullTurn), Is.EqualTo(MathF.PI * 0.5f).Within(0.001f), "wraps every full turn");
         }
 
         [Test]

@@ -101,8 +101,11 @@
         public const string STRING_RESPAWNING_IN = "Respawning in";
         public const string STRING_SECONDS = "seconds";
         public const string STRING_LOCKED_OUT = "Locked out!";
+        public const string STRING_VICTORY = "Victory!";
+        public const string STRING_STARTING_IN = "Starting in...";
 
         // Game screen stats bar
+        public const string STRING_STATS = "Stats:";
         public const string STRING_SIZE = "Size";
         public const string STRING_STUNNED = "Stunned!";
         public const string STRING_FLAGS = "Flags";

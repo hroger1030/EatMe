@@ -11,7 +11,7 @@ namespace EatMeTests
         {
             var eyes = new GhostEyes(0, 20f, 10f);
 
-            eyes.Update(0.5f, 10f, 10f, 6f);
+            eyes.Update(TimeSpan.FromMilliseconds(500), 10f, 10f, 6f);
 
             Assert.That(eyes.X, Is.EqualTo(17f).Within(TOLERANCE));
             Assert.That(eyes.Y, Is.EqualTo(10f).Within(TOLERANCE));
@@ -24,7 +24,7 @@ namespace EatMeTests
         {
             var eyes = new GhostEyes(0, 10f, 20f);
 
-            eyes.Update(10f, 10f, 10f, 6f);
+            eyes.Update(TimeSpan.FromSeconds(10), 10f, 10f, 6f);
 
             Assert.That(eyes.IsCircling, Is.True);
             Assert.That(eyes.X, Is.EqualTo(10f).Within(TOLERANCE));
@@ -36,7 +36,7 @@ namespace EatMeTests
         {
             var eyes = new GhostEyes(0, 10f, 10f);
 
-            eyes.Update(10f, 10f, 10f, 6f);
+            eyes.Update(TimeSpan.FromSeconds(10), 10f, 10f, 6f);
 
             Assert.That(eyes.IsCircling, Is.True);
             Assert.That(eyes.X, Is.EqualTo(10f + GhostEyes.ORBIT_CELLS).Within(TOLERANCE));
@@ -47,11 +47,11 @@ namespace EatMeTests
         public void Update_CirclingStaysOnTheCircleAndMovesAtTheGivenSpeed()
         {
             var eyes = new GhostEyes(0, 10f + GhostEyes.ORBIT_CELLS, 10f);
-            eyes.Update(0.01f, 10f, 10f, 6f);
+            eyes.Update(TimeSpan.FromMilliseconds(10), 10f, 10f, 6f);
             Assert.That(eyes.IsCircling, Is.True);
 
             var startAngle = eyes.OrbitAngle;
-            eyes.Update(0.1f, 10f, 10f, 6f);
+            eyes.Update(TimeSpan.FromMilliseconds(100), 10f, 10f, 6f);
 
             var dx = eyes.X - 10f;
             var dy = eyes.Y - 10f;
@@ -110,7 +110,7 @@ namespace EatMeTests
             Assert.That(state.Eyes.Count, Is.EqualTo(1), "one pair of eyes per ghost");
             Assert.That(state.Eyes[0].GhostId, Is.EqualTo(2));
 
-            state.UpdateGhostEyes(0.1f);
+            state.UpdateGhostEyes(TimeSpan.FromMilliseconds(100));
             Assert.That(state.Eyes[0].X != 1.5f || state.Eyes[0].Y != 1.5f, Is.True, "the eyes moved");
 
             state.Apply(new SnapshotMessage { Tick = 1, Ghosts = [new GhostState(2, 1.5f, 1.5f, eFacing.Up, false)] }, 0);

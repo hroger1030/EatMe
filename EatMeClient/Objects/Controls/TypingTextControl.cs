@@ -10,7 +10,7 @@ namespace EatMeClient
     public class TypingTextControl
     {
         private const float DEFAULT_CHARS_PER_SECOND = 15f;
-        private const float CURSOR_BLINK_INTERVAL = 0.25f;
+        private const int CURSOR_BLINK_MS = 250;
         private const string CURSOR_CHARACTER = "_";
         private const float TEXT_PADDING = 30f;
         private const float SCROLLBAR_WIDTH = 16f;
@@ -30,8 +30,8 @@ namespace EatMeClient
         private readonly float _CharsPerSecond;
         private float _WrappedTextWidth = -1f;
         private int _VisibleCharCount;
-        private float _CharTimer;
-        private float _CursorBlinkTimer;
+        private TimeSpan _CharTimer;
+        private TimeSpan _CursorBlinkTimer;
         private float _ScrollOffset;
         private bool _IsDraggingScrollbar;
         private bool _CursorVisible = true;
@@ -48,8 +48,8 @@ namespace EatMeClient
         public void Reset()
         {
             _VisibleCharCount = 0;
-            _CharTimer = 0f;
-            _CursorBlinkTimer = 0f;
+            _CharTimer = TimeSpan.Zero;
+            _CursorBlinkTimer = TimeSpan.Zero;
             _CursorVisible = true;
             _ScrollOffset = 0f;
             _IsDraggingScrollbar = false;
@@ -77,13 +77,13 @@ namespace EatMeClient
 
             if (_VisibleCharCount < wrappedText.Length)
             {
-                var secondsPerChar = 1f / _CharsPerSecond;
+                var timePerChar = TimeSpan.FromSeconds(1.0 / _CharsPerSecond);
                 var typedVisibleChar = false;
-                _CharTimer += dt;
+                _CharTimer += gameTime.ElapsedGameTime;
 
-                while (_CharTimer >= secondsPerChar && _VisibleCharCount < wrappedText.Length)
+                while (_CharTimer >= timePerChar && _VisibleCharCount < wrappedText.Length)
                 {
-                    _CharTimer -= secondsPerChar;
+                    _CharTimer -= timePerChar;
 
                     if (!char.IsWhiteSpace(wrappedText[_VisibleCharCount]))
                         typedVisibleChar = true;
@@ -96,10 +96,10 @@ namespace EatMeClient
                     SoundManager.PlaySound(Const.SFX_TICK);
             }
 
-            _CursorBlinkTimer += dt;
-            if (_CursorBlinkTimer >= CURSOR_BLINK_INTERVAL)
+            _CursorBlinkTimer += gameTime.ElapsedGameTime;
+            if (_CursorBlinkTimer.TotalMilliseconds >= CURSOR_BLINK_MS)
             {
-                _CursorBlinkTimer -= CURSOR_BLINK_INTERVAL;
+                _CursorBlinkTimer -= TimeSpan.FromMilliseconds(CURSOR_BLINK_MS);
                 _CursorVisible = !_CursorVisible;
             }
 
