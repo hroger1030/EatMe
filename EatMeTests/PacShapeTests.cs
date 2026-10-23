@@ -14,9 +14,9 @@ namespace EatMeTests
         }
 
         [Test]
-        public void All_HasNineShapesInSheetOrder()
+        public void All_HasEightShapesInSheetOrder()
         {
-            Assert.That(PacShapes.ALL, Has.Length.EqualTo(9));
+            Assert.That(PacShapes.ALL, Has.Length.EqualTo(8));
 
             for (var i = 0; i < PacShapes.ALL.Length; i++)
                 Assert.That(PacShapes.GetCellY(PacShapes.ALL[i]), Is.EqualTo(i));
@@ -27,14 +27,14 @@ namespace EatMeTests
         {
             var names = PacShapes.ALL.Select(PacShapes.GetName);
 
-            Assert.That(names, Is.EqualTo(new[] { "O-gee", "Chomper", "Hex", "Boxie", "Trey", "Doc", "Gears", "LadyDi", "Go" }));
+            Assert.That(names, Is.EqualTo(new[] { "O-gee", "Chomper", "Hex", "Boxie", "Doc", "Gears", "LadyDi", "Go" }));
         }
 
         [Test]
         public void Clamp_KeepsShapes_AndTurnsAnythingElseIntoTheDefault()
         {
             Assert.That(PacShapes.Clamp(ePacShape.Go), Is.EqualTo(ePacShape.Go));
-            Assert.That(PacShapes.Clamp((ePacShape)9), Is.EqualTo(PacShapes.DEFAULT));
+            Assert.That(PacShapes.Clamp((ePacShape)8), Is.EqualTo(PacShapes.DEFAULT));
             Assert.That(PacShapes.Clamp((ePacShape)(-1)), Is.EqualTo(PacShapes.DEFAULT));
             Assert.That(PacShapes.GetCellY((ePacShape)42), Is.EqualTo((int)PacShapes.DEFAULT));
         }

@@ -2,7 +2,7 @@ namespace EatMeLibrary
 {
     /// <summary>
     /// The pac sprite a player picks, one row of the pac sheet each, in sheet order. The numbers are saved in the
-    /// client settings and sent as a byte, so keep them.
+    /// client settings and sent as a byte.
     /// </summary>
     public enum ePacShape
     {
@@ -10,10 +10,9 @@ namespace EatMeLibrary
         Chomper = 1,
         Hex = 2,
         Boxie = 3,
-        Trey = 4,
-        Doc = 5,
-        Gears = 6,
-        LadyDi = 7,
-        Go = 8,
+        Doc = 4,
+        Gears = 5,
+        LadyDi = 6,
+        Go = 7,
     }
 }

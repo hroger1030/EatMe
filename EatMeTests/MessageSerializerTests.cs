@@ -44,7 +44,7 @@ namespace EatMeTests
             yield return new ServerPongMessage { ServerTime = 7654321 };
             yield return new ActionMessage();
             yield return new PlayerListRequestMessage();
-            yield return new PacShapeMessage { PacShape = ePacShape.Trey };
+            yield return new PacShapeMessage { PacShape = ePacShape.Hex };
             yield return new VictoryMessage { WinningTeam = eTeam.Blue, MsRemaining = 1234 };
             yield return new PlayerListMessage { Entries = [new PlayerListEntry(1, "Pac", eTeam.Red, false, 42), new PlayerListEntry(1000, "Blinky", eTeam.Blue, true, PlayerListEntry.NO_PING)] };
             yield return new GameConfigMessage { GameConfig = new GameConfiguration { MazeSize = 40, PacSpeed = 7.5f, MinPlayers = 6 } };

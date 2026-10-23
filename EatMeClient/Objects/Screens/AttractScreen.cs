@@ -7,18 +7,18 @@ using System.Collections.Generic;
 namespace EatMeClient
 {
     /// <summary>
-    /// Shown after the title menu has sat idle (AttractMath.IDLE_MS): on black, the story, every ghost and every
-    /// power up (alphabetically: sprite and name side by side, centred, and a short description under them across the
-    /// centre third of the screen), and the two teams' pacs, scrolling up slowly
-    /// until the bottom is on screen, then back to the title after AttractMath.HOLD_MS. Any key, gamepad button
-    /// or mouse button goes back at once.
+    /// Shown after the title menu has sat idle (AttractMath.IDLE_MS): on black, split in two. The left half holds the
+    /// story, which doesn't move. The right half holds every ghost and every power up (alphabetically: sprite and
+    /// name side by side, centred, and a short description under them across the middle two thirds of the half), and
+    /// the two teams' pacs, scrolling up slowly until the bottom is on screen, then back to the title after
+    /// AttractMath.HOLD_MS. Any key, gamepad button or mouse button goes back at once.
     /// </summary>
     public class AttractScreen
     {
         /// <summary>
-        /// Width of the story text column, as a share of the screen.
+        /// Space left and right of the story text inside the left half, as a share of the screen's width.
         /// </summary>
-        private const float STORY_WIDTH_RATIO = 0.5f;
+        private const float STORY_MARGIN_RATIO = 0.05f;
 
         /// <summary>
         /// Space above the first title and below the pacs, and between sections, in title font lines.
@@ -26,11 +26,11 @@ namespace EatMeClient
         private const float SECTION_GAP_LINES = 0.75f;
 
         /// <summary>
-        /// The ghost and power up descriptions span the middle of the screen, from LIST_LEFT_RATIO to LIST_RIGHT_RATIO
-        /// of its width (the centre third).
+        /// The ghost and power up descriptions span the middle of the right half, from LIST_LEFT_RATIO to
+        /// LIST_RIGHT_RATIO of its width (the middle two thirds).
         /// </summary>
-        private const float LIST_LEFT_RATIO = 1f / 3f;
-        private const float LIST_RIGHT_RATIO = 2f / 3f;
+        private const float LIST_LEFT_RATIO = 1f / 6f;
+        private const float LIST_RIGHT_RATIO = 5f / 6f;
 
         /// <summary>
         /// Size of a ghost or power up sprite in the lists, in pixels.
@@ -53,6 +53,11 @@ namespace EatMeClient
         private const int STAR_PAC_PIXELS = 192;
         private const int STAR_PAC_GAP = 128;
 
+        /// <summary>
+        /// Space between the castle and the bottom of the screen, in pixels.
+        /// </summary>
+        private const int CASTLE_BOTTOM_GAP_PIXELS = 24;
+
         private readonly Action _OnDone;
         private SpriteFont _TitleFont;
         private SpriteFont _StoryFont;
@@ -60,6 +65,7 @@ namespace EatMeClient
         private SpriteFont _BlurbFont;
         private Texture2D _PacSheet;
         private Texture2D _PowerUpSheet;
+        private Texture2D _Castle;
         private Texture2D[] _GhostSheets;
         private List<GhostPersonality> _Ghosts;
         private List<ePowerUp> _PowerUps;
@@ -82,6 +88,7 @@ namespace EatMeClient
             _BlurbFont = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30);
             _PacSheet = AssetCache.GetTexture(Const.IMAGE_PAC_SHEET);
             _PowerUpSheet = AssetCache.GetTexture(Const.IMAGE_POWER_UP_SHEET);
+            _Castle = AssetCache.GetTexture(Const.IMAGE_CASTLE);
 
             var whiteGhost = AssetCache.GetTexture(Const.IMAGE_GHOST);
             _GhostSheets = new Texture2D[GhostPersonalities.ALL.Count];
@@ -119,62 +126,100 @@ namespace EatMeClient
             var offset = AttractMath.GetScrollOffset(_Time, Layout(null, viewport, 0f), viewport.Height);
 
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            var storyBottom = LayoutStory(spriteBatch, viewport);
             Layout(spriteBatch, viewport, -offset);
+            spriteBatch.End();
+
+            // the castle is a large sketch drawn smaller, so it is filtered rather than point sampled
+            spriteBatch.Begin(samplerState: SamplerState.LinearClamp);
+            DrawCastle(spriteBatch, viewport, storyBottom);
             spriteBatch.End();
         }
 
         /// <summary>
-        /// Lays the content out from top down and draws it when spriteBatch isn't null (only what is on screen).
-        /// Returns the content's height.
+        /// The castle at the bottom of the left half, centred, as big as fits between the story and
+        /// CASTLE_BOTTOM_GAP_PIXELS above the bottom of the screen and within the story's margins.
         /// </summary>
-        private float Layout(SpriteBatch spriteBatch, Viewport viewport, float top)
+        private void DrawCastle(SpriteBatch spriteBatch, Viewport viewport, float storyBottom)
         {
-            var gap = _TitleFont.LineSpacing * SECTION_GAP_LINES;
-            var y = top + gap;
+            var margin = viewport.Width * STORY_MARGIN_RATIO;
+            var maxWidth = viewport.Width / 2f - margin * 2f;
+            var maxHeight = viewport.Height - CASTLE_BOTTOM_GAP_PIXELS - storyBottom;
 
-            // the story
-            y = LayoutTitle(spriteBatch, viewport, Const.STRING_STORY, y);
-            var storyWidth = viewport.Width * STORY_WIDTH_RATIO;
-            var storyLeft = (viewport.Width - storyWidth) / 2f;
+            if (maxWidth <= 0f || maxHeight <= 0f)
+                return;
 
-            foreach (var line in GetStoryLines(storyWidth))
+            var scale = Math.Min(maxWidth / _Castle.Width, maxHeight / _Castle.Height);
+            var width = (int)(_Castle.Width * scale);
+            var height = (int)(_Castle.Height * scale);
+            var picture = new Rectangle((int)((viewport.Width / 2f - width) / 2f), viewport.Height - CASTLE_BOTTOM_GAP_PIXELS - height, width, height);
+
+            spriteBatch.Draw(_Castle, picture, Color.White);
+        }
+
+        /// <summary>
+        /// The story in the left half, from the top, not scrolling: its title centred in the half, then the text
+        /// wrapped to the half less STORY_MARGIN_RATIO each side. Anything past the bottom of the screen is cut off.
+        /// Returns the y just below the last line.
+        /// </summary>
+        private float LayoutStory(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            var halfWidth = viewport.Width / 2f;
+            var margin = viewport.Width * STORY_MARGIN_RATIO;
+            var y = LayoutTitle(spriteBatch, viewport, Const.STRING_STORY, 0f, halfWidth, _TitleFont.LineSpacing * SECTION_GAP_LINES);
+
+            foreach (var line in GetStoryLines(halfWidth - margin * 2f))
             {
-                if (spriteBatch != null && IsOnScreen(viewport, y, _StoryFont.LineSpacing))
-                    TextHelper.DrawShadowedString(spriteBatch, _StoryFont, line, new Vector2(storyLeft, y), ClientColors.COLOR_DARK_MENU_ITEM);
+                if (IsOnScreen(viewport, y, _StoryFont.LineSpacing))
+                    TextHelper.DrawShadowedString(spriteBatch, _StoryFont, line, new Vector2(margin, y), ClientColors.COLOR_DARK_MENU_ITEM);
 
                 y += _StoryFont.LineSpacing;
             }
 
+            return y;
+        }
+
+        /// <summary>
+        /// Lays the scrolling right half out from top down and draws it when spriteBatch isn't null (only what is on
+        /// screen). Returns the content's height.
+        /// </summary>
+        private float Layout(SpriteBatch spriteBatch, Viewport viewport, float top)
+        {
+            var gap = _TitleFont.LineSpacing * SECTION_GAP_LINES;
+            var left = viewport.Width / 2f;
+            var width = viewport.Width - left;
+            var y = top + gap;
+
             // the ghosts
-            y = LayoutTitle(spriteBatch, viewport, Const.STRING_ENEMIES, y + gap);
+            y = LayoutTitle(spriteBatch, viewport, Const.STRING_ENEMIES, left, width, y);
 
             foreach (var ghost in _Ghosts)
             {
                 var sheet = _GhostSheets[ghost.Id];
                 var frameWidth = sheet.Width / MultiPlayerGameScreen.GHOST_FRAME_COUNT;
                 var source = new Rectangle(MultiPlayerGameScreen.GetGhostFrame(eFacing.Right) * frameWidth, 0, frameWidth, sheet.Height);
-                y = LayoutEntry(spriteBatch, viewport, sheet, source, ghost.Name, ClientColors.ToColor(ghost.Color), AttractBlurbs.GetGhostBlurb(ghost.Behavior), y);
+                y = LayoutEntry(spriteBatch, viewport, left, width, sheet, source, ghost.Name, ClientColors.ToColor(ghost.Color), AttractBlurbs.GetGhostBlurb(ghost.Behavior), y);
             }
 
             // the power ups
-            y = LayoutTitle(spriteBatch, viewport, Const.STRING_ATTRACT_POWER_UPS, y + gap);
+            y = LayoutTitle(spriteBatch, viewport, Const.STRING_ATTRACT_POWER_UPS, left, width, y + gap);
 
             foreach (var item in _PowerUps)
             {
                 var source = new Rectangle(PowerUpSprites.GetCellX(item), PowerUpSprites.GetCellY(item), PowerUpSprites.CELL_PIXELS, PowerUpSprites.CELL_PIXELS);
-                y = LayoutEntry(spriteBatch, viewport, _PowerUpSheet, source, PowerUpNames.GetName(item), ClientColors.COLOR_DARK_MENU_ITEM, AttractBlurbs.GetPowerUpBlurb(item), y);
+                y = LayoutEntry(spriteBatch, viewport, left, width, _PowerUpSheet, source, PowerUpNames.GetName(item), ClientColors.COLOR_DARK_MENU_ITEM, AttractBlurbs.GetPowerUpBlurb(item), y);
             }
 
             // the stars: blue on the left facing right, red on the right facing left
-            y = LayoutTitle(spriteBatch, viewport, Const.STRING_STARRING, y + gap);
+            y = LayoutTitle(spriteBatch, viewport, Const.STRING_STARRING, left, width, y + gap);
 
             if (spriteBatch != null && IsOnScreen(viewport, y, STAR_PAC_PIXELS))
             {
                 var source = MultiPlayerGameScreen.GetPacSource(_PacSheet, PacShapes.DEFAULT, MultiPlayerGameScreen.GetChompFrame(_Time));
-                var left = (viewport.Width - STAR_PAC_PIXELS * 2 - STAR_PAC_GAP) / 2;
+                var pacLeft = (int)(left + (width - STAR_PAC_PIXELS * 2 - STAR_PAC_GAP) / 2f);
 
-                spriteBatch.Draw(_PacSheet, new Rectangle(left, (int)y, STAR_PAC_PIXELS, STAR_PAC_PIXELS), source, ClientColors.COLOR_PAC_BLUE);
-                spriteBatch.Draw(_PacSheet, new Rectangle(left + STAR_PAC_PIXELS + STAR_PAC_GAP, (int)y, STAR_PAC_PIXELS, STAR_PAC_PIXELS), source,
+                spriteBatch.Draw(_PacSheet, new Rectangle(pacLeft, (int)y, STAR_PAC_PIXELS, STAR_PAC_PIXELS), source, ClientColors.COLOR_PAC_BLUE);
+                spriteBatch.Draw(_PacSheet, new Rectangle(pacLeft + STAR_PAC_PIXELS + STAR_PAC_GAP, (int)y, STAR_PAC_PIXELS, STAR_PAC_PIXELS), source,
                     ClientColors.COLOR_PAC_RED, 0f, Vector2.Zero, SpriteEffects.FlipHorizontally, 0f);
             }
 
@@ -183,34 +228,35 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// A section title, centred in the screen title color with its white shadow. Returns the y below it.
+        /// A section title, centred in the column from left, width wide, in the screen title color with its white
+        /// shadow. Returns the y below it.
         /// </summary>
-        private float LayoutTitle(SpriteBatch spriteBatch, Viewport viewport, string title, float y)
+        private float LayoutTitle(SpriteBatch spriteBatch, Viewport viewport, string title, float left, float width, float y)
         {
             if (spriteBatch != null && IsOnScreen(viewport, y, _TitleFont.LineSpacing))
             {
                 var size = _TitleFont.MeasureString(title);
-                TextHelper.DrawShadowedString(spriteBatch, _TitleFont, title, new Vector2((viewport.Width - size.X) / 2f, y), ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
+                TextHelper.DrawShadowedString(spriteBatch, _TitleFont, title, new Vector2(left + (width - size.X) / 2f, y), ClientColors.COLOR_DARK_TITLE_ITEM, ClientColors.COLOR_DARK_TITLE_SHADOW);
             }
 
             return y + _TitleFont.LineSpacing;
         }
 
         /// <summary>
-        /// One list entry: the sprite with the name ICON_GAP to its right, the pair centred on the screen on one row,
-        /// then the description under them in the small font, wrapped to the centre third of the screen and centred.
-        /// Returns the y below it.
+        /// One list entry: the sprite with the name ICON_GAP to its right, the pair centred on one row in the column
+        /// from columnLeft, columnWidth wide, then the description under them in the small font, wrapped to
+        /// LIST_LEFT_RATIO to LIST_RIGHT_RATIO of the column and centred. Returns the y below it.
         /// </summary>
-        private float LayoutEntry(SpriteBatch spriteBatch, Viewport viewport, Texture2D sheet, Rectangle source, string name, Color nameColor, string blurb, float y)
+        private float LayoutEntry(SpriteBatch spriteBatch, Viewport viewport, float columnLeft, float columnWidth, Texture2D sheet, Rectangle source, string name, Color nameColor, string blurb, float y)
         {
-            var left = viewport.Width * LIST_LEFT_RATIO;
-            var right = viewport.Width * LIST_RIGHT_RATIO;
+            var left = columnLeft + columnWidth * LIST_LEFT_RATIO;
+            var right = columnLeft + columnWidth * LIST_RIGHT_RATIO;
             var rowHeight = Math.Max(ICON_PIXELS, _NameFont.LineSpacing);
 
             if (spriteBatch != null && IsOnScreen(viewport, y, rowHeight))
             {
                 var nameWidth = _NameFont.MeasureString(name).X;
-                var iconX = (viewport.Width - ICON_PIXELS - ICON_GAP - nameWidth) / 2f;
+                var iconX = columnLeft + (columnWidth - ICON_PIXELS - ICON_GAP - nameWidth) / 2f;
                 var iconY = y + (rowHeight - ICON_PIXELS) / 2f;
                 spriteBatch.Draw(sheet, new Rectangle((int)iconX, (int)iconY, ICON_PIXELS, ICON_PIXELS), source, Color.White);
 

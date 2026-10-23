@@ -11,6 +11,12 @@ namespace EatMeClient
 
         public int Rows { get; set; }
         public int Columns { get; set; }
+
+        /// <summary>
+        /// Rows in the whole texture when the animation plays only some of them (0 means Rows), starting at StartRow.
+        /// </summary>
+        public int SheetRows { get; set; }
+        public int StartRow { get; set; }
         public TimeSpan AnimationDuration { get; set; }
         public Color Tint { get; set; } = Color.White;
         public bool Loop { get; set; }
@@ -46,10 +52,10 @@ namespace EatMeClient
 
             // update the current sprite rectangle.
             var frameWidth = Texture.Width / Columns;
-            var frameHeight = Texture.Height / Rows;
+            var frameHeight = Texture.Height / (SheetRows > 0 ? SheetRows : Rows);
 
             var column = _AnimationFrame % Columns;
-            var row = _AnimationFrame / Columns;
+            var row = StartRow + _AnimationFrame / Columns;
 
             SpriteSource = new Rectangle(column * frameWidth, row * frameHeight, frameWidth, frameHeight);
         }

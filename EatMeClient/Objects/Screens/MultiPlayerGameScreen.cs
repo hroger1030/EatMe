@@ -93,11 +93,6 @@ namespace EatMeClient
         /// </summary>
         private const float NAME_OFFSET_PIXELS = 2f;
 
-        /// <summary>
-        /// Flag pointers, drawn on a circle around the player for every flag, are this many pixels across.
-        /// </summary>
-        private const int FLAG_POINTER_PIXELS = 96;
-
         private readonly Action _OnQuit;
 
         // Assets
@@ -137,7 +132,6 @@ namespace EatMeClient
         private static readonly eDrawLayer[] DRAW_LAYERS = Enum.GetValues<eDrawLayer>();
         private Texture2D _WallTexture;
         private Texture2D _WallFillTexture;
-        private Texture2D _PointerTexture;
         private Texture2D _Background;
         private PixelArtEffect _PixelArt;
         private RainbowWallEffect _RainbowWall;
@@ -254,7 +248,6 @@ namespace EatMeClient
 
             _WallTexture = AssetCache.GetTexture(Const.IMAGE_WALL);
             _WallFillTexture = AssetCache.GetTexture(Const.IMAGE_WALL_FILL);
-            _PointerTexture = AssetCache.GetTexture(Const.IMAGE_POINTER);
             _Background = AssetCache.GetTexture(Const.IMAGE_TITLE_BACKGROUND);
             _PixelArt = new PixelArtEffect(AssetCache.GetEffect(Const.EFFECT_PIXEL_ART));
             _RainbowWall = new RainbowWallEffect(AssetCache.GetEffect(Const.EFFECT_RAINBOW_WALL), CELL_PIXELS);
@@ -718,7 +711,8 @@ namespace EatMeClient
             }
 
             var location = CellToWorld(gameEvent.X, gameEvent.Y).ToGeometryPoint();
-            var death = ImageFactory.GeneratePlayerDeath(_PacDeathSheet, location, CELL_PIXELS * PacRules.GetDiameter(size), color);
+            var shape = _State.GetPacShape(gameEvent.TargetId);
+            var death = ImageFactory.GeneratePlayerDeath(_PacDeathSheet, shape, location, CELL_PIXELS * PacRules.GetDiameter(size), color);
             death.Update(TimeSpan.Zero);
             DeathAnimations.Add(death);
         }
@@ -838,17 +832,6 @@ namespace EatMeClient
                     }
 
                     spriteBatch.End();
-
-                    // over the bars, under the mini-map; the board's viewport keeps them off the bars
-                    if (status == null && showBoard)
-                    {
-                        var pointerBoard = GetBoardViewport(viewport);
-                        spriteBatch.GraphicsDevice.Viewport = pointerBoard;
-                        spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
-                        DrawFlagPointers(spriteBatch, pointerBoard, GetMiniMapBounds(viewport));
-                        spriteBatch.End();
-                        spriteBatch.GraphicsDevice.Viewport = viewport;
-                    }
                     break;
 
                 case eDrawLayer.Ui:
@@ -1631,36 +1614,6 @@ namespace EatMeClient
             var texture = new Texture2D(graphicsDevice, SIZE, SIZE);
             texture.SetData(data);
             return texture;
-        }
-
-        /// <summary>
-        /// For every flag, on screen or not and carried or not, a pointer in the flag's team color on a circle around
-        /// the player (the camera's centre), on the line from the player to the flag and pointing at it. A flag right
-        /// on the player (one they carry) has no direction and gets none. The circle's radius reaches the mini-map's
-        /// bottom left corner (miniMap is in screen pixels, not board pixels).
-        /// </summary>
-        private void DrawFlagPointers(SpriteBatch spriteBatch, Viewport viewport, Rectangle miniMap)
-        {
-            if (_State.Snapshot == null)
-                return;
-
-            var centre = _Camera.ToScreenPosition(_Camera.Position, viewport);
-            var centreX = centre.X;
-            var centreY = centre.Y;
-            var radius = FlagPointerMath.GetDistance(centreX, centreY, miniMap.Left, miniMap.Bottom - GetHudBarHeight());
-            var origin = new Vector2(_PointerTexture.Width * 0.5f, _PointerTexture.Height * 0.5f);
-            var scale = new Vector2((float)FLAG_POINTER_PIXELS / _PointerTexture.Width, (float)FLAG_POINTER_PIXELS / _PointerTexture.Height);
-
-            foreach (var flag in _State.Snapshot.Flags)
-            {
-                var flagScreen = _Camera.ToScreenPosition(CellToWorld(flag.X, flag.Y), viewport);
-                if (FlagPointerMath.GetDistance(centreX, centreY, flagScreen.X, flagScreen.Y) == 0f)
-                    continue;
-
-                var (x, y) = FlagPointerMath.GetCirclePosition(centreX, centreY, flagScreen.X, flagScreen.Y, radius);
-                var rotation = FlagPointerMath.GetAngle(centreX, centreY, flagScreen.X, flagScreen.Y);
-                spriteBatch.Draw(_PointerTexture, new Vector2(x, y), null, ClientColors.GetTeamColor(flag.Team), rotation, origin, scale, SpriteEffects.None, 0f);
-            }
         }
 
         /// <summary>

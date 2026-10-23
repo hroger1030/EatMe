@@ -152,7 +152,8 @@ namespace EatMeClient
                 Const.IMAGE_TITLE_BACKGROUND, Const.IMAGE_LOGO, Const.IMAGE_WIN_BLUE, Const.IMAGE_WIN_RED, Const.IMAGE_DOT,
                 Const.IMAGE_FLAG0, Const.IMAGE_FLAG_BASE, Const.IMAGE_PAC_SHEET, Const.IMAGE_PAC_DEATH_SHEET,
                 Const.IMAGE_GHOST, Const.IMAGE_PAC_BASE, Const.IMAGE_POWER_UP_SHEET, Const.IMAGE_WEAPON_EFFECTS,
-                Const.IMAGE_WALL, Const.IMAGE_WALL_FILL, Const.IMAGE_SPACE_FILL, Const.IMAGE_POINTER, Const.IMAGE_MINI_MAP_ICONS]);
+                Const.IMAGE_WALL, Const.IMAGE_WALL_FILL, Const.IMAGE_SPACE_FILL,Const.IMAGE_MINI_MAP_ICONS,
+                Const.IMAGE_CASTLE]);
 
             // music
             MusicManager.LevelTracks = MusicPlaylist.GetTrackNames(((PakContentManager)Content).GetFiles(MusicPlaylist.TRACK_FOLDER));

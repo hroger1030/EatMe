@@ -42,7 +42,7 @@ namespace EatMeClient
         Overhead,
 
         /// <summary>
-        /// The score and stats bars (or the status text) and the flag pointers.
+        /// The score and stats bars (or the status text).
         /// </summary>
         Hud,
 

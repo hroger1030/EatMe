@@ -8,28 +8,32 @@ namespace EatMeClient
     public static class ImageFactory
     {
         private const int DEATH_FRAME_COLUMNS = 11;
-        private const int DEATH_FRAME_ROWS = 1;
         private const int DEATH_DURATION_MS = 1100;
 
         /// <summary>
-        /// The pac death animation, played once at a world location, drawn the given width in pixels and tinted.
+        /// The pac death animation for a shape (its row of the death sheet, in ePacShape order, like the pac sheet),
+        /// played once at a world location, drawn the given width in pixels and tinted.
         /// </summary>
-        public static AnimatedTexture GeneratePlayerDeath(Texture2D texture, FastG.Point2 location, float width, Color tint)
+        public static AnimatedTexture GeneratePlayerDeath(Texture2D texture, ePacShape shape, FastG.Point2 location, float width, Color tint)
         {
+            var sheetRows = PacShapes.ALL.Length;
+            var row = PacShapes.GetCellY(shape);
             var frameWidth = texture.Width / DEATH_FRAME_COLUMNS;
-            var frameHeight = texture.Height / DEATH_FRAME_ROWS;
+            var frameHeight = texture.Height / sheetRows;
 
             var output = new AnimatedTexture()
             {
                 Texture = texture,
-                Rows = DEATH_FRAME_ROWS,
+                Rows = 1,
+                SheetRows = sheetRows,
+                StartRow = row,
                 Columns = DEATH_FRAME_COLUMNS,
                 AnimationDuration = TimeSpan.FromMilliseconds(DEATH_DURATION_MS),
                 Scale = width / frameWidth,
                 Tint = tint,
                 Loop = false,
                 Location = location,
-                SpriteSource = new Rectangle(0, 0, frameWidth, frameHeight),
+                SpriteSource = new Rectangle(0, row * frameHeight, frameWidth, frameHeight),
             };
 
             return output;

@@ -31,7 +31,6 @@ namespace EatMeLibrary
                 ePacShape.Chomper => "Chomper",
                 ePacShape.Hex => "Hex",
                 ePacShape.Boxie => "Boxie",
-                ePacShape.Trey => "Trey",
                 ePacShape.Doc => "Doc",
                 ePacShape.Gears => "Gears",
                 ePacShape.LadyDi => "LadyDi",
