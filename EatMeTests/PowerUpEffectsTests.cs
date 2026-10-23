@@ -40,7 +40,7 @@ namespace EatMeTests
         {
             Assert.That(PowerUpEffects.GetName(ePowerUp.Orange), Is.EqualTo(Const.STRING_VITAMIN_C));
             Assert.That(PowerUpEffects.GetName(ePowerUp.Apple), Is.EqualTo(Const.STRING_DOCTOR_AWAY));
-            Assert.That(PowerUpEffects.GetName(ePowerUp.Melon), Is.EqualTo(Const.STRING_MELON_BELLY));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Melon), Is.EqualTo(Const.STRING_MELON_ROLL));
             Assert.That(PowerUpEffects.GetName(ePowerUp.Galaxian), Is.EqualTo(Const.STRING_WARP_SPEED));
         }
 
@@ -172,12 +172,11 @@ namespace EatMeTests
         }
 
         [Test]
-        public void PreventsStarving_VitaminCMelonBellyEnergyTankAndFullHeal()
+        public void PreventsStarving_VitaminCEnergyTankAndFullHeal()
         {
             foreach (var effect in Enum.GetValues<ePowerUp>())
             {
-                var expected = effect == ePowerUp.Orange || effect == ePowerUp.Melon || effect == ePowerUp.EnergyTank
-                    || effect == ePowerUp.HeartContainer;
+                var expected = effect == ePowerUp.Orange || effect == ePowerUp.EnergyTank || effect == ePowerUp.HeartContainer;
                 Assert.That(PowerUpEffects.PreventsStarving(effect), Is.EqualTo(expected), effect.ToString());
             }
         }

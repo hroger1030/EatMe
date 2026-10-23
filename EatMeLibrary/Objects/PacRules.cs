@@ -49,11 +49,6 @@ namespace EatMeLibrary
         public const float ENERGY_TANK_SPEED_SCALE = 1.3f;
 
         /// <summary>
-        /// Size a pac gains while Melon Belly (melon) works, lost again when it ends.
-        /// </summary>
-        public const float MELON_BELLY_SIZE_GAIN = 50f;
-
-        /// <summary>
         /// A pac charging on its own spawn (PacState.SpawnFeeding) blinks purple, showing it for this long out of every two.
         /// </summary>
         public const int SPAWN_CHARGE_BLINK_MS = 150;
@@ -108,14 +103,13 @@ namespace EatMeLibrary
 
         /// <summary>
         /// Size an effect adds when it starts and takes away when it ends: powerPillSizeGain for a power pill,
-        /// MELON_BELLY_SIZE_GAIN for Melon Belly, otherwise 0.
+        /// otherwise 0.
         /// </summary>
         public static float GetEffectSizeGain(ePowerUp effect, float powerPillSizeGain)
         {
             return effect switch
             {
                 ePowerUp.PowerPill => powerPillSizeGain,
-                ePowerUp.Melon => MELON_BELLY_SIZE_GAIN,
                 _ => 0f,
             };
         }

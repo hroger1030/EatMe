@@ -503,6 +503,8 @@ namespace EatMeLibrary
         /// - Warp and Cherry Twin: something that can kill it (a ghost, or an enemy that IsThreat) is within
         ///   DANGER_DISTANCE cells.
         /// - Blue Shell: its shell isn't fired yet and there is an enemy to send it after (WeaponRules.PickBlueShellTarget).
+        /// - Melon Roll: it isn't rolling already, and something that can kill it is within DANGER_DISTANCE cells or a
+        ///   target is in line ahead (as for Sword Swing).
         /// </summary>
         public static bool ShouldUseAction(BotWorld world, Player me)
         {
@@ -535,6 +537,9 @@ namespace EatMeLibrary
 
                 case ePowerUp.BlueShell:
                     return !me.BlueShellFired && WeaponRules.PickBlueShellTarget(me.Team, world.Pacs) != null;
+
+                case ePowerUp.Melon:
+                    return !me.IsRolling && (HasThreatNear(world, me, DANGER_DISTANCE) || HasTargetAhead(world, me));
 
                 default:
                     return false;

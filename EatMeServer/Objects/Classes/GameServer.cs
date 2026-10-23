@@ -473,7 +473,7 @@ namespace EatMeServer
 
                 snapshot.Pacs.Add(new PacState(player.Id, player.Team, player.Location.X, player.Location.Y, player.Size, player.Facing, player.Alive, player.HasFlag, player.Eating,
                     player.FlagCaps, player.GhostKills, player.PlayerKills, player.FlagRescues, player.PowerUpEffect, player.PowerUpMs, player.TotalScore, player.MsSinceEaten, player.IsStunned,
-                    respawnMsLeft, spawnLocked, player.PowerUpsEaten, player.SpawnFeeding));
+                    respawnMsLeft, spawnLocked, player.PowerUpsEaten, player.SpawnFeeding, player.IsRolling));
             }
 
             foreach (var ghost in _Ghosts)
@@ -780,7 +780,8 @@ namespace EatMeServer
 
                 memory.Update(elapsed);
 
-                if (pac.IsStunned)
+                // a rolling pac (Melon Roll) can't be steered
+                if (pac.IsStunned || pac.IsRolling)
                     continue;
 
                 var distance = PacRules.GetSpeed(config.PacSpeed, pac.Size, config.PacMaxSize) * PacRules.GetEffectSpeedScale(pac.PowerUpEffect)
@@ -840,33 +841,24 @@ namespace EatMeServer
                 if (pac.PassesThroughWalls)
                     blocked &= ~eGridDef.Wall;
 
-                var wanted = MazeMovement.ToFacing(serverPlayer.Input);
-                var facing = pac.Facing;
+                var rolled = pac.IsRolling;
 
-                // bots steer exactly; only humans get the turn buffer and late turns
-                if (!serverPlayer.IsBot)
+                // Melon Roll goes straight on, whatever its player holds, until it reaches something it can't smash
+                if (rolled)
                 {
-                    wanted = TurnAssist.GetWantedTurn(wanted, serverPlayer.BufferedTurn, serverPlayer.BufferedTurnMs);
-
-                    if (serverPlayer.HasNewTurnRequest && wanted.HasValue)
-                    {
-                        var grace = TurnAssist.GetGraceDistance(config.TurnGraceDistance, speed, serverPlayer.Lag.SmoothedMs, config.LagCompensationMaxMs);
-                        distance += TurnAssist.TryLateTurn(Map, pac, wanted.Value, Math.Min(grace, serverPlayer.StraightDistance), blocked: blocked);
-                    }
+                    if (!MelonRoll.Move(Map, pac, distance * MelonRoll.SPEED_SCALE, MazeMovement.GetPacBlocked(pac.Team)))
+                        pac.IsRolling = false;
 
                     serverPlayer.HasNewTurnRequest = false;
                 }
-
-                MazeMovement.Move(Map, pac, wanted, distance, blocked: blocked);
-
-                if (!serverPlayer.IsBot)
-                    UpdateTurnBuffer(serverPlayer, facing, distance, elapsed);
+                else
+                    MovePac(serverPlayer, speed, distance, blocked, elapsed);
 
                 if (pac.HasFlag && IsSpawnCell(MazeMovement.GetCell(pac.Location)))
                     DropFlag(pac, from.X + CELL_CENTER, from.Y + CELL_CENTER);
 
-                // Super Size smashes every wall its body covers (never the outer wall) into a dot cell
-                if (PowerUpEffects.SmashesWalls(pac.PowerUpEffect) && pac.PowerUpMs > 0)
+                // Super Size and a Melon Roll smash every wall the body covers (never the outer wall) into a dot cell
+                if ((PowerUpEffects.SmashesWalls(pac.PowerUpEffect) && pac.PowerUpMs > 0) || rolled)
                 {
                     WeaponRules.GetTouchedCells(pac.Location, PacRules.GetRadius(pac.Size), Map.GetLength(0), Map.GetLength(1), _TouchedCells);
 
@@ -878,9 +870,66 @@ namespace EatMeServer
                 }
             }
 
+            StunRollContacts();
+
             // once a tick, however many walls went: everyone hears the boom and every board shakes
             if (smasher != null)
                 Broadcast(new GameEventMessage { EventType = eGameEvent.WallSmash, ActorId = smasher.Id, X = smasher.Location.X, Y = smasher.Location.Y, Team = smasher.Team });
+        }
+
+        /// <summary>
+        /// Moves a pac that isn't rolling the way its player is holding when it can. Bots steer exactly; only humans get
+        /// the turn buffer and late turns.
+        /// </summary>
+        private void MovePac(ServerPlayer serverPlayer, float speed, float distance, eGridDef blocked, TimeSpan elapsed)
+        {
+            var config = _Settings.GameConfig;
+            var pac = serverPlayer.Player;
+            var wanted = MazeMovement.ToFacing(serverPlayer.Input);
+            var facing = pac.Facing;
+
+            if (!serverPlayer.IsBot)
+            {
+                wanted = TurnAssist.GetWantedTurn(wanted, serverPlayer.BufferedTurn, serverPlayer.BufferedTurnMs);
+
+                if (serverPlayer.HasNewTurnRequest && wanted.HasValue)
+                {
+                    var grace = TurnAssist.GetGraceDistance(config.TurnGraceDistance, speed, serverPlayer.Lag.SmoothedMs, config.LagCompensationMaxMs);
+                    distance += TurnAssist.TryLateTurn(Map, pac, wanted.Value, Math.Min(grace, serverPlayer.StraightDistance), blocked: blocked);
+                }
+
+                serverPlayer.HasNewTurnRequest = false;
+            }
+
+            MazeMovement.Move(Map, pac, wanted, distance, blocked: blocked);
+
+            if (!serverPlayer.IsBot)
+                UpdateTurnBuffer(serverPlayer, facing, distance, elapsed);
+        }
+
+        /// <summary>
+        /// Melon Roll: stuns every living pac (either team) and ghost a rolling pac touches for PowerUpEffects.STUN_MS.
+        /// A stun already running starts over. Call after CollectLiving.
+        /// </summary>
+        public void StunRollContacts()
+        {
+            foreach (var roller in _Living)
+            {
+                if (!roller.IsRolling)
+                    continue;
+
+                foreach (var other in _Living)
+                {
+                    if (other != roller && PacRules.IsTouchingPac(roller.Location, roller.Size, other.Location, other.Size))
+                        other.StunMs = PowerUpEffects.STUN_MS;
+                }
+
+                foreach (var ghost in _Ghosts)
+                {
+                    if (ghost.Alive && PacRules.IsTouchingGhost(roller.Location, roller.Size, ghost.Location, PacRules.GHOST_RADIUS))
+                        ghost.StunMs = PowerUpEffects.STUN_MS;
+                }
+            }
         }
 
         /// <summary>
@@ -1055,7 +1104,7 @@ namespace EatMeServer
         /// <summary>
         /// Gives the pac a power up effect for PowerUpDurationMs. A pac has only one: a different effect ends the one it
         /// has first, and the same effect only restarts the timer. An effect with a size gain (PacRules.GetEffectSizeGain:
-        /// power pill, Melon Belly) adds it (past PacMaxSize if need be) when it starts.
+        /// the power pill) adds it (past PacMaxSize if need be) when it starts.
         /// </summary>
         public void StartPowerUpEffect(Player player, ePowerUp effect)
         {
@@ -1105,6 +1154,7 @@ namespace EatMeServer
 
             player.PowerUpEffect = ePowerUp.None;
             player.PowerUpMs = 0;
+            player.IsRolling = false;
         }
 
         /// <summary>
@@ -1198,8 +1248,8 @@ namespace EatMeServer
                     if (!a.Alive || !b.Alive || a.Team == b.Team || !PacRules.IsTouchingPac(a.Location, a.Size, b.Location, b.Size))
                         continue;
 
-                    // Raccoon Tail passes straight through enemy pacs
-                    if (a.PassesThrough || b.PassesThrough)
+                    // Raccoon Tail passes straight through enemy pacs, and a rolling Melon Roll only stuns them (StunRollContacts)
+                    if (a.PassesThrough || b.PassesThrough || a.IsRolling || b.IsRolling)
                         continue;
 
                     var aRank = GetContactRank(a);
@@ -1307,6 +1357,7 @@ namespace EatMeServer
 
             player.PowerUpEffect = ePowerUp.None;
             player.PowerUpMs = 0;
+            player.IsRolling = false;
             Broadcast(new GameEventMessage { EventType = cause, ActorId = actorId, TargetId = player.Id, X = player.Location.X, Y = player.Location.Y });
         }
 
@@ -1731,8 +1782,8 @@ namespace EatMeServer
                     return;
                 }
 
-                // Pepper stuns the ghost instead of dying
-                if (PowerUpEffects.StunsGhosts(player.PowerUpEffect) && player.PowerUpMs > 0)
+                // Pepper and a rolling Melon Roll stun the ghost instead of dying
+                if ((PowerUpEffects.StunsGhosts(player.PowerUpEffect) && player.PowerUpMs > 0) || player.IsRolling)
                 {
                     ghost.StunMs = PowerUpEffects.STUN_MS;
                     continue;
@@ -2625,6 +2676,10 @@ namespace EatMeServer
                     acted = true;
                     break;
 
+                case ePowerUp.Melon:
+                    acted = StartMelonRoll(player);
+                    break;
+
                 // Gotcha: a poke ball that seeks the nearest ghost, as many in flight as you like
                 case ePowerUp.PokeBall:
                     AddWeaponEffect(eWeaponEffect.PokeBall, player, player.Location, player.Facing);
@@ -2637,6 +2692,31 @@ namespace EatMeServer
 
             if (acted)
                 player.ActionCooldownMs = WeaponRules.ACTION_COOLDOWN_MS;
+        }
+
+        /// <summary>
+        /// Melon Roll: starts the pac rolling (MelonRoll.GetStartFacing: the way its player holds if it can go that way
+        /// now, otherwise the way it faces), unless it is rolling already or has nothing to roll into. Returns true if it did.
+        /// </summary>
+        public bool StartMelonRoll(Player player)
+        {
+            if (player.IsRolling)
+                return false;
+
+            eFacing? held = null;
+
+            foreach (var serverPlayer in _Players.Values)
+                if (serverPlayer.Player == player)
+                    held = MazeMovement.ToFacing(serverPlayer.Input);
+
+            var facing = MelonRoll.GetStartFacing(Map, player, held, MazeMovement.GetPacBlocked(player.Team));
+
+            if (!facing.HasValue)
+                return false;
+
+            player.Facing = facing.Value;
+            player.IsRolling = true;
+            return true;
         }
 
         /// <summary>
@@ -3555,6 +3635,7 @@ namespace EatMeServer
             player.MsSinceEaten = 0;
             player.PowerUpEffect = ePowerUp.None;
             player.PowerUpMs = 0;
+            player.IsRolling = false;
             player.Eating = false;
             player.LastCellX = -1;
             player.LastCellY = -1;

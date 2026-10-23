@@ -31,7 +31,8 @@ namespace EatMeLibrary
         Apple = 4,
 
         /// <summary>
-        /// Melon Belly: PacRules.MELON_BELLY_SIZE_GAIN bigger while it works, and never hungry.
+        /// Melon Roll: the action button sends the pac rolling straight on (MelonRoll), out of control, smashing walls and
+        /// stunning anyone it touches until it reaches something it can't smash or the effect ends.
         /// </summary>
         Melon = 5,
 

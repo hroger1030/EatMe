@@ -280,16 +280,16 @@ namespace EatMeTests
         }
 
         [Test]
-        public void FullHeal_ReplacingMelonBelly_StillFillsUpToMaxSize()
+        public void FullHeal_ReplacingAPowerPill_StillFillsUpToMaxSize()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             red.Size = 10f;
-            server.StartPowerUpEffect(red, ePowerUp.Melon);
+            server.StartPowerUpEffect(red, ePowerUp.PowerPill);
 
             server.ApplyPowerUp(red, ePowerUp.HeartContainer);
 
-            Assert.That(red.Size, Is.EqualTo(new GameConfiguration().PacMaxSize), "Melon Belly's gain goes first");
+            Assert.That(red.Size, Is.EqualTo(new GameConfiguration().PacMaxSize), "the power pill's gain goes first");
         }
 
         [Test]
@@ -517,6 +517,115 @@ namespace EatMeTests
             Assert.That(red.PlayerKills, Is.EqualTo(1));
             Assert.That(server.WeaponEffects, Is.Empty);
             Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.BfgBurst), Is.True);
+        }
+
+        // Melon
+
+        [Test]
+        public void MelonRoll_RollsStraightOnAtTripleSpeed_WhateverIsHeld()
+        {
+            var server = MakeServer();
+            var config = new GameConfiguration();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (x, y) = FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Food);
+            PutOn(red, (x, y));
+            red.Facing = eFacing.Right;
+            server.ApplyPowerUp(red, ePowerUp.Melon);
+            Assert.That(red.IsRolling, Is.False, "only the action button starts a roll");
+
+            server.HandleAction(red);
+            Assert.That(red.IsRolling, Is.True);
+            Assert.That(server.BuildSnapshot().Pacs.Single(p => p.PlayerId == red.Id).Rolling, Is.True);
+
+            GetServerPlayer(server, red).Input = eDirection.Left;
+            server.MovePacs(TimeSpan.FromMilliseconds(TICK_MS));
+
+            var expected = PacRules.GetSpeed(config.PacSpeed, red.Size, config.PacMaxSize) * MelonRoll.SPEED_SCALE * TICK_MS / 1000f;
+            Assert.That(red.Facing, Is.EqualTo(eFacing.Right), "the player has no control");
+            Assert.That(red.Location.X, Is.EqualTo(x + 0.5f + expected).Within(0.001f));
+        }
+
+        [Test]
+        public void MelonRoll_SmashesWalls_StopsWhereItCantGoOn_AndCanRollAgain()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            var map = server.Map;
+            var width = map.GetLength(0);
+            var (x, y) = (-1, -1);
+
+            // a dot cell with an inner wall to its right, on a row with no warp tunnel so the roll can't wrap round forever
+            for (var row = 2; row < map.GetLength(1) - 2 && x < 0; row++)
+                for (var col = 2; col < width - 3 && x < 0; col++)
+                    if (map[col, row] == eGridDef.Food && map[col + 1, row] == eGridDef.Wall
+                        && map[0, row].HasFlag(eGridDef.Wall) && map[width - 1, row].HasFlag(eGridDef.Wall))
+                        (x, y) = (col, row);
+
+            PutOn(red, (x, y));
+            red.Facing = eFacing.Right;
+            server.ApplyPowerUp(red, ePowerUp.Melon);
+            server.HandleAction(red);
+
+            for (var i = 0; i < 1000 && red.IsRolling; i++)
+                server.MovePacs(TimeSpan.FromMilliseconds(TICK_MS));
+
+            var (cx, cy) = MazeMovement.GetCell(red.Location);
+            Assert.That(red.IsRolling, Is.False, "stopped");
+            Assert.That(map[x + 1, y], Is.EqualTo(eGridDef.Food), "the wall was smashed into a dot cell");
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Count(e => e.EventType == eGameEvent.WallSmash), Is.GreaterThan(0));
+            Assert.That(red.Location, Is.EqualTo(new Point2(cx + 0.5f, cy + 0.5f)), "on a cell centre");
+            Assert.That(MelonRoll.CanRollInto(map, cx + 1, cy, MazeMovement.GetPacBlocked(red.Team)), Is.False);
+
+            red.ActionCooldownMs = 0;
+            GetServerPlayer(server, red).Input = eDirection.Left;
+            server.HandleAction(red);
+            Assert.That(red.IsRolling, Is.True, "rolls again while the effect lasts");
+            Assert.That(red.Facing, Is.EqualTo(eFacing.Left), "the way the player holds");
+        }
+
+        [Test]
+        public void MelonRoll_StunsEveryoneItTouches_AndNobodyGetsHurt()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (mate, _) = Join(server, 2, eTeamPreference.Red);
+            var (blue, _) = Join(server, 3, eTeamPreference.Blue);
+            PutOn(red, FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Food));
+            red.Facing = eFacing.Right;
+            server.ApplyPowerUp(red, ePowerUp.Melon);
+            server.HandleAction(red);
+
+            // a bigger enemy, a teammate and a ghost right on it
+            blue.Size = 100f;
+            blue.Location = red.Location;
+            mate.Location = red.Location;
+            var ghost = server.Ghosts[0];
+            ghost.Location = red.Location;
+
+            server.MovePacs(TimeSpan.Zero);
+            Assert.That(blue.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
+            Assert.That(mate.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
+            Assert.That(ghost.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
+            Assert.That(red.IsStunned, Is.False);
+
+            server.UpdatePacFights();
+            server.UpdateGhosts(TimeSpan.Zero);
+            Assert.That(red.Alive && mate.Alive && blue.Alive && ghost.Alive, Is.True);
+        }
+
+        [Test]
+        public void MelonRoll_EndsWithTheEffect()
+        {
+            var server = MakeServer();
+            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            PutOn(red, FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Food));
+            red.Facing = eFacing.Right;
+            server.ApplyPowerUp(red, ePowerUp.Melon);
+            server.HandleAction(red);
+
+            server.UpdateEating(TimeSpan.FromMilliseconds(new GameConfiguration().PowerUpDurationMs));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
+            Assert.That(red.IsRolling, Is.False);
         }
 
         // Mushroom

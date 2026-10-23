@@ -76,9 +76,14 @@ namespace EatMeLibrary
         /// </summary>
         public bool SpawnFeeding { get; }
 
+        /// <summary>
+        /// Whether the pac is rolling with Melon Roll; the client spins it.
+        /// </summary>
+        public bool Rolling { get; }
+
         public PacState(int playerId, eTeam team, float x, float y, float size, eFacing facing, bool alive, bool hasFlag, bool eating,
             int flagCaps = 0, int ghostKills = 0, int playerKills = 0, int rescues = 0, ePowerUp powerUpEffect = ePowerUp.None, int powerUpMsLeft = 0, int totalScore = 0, int msSinceEaten = 0, bool stunned = false,
-            int respawnMsLeft = 0, bool spawnLocked = false, int powerUps = 0, bool spawnFeeding = false)
+            int respawnMsLeft = 0, bool spawnLocked = false, int powerUps = 0, bool spawnFeeding = false, bool rolling = false)
         {
             PlayerId = playerId;
             Team = team;
@@ -102,6 +107,7 @@ namespace EatMeLibrary
             SpawnLocked = spawnLocked;
             PowerUps = powerUps;
             SpawnFeeding = spawnFeeding;
+            Rolling = rolling;
         }
 
         public void Write(BinaryWriter writer)
@@ -128,6 +134,7 @@ namespace EatMeLibrary
             writer.Write(SpawnLocked);
             writer.Write(PowerUps);
             writer.Write(SpawnFeeding);
+            writer.Write(Rolling);
         }
 
         public static PacState Read(BinaryReader reader)
@@ -154,6 +161,7 @@ namespace EatMeLibrary
                 reader.ReadInt32(),
                 reader.ReadBoolean(),
                 reader.ReadInt32(),
+                reader.ReadBoolean(),
                 reader.ReadBoolean());
         }
     }

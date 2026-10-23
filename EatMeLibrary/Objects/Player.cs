@@ -126,6 +126,12 @@
         public bool BombDropped { get; set; }
 
         /// <summary>
+        /// True while a pac with Melon Roll is rolling (MelonRoll): its player has no control, and it smashes walls and
+        /// stuns anyone it touches. Cleared when it stops, its effect ends or it dies.
+        /// </summary>
+        public bool IsRolling { get; set; }
+
+        /// <summary>
         /// True once a pac with Blue Shell has fired its one shell; a new Blue Shell buff gives it another.
         /// </summary>
         public bool BlueShellFired { get; set; }

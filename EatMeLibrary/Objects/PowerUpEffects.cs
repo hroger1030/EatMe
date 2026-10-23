@@ -21,7 +21,7 @@ namespace EatMeLibrary
                 ePowerUp.Strawberry => Const.STRING_SWEET_TOOTH,
                 ePowerUp.Orange => Const.STRING_VITAMIN_C,
                 ePowerUp.Apple => Const.STRING_DOCTOR_AWAY,
-                ePowerUp.Melon => Const.STRING_MELON_BELLY,
+                ePowerUp.Melon => Const.STRING_MELON_ROLL,
                 ePowerUp.Galaxian => Const.STRING_WARP_SPEED,
                 ePowerUp.Bell => Const.STRING_DINNER_BELL,
                 ePowerUp.Key => Const.STRING_LOCKDOWN,
@@ -325,13 +325,12 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if a pac with this effect never gets hungry: its time since eating stays at 0. Vitamin C, Melon Belly,
-        /// Energy Tank and Full Heal.
+        /// True if a pac with this effect never gets hungry: its time since eating stays at 0. Vitamin C, Energy Tank
+        /// and Full Heal.
         /// </summary>
         public static bool PreventsStarving(ePowerUp effect)
         {
-            return effect == ePowerUp.Orange || effect == ePowerUp.Melon || effect == ePowerUp.EnergyTank
-                || effect == ePowerUp.HeartContainer;
+            return effect == ePowerUp.Orange || effect == ePowerUp.EnergyTank || effect == ePowerUp.HeartContainer;
         }
 
         /// <summary>

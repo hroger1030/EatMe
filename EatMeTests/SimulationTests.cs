@@ -405,42 +405,6 @@ namespace EatMeTests
         }
 
         [Test]
-        public void Melon_GrowsWhileItWorks_AndNeverStarves()
-        {
-            var server = MakeServer();
-            var (red, _) = Join(server, 1, eTeamPreference.Red);
-            PutOn(red, FindCell(server, eGridDef.Food));
-            server.UpdateEating(TimeSpan.Zero);
-            red.Size = 30f;
-            red.MsSinceEaten = Config.MsUntilStarvation;
-
-            server.ApplyPowerUp(red, ePowerUp.Melon);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Melon));
-            Assert.That(red.Size, Is.EqualTo(30f + PacRules.MELON_BELLY_SIZE_GAIN));
-
-            server.UpdateEating(TimeSpan.FromMilliseconds(Config.PowerUpDurationMs - 1));
-            Assert.That(red.MsSinceEaten, Is.EqualTo(0), "hunger doesn't start");
-            Assert.That(red.Size, Is.EqualTo(30f + PacRules.MELON_BELLY_SIZE_GAIN), "doesn't shrink");
-
-            server.UpdateEating(TimeSpan.FromMilliseconds(1));
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.None));
-            Assert.That(red.Size, Is.EqualTo(30f), "the gain wears off");
-        }
-
-        [Test]
-        public void MelonBelly_ReplacedByPowerPill_LosesItsGain()
-        {
-            var server = MakeServer();
-            var (red, _) = Join(server, 1, eTeamPreference.Red);
-            red.Size = 30f;
-
-            server.StartPowerUpEffect(red, ePowerUp.Melon);
-            server.StartPowerUpEffect(red, ePowerUp.PowerPill);
-
-            Assert.That(red.Size, Is.EqualTo(30f + Config.PowerPillSizeGain));
-        }
-
-        [Test]
         public void BellAndKey_StartTheirEffects()
         {
             var server = MakeServer();

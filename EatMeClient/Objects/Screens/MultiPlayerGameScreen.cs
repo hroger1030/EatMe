@@ -26,7 +26,7 @@ namespace EatMeClient
             PowerUpSprites.CELL_PIXELS, PowerUpSprites.CELL_PIXELS);
 
         private const int PING_INTERVAL_MS = 2000;
-        private const int PAC_FRAME_MS = 120;
+        private const int PAC_FRAME_MS = 80;
 
         // space between the respawn countdown's text and the edge of its panel
         private const float RESPAWN_PANEL_PADDING = 24f;
@@ -1750,6 +1750,10 @@ namespace EatMeClient
                 // a Screw Attack pac spins very fast as it moves
                 if (pac.PowerUpEffect == ePowerUp.ScrewAttack)
                     rotation += PowerUpEffects.GetScrewAngle(pac.X, pac.Y);
+
+                // a Melon Roll pac spins while it rolls
+                if (pac.Rolling)
+                    rotation += MelonRoll.GetSpinAngle(_AnimationTime);
 
                 // speed trail behind a pac with Warp Speed or Invincible, oldest copy first so the newer ones sit on top
                 var trail = _Trails.GetTrail(pac.PlayerId);

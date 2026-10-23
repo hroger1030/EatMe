@@ -69,7 +69,7 @@
         public const string STRING_SWEET_TOOTH = "Sweet Tooth";
         public const string STRING_VITAMIN_C = "Vitamin C";
         public const string STRING_DOCTOR_AWAY = "Doctor Away";
-        public const string STRING_MELON_BELLY = "Melon Belly";
+        public const string STRING_MELON_ROLL = "Melon Roll";
         public const string STRING_WARP_SPEED = "Warp Speed";
         public const string STRING_DINNER_BELL = "Dinner Bell";
         public const string STRING_LOCKDOWN = "Lockdown";

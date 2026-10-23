@@ -161,10 +161,10 @@ namespace EatMeTests
         }
 
         [Test]
-        public void GetEffectSizeGain_PowerPillAndMelonBelly()
+        public void GetEffectSizeGain_PowerPillOnly()
         {
             Assert.That(PacRules.GetEffectSizeGain(ePowerUp.PowerPill, 100f), Is.EqualTo(100f));
-            Assert.That(PacRules.GetEffectSizeGain(ePowerUp.Melon, 100f), Is.EqualTo(PacRules.MELON_BELLY_SIZE_GAIN));
+            Assert.That(PacRules.GetEffectSizeGain(ePowerUp.Melon, 100f), Is.EqualTo(0f));
             Assert.That(PacRules.GetEffectSizeGain(ePowerUp.Cherry, 100f), Is.EqualTo(0f));
             Assert.That(PacRules.GetEffectSizeGain(ePowerUp.None, 100f), Is.EqualTo(0f));
         }
