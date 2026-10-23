@@ -78,7 +78,7 @@ namespace EatMeLibrary
         public Queue<(int Ms, int X, int Y)> TargetHistory { get; } = new();
 
         /// <summary>
-        /// True while a poke ball holds the ghost: it isn't alive and doesn't count down to respawn; it comes back
+        /// True while a monster ball holds the ghost: it isn't alive and doesn't count down to respawn; it comes back
         /// where the ball is when something touches the ball.
         /// </summary>
         public bool IsCaptured { get; set; }

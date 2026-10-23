@@ -5,7 +5,7 @@ using FastG;
 namespace EatMeTests
 {
     /// <summary>
-    /// The power pill item, Reinforcements, Bomb, Super Leaf, White Sword, Fire Flower, Holy Water, Blue Shell, Poke Ball
+    /// The power pill item, Reinforcements, Stun Bomb, Super Leaf, White Sword, Sun Flower, Holy Water, Cobalt Shell, Monster Ball
     /// and Cherry Twin.
     /// </summary>
     public class BuffAndWeaponTests
@@ -290,30 +290,30 @@ namespace EatMeTests
             Assert.That(PacBrain.ShouldUseAction(world, me), Is.True);
         }
 
-        // Bomb
+        // Stun Bomb
 
         [Test]
         public void Bomb_DropsOneBombPerBuff()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.ApplyPowerUp(red, ePowerUp.Bomb);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Bomb));
+            server.ApplyPowerUp(red, ePowerUp.StunBomb);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.StunBomb));
 
             server.HandleAction(red);
-            var bomb = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Bomb);
+            var bomb = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.StunBomb);
             var (x, y) = MazeMovement.GetCell(red.Location);
             Assert.That(bomb.Location, Is.EqualTo(new Point2(x + 0.5f, y + 0.5f)), "on the centre of its cell");
             Assert.That(bomb.FuseMs, Is.EqualTo(WeaponRules.BOMB_FUSE_MS));
 
             red.ActionCooldownMs = 0;
             server.HandleAction(red);
-            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.Bomb), Is.EqualTo(1), "only one per buff");
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.StunBomb), Is.EqualTo(1), "only one per buff");
 
-            server.ApplyPowerUp(red, ePowerUp.Bomb);
+            server.ApplyPowerUp(red, ePowerUp.StunBomb);
             red.ActionCooldownMs = 0;
             server.HandleAction(red);
-            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.Bomb), Is.EqualTo(2), "a new buff gives a new bomb");
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.StunBomb), Is.EqualTo(2), "a new buff gives a new bomb");
         }
 
         [Test]
@@ -328,9 +328,9 @@ namespace EatMeTests
             farBlue.Team = eTeam.Blue;
             var ghost = server.Ghosts[0];
             ghost.Alive = true;
-            server.ApplyPowerUp(red, ePowerUp.Bomb);
+            server.ApplyPowerUp(red, ePowerUp.StunBomb);
             server.HandleAction(red);
-            var at = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.Bomb).Location;
+            var at = server.WeaponEffects.Single(e => e.Kind == eWeaponEffect.StunBomb).Location;
             mate.Location = at;
             blue.Location = new Point2(at.X + 1f, at.Y);
             ghost.Location = new Point2(at.X, at.Y + 1f);
@@ -339,11 +339,11 @@ namespace EatMeTests
             red.PowerUpEffect = ePowerUp.None;
 
             server.UpdateWeaponEffects(TimeSpan.FromMilliseconds(WeaponRules.BOMB_FUSE_MS - 1));
-            Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.Bomb), Is.True, "still burning, buff or not");
+            Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.StunBomb), Is.True, "still burning, buff or not");
             Assert.That(blue.IsStunned, Is.False);
 
             server.UpdateWeaponEffects(TimeSpan.FromMilliseconds(1));
-            Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.Bomb), Is.False, "gone");
+            Assert.That(server.WeaponEffects.Any(e => e.Kind == eWeaponEffect.StunBomb), Is.False, "gone");
             Assert.That(blue.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
             Assert.That(ghost.StunMs, Is.EqualTo(PowerUpEffects.STUN_MS));
             Assert.That(red.IsStunned || mate.IsStunned, Is.False, "not its own team");
@@ -358,7 +358,7 @@ namespace EatMeTests
         public void ShouldUseAction_DropsTheBombWithSomethingInRange_Once()
         {
             var map = MazeMovementTests.MakeMap(["#########", "#.......#", "#########"]);
-            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, PowerUpEffect = ePowerUp.Bomb, PowerUpMs = 1000 };
+            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, PowerUpEffect = ePowerUp.StunBomb, PowerUpMs = 1000 };
             var enemy = new Player { Id = 2, Team = eTeam.Blue, Location = new Point2(6.5f, 1.5f), Alive = true };
             var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, enemy] };
 
@@ -406,7 +406,7 @@ namespace EatMeTests
             Assert.That(MazeMovement.GetCell(red.Location), Is.EqualTo(cell));
         }
 
-        // White Sword and Fire Flower
+        // White Sword and Sun Flower
 
         [Test]
         public void Sword_AtMostTwoInFlight_OnlyWhileBuffed()
@@ -471,8 +471,8 @@ namespace EatMeTests
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
-            server.ApplyPowerUp(red, ePowerUp.FireFlower);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.FireFlower));
+            server.ApplyPowerUp(red, ePowerUp.SunFlower);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.SunFlower));
 
             // an invincible enemy stops it but doesn't die
             server.StartPowerUpEffect(blue, ePowerUp.Starman);
@@ -552,22 +552,22 @@ namespace EatMeTests
             Assert.That(server.WeaponEffects, Is.Empty);
         }
 
-        // Blue Shell
+        // Cobalt Shell
 
         [Test]
-        public void BlueShell_FollowsTheMazeToItsTarget_AndKillsIt()
+        public void CobaltShell_FollowsTheMazeToItsTarget_AndKillsIt()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             PutOn(blue, FindFarOpenCell(server, red));
 
-            server.ApplyPowerUp(red, ePowerUp.BlueShell);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.BlueShell));
+            server.ApplyPowerUp(red, ePowerUp.CobaltShell);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.CobaltShell));
             Assert.That(server.WeaponEffects, Is.Empty, "not fired until the action button");
 
             server.HandleAction(red);
-            Assert.That(server.WeaponEffects.Single().Kind, Is.EqualTo(eWeaponEffect.BlueShell));
+            Assert.That(server.WeaponEffects.Single().Kind, Is.EqualTo(eWeaponEffect.CobaltShell));
 
             for (var i = 0; i < 2000 && blue.Alive; i++)
             {
@@ -583,7 +583,7 @@ namespace EatMeTests
         }
 
         [Test]
-        public void BlueShell_IgnoresEveryoneButItsTarget_AndIsGoneWithNoEnemy()
+        public void CobaltShell_IgnoresEveryoneButItsTarget_AndIsGoneWithNoEnemy()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
@@ -591,7 +591,7 @@ namespace EatMeTests
             mate.Team = eTeam.Red; // teams are kept even on join
             mate.Location = red.Location;
 
-            server.ApplyPowerUp(red, ePowerUp.BlueShell);
+            server.ApplyPowerUp(red, ePowerUp.CobaltShell);
             server.HandleAction(red);
             Tick(server, 1);
 
@@ -600,71 +600,71 @@ namespace EatMeTests
         }
 
         [Test]
-        public void BlueShell_FiresOneShellPerBuff()
+        public void CobaltShell_FiresOneShellPerBuff()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             PutOn(blue, FindFarOpenCell(server, red));
-            server.ApplyPowerUp(red, ePowerUp.BlueShell);
+            server.ApplyPowerUp(red, ePowerUp.CobaltShell);
 
             server.HandleAction(red);
             red.ActionCooldownMs = 0;
             server.HandleAction(red);
-            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.BlueShell), Is.EqualTo(1), "only one per buff");
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.CobaltShell), Is.EqualTo(1), "only one per buff");
 
-            server.ApplyPowerUp(red, ePowerUp.BlueShell);
+            server.ApplyPowerUp(red, ePowerUp.CobaltShell);
             red.ActionCooldownMs = 0;
             server.HandleAction(red);
-            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.BlueShell), Is.EqualTo(2), "a new buff gives a new shell");
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.CobaltShell), Is.EqualTo(2), "a new buff gives a new shell");
         }
 
         [Test]
-        public void ShouldUseAction_FiresTheBlueShellWithAnEnemyAlive_Once()
+        public void ShouldUseAction_FiresTheCobaltShellWithAnEnemyAlive_Once()
         {
             var map = MazeMovementTests.MakeMap(["#########", "#.......#", "#########"]);
-            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, PowerUpEffect = ePowerUp.BlueShell, PowerUpMs = 1000 };
+            var me = new Player { Id = 1, Team = eTeam.Red, Location = new Point2(1.5f, 1.5f), Alive = true, PowerUpEffect = ePowerUp.CobaltShell, PowerUpMs = 1000 };
             var enemy = new Player { Id = 2, Team = eTeam.Blue, Location = new Point2(6.5f, 1.5f), Alive = true };
             var world = new BotWorld { Map = map, MaxSize = 100f, Pacs = [me, enemy] };
 
             Assert.That(PacBrain.ShouldUseAction(world, me), Is.True);
 
-            me.BlueShellFired = true;
+            me.CobaltShellFired = true;
             Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "already fired");
 
-            me.BlueShellFired = false;
+            me.CobaltShellFired = false;
             enemy.Alive = false;
             Assert.That(PacBrain.ShouldUseAction(world, me), Is.False, "no enemy to send it after");
         }
 
         [Test]
-        public void PickBlueShellTarget_CarrierFirst_ElseHighestScore()
+        public void PickCobaltShellTarget_CarrierFirst_ElseHighestScore()
         {
             var low = new Player { Id = 1, Team = eTeam.Blue, Alive = true, Score = 5 };
             var high = new Player { Id = 2, Team = eTeam.Blue, Alive = true, Score = 9 };
             var friend = new Player { Id = 3, Team = eTeam.Red, Alive = true, Score = 50 };
 
-            Assert.That(WeaponRules.PickBlueShellTarget(eTeam.Red, [low, high, friend]), Is.SameAs(high));
+            Assert.That(WeaponRules.PickCobaltShellTarget(eTeam.Red, [low, high, friend]), Is.SameAs(high));
 
             low.HasFlag = true;
-            Assert.That(WeaponRules.PickBlueShellTarget(eTeam.Red, [low, high, friend]), Is.SameAs(low));
+            Assert.That(WeaponRules.PickCobaltShellTarget(eTeam.Red, [low, high, friend]), Is.SameAs(low));
 
             low.Alive = false;
             high.Alive = false;
-            Assert.That(WeaponRules.PickBlueShellTarget(eTeam.Red, [low, high, friend]), Is.Null);
+            Assert.That(WeaponRules.PickCobaltShellTarget(eTeam.Red, [low, high, friend]), Is.Null);
         }
 
-        // Poke Ball
+        // Monster Ball
 
         [Test]
-        public void PokeBall_CatchesTheNearestGhost_UntilSomethingTouchesIt()
+        public void MonsterBall_CatchesTheNearestGhost_UntilSomethingTouchesIt()
         {
             var server = MakeServer(ghosts: 1);
             var (red, connection) = Join(server, 1, eTeamPreference.Red);
             var ghost = server.Ghosts[0];
             PutOn(red, FindFarOpenCell(server, red));
 
-            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.ApplyPowerUp(red, ePowerUp.MonsterBall);
             server.HandleAction(red);
 
             for (var i = 0; i < 2000 && !ghost.IsCaptured; i++)
@@ -674,7 +674,7 @@ namespace EatMeTests
             Assert.That(ghost.Alive, Is.False);
             var ball = server.WeaponEffects.Single();
             Assert.That(ball.IsHoldingGhost, Is.True);
-            Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.PokeBallCapture), Is.True);
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.MonsterBallCapture), Is.True);
 
             // it holds still, and the ghost doesn't count down to respawn
             var held = ball.Location;
@@ -690,18 +690,18 @@ namespace EatMeTests
             Assert.That(ghost.IsCaptured, Is.False);
             Assert.That(ghost.Location, Is.EqualTo(held));
             Assert.That(server.WeaponEffects, Is.Empty);
-            Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.PokeBallRelease), Is.True);
+            Assert.That(connection.ReceivedOf<GameEventMessage>().Any(e => e.EventType == eGameEvent.MonsterBallRelease), Is.True);
         }
 
         [Test]
-        public void PokeBall_StartsGotcha_AndEachPressAfterTheCooldownThrowsABall()
+        public void MonsterBall_StartsGotcha_AndEachPressAfterTheCooldownThrowsABall()
         {
             var server = MakeServer(ghosts: 0);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
 
-            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.ApplyPowerUp(red, ePowerUp.MonsterBall);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.PokeBall), "a normal effect: it replaces the buff");
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.MonsterBall), "a normal effect: it replaces the buff");
             Assert.That(server.WeaponEffects, Is.Empty, "eating it throws nothing");
 
             server.HandleAction(red);
@@ -713,15 +713,15 @@ namespace EatMeTests
             server.HandleAction(red);
             red.ActionCooldownMs = 0;
             server.HandleAction(red);
-            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.PokeBall), Is.EqualTo(3), "no limit in flight");
+            Assert.That(server.WeaponEffects.Count(e => e.Kind == eWeaponEffect.MonsterBall), Is.EqualTo(3), "no limit in flight");
         }
 
         [Test]
-        public void PokeBall_FlyingBallsGo_WhenGotchaEnds()
+        public void MonsterBall_FlyingBallsGo_WhenGotchaEnds()
         {
             var server = MakeServer(ghosts: 0);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.ApplyPowerUp(red, ePowerUp.MonsterBall);
             server.HandleAction(red);
             red.ActionCooldownMs = 0;
             server.HandleAction(red);
@@ -733,13 +733,13 @@ namespace EatMeTests
         }
 
         [Test]
-        public void PokeBall_HoldingAGhost_StaysWhenGotchaEnds()
+        public void MonsterBall_HoldingAGhost_StaysWhenGotchaEnds()
         {
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var ghost = server.Ghosts[0];
             PutOn(red, FindFarOpenCell(server, red));
-            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.ApplyPowerUp(red, ePowerUp.MonsterBall);
             server.HandleAction(red);
 
             for (var i = 0; i < 2000 && !ghost.IsCaptured; i++)
@@ -753,12 +753,12 @@ namespace EatMeTests
         }
 
         [Test]
-        public void PokeBall_WithNoGhosts_WandersTheMaze()
+        public void MonsterBall_WithNoGhosts_WandersTheMaze()
         {
             var server = MakeServer(ghosts: 0);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
 
-            server.ApplyPowerUp(red, ePowerUp.PokeBall);
+            server.ApplyPowerUp(red, ePowerUp.MonsterBall);
             server.HandleAction(red);
             var start = server.WeaponEffects.Single().Location;
             Tick(server, 120);
@@ -931,7 +931,7 @@ namespace EatMeTests
         {
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.ApplyPowerUp(red, ePowerUp.Hammer);
+            server.ApplyPowerUp(red, ePowerUp.HammerTime);
             red.Size = 200f;
             red.Facing = eFacing.Right;
 
@@ -953,7 +953,7 @@ namespace EatMeTests
         {
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.ApplyPowerUp(red, ePowerUp.Hammer);
+            server.ApplyPowerUp(red, ePowerUp.HammerTime);
             red.Facing = eFacing.Right;
             server.UpdateWeaponEffects(TimeSpan.Zero);
             red.StunMs = 1000;
@@ -1016,7 +1016,7 @@ namespace EatMeTests
             Assert.That(PowerUpEffects.PassesThrough(ePowerUp.SuperLeaf), Is.True);
             Assert.That(PowerUpEffects.PassesThrough(ePowerUp.Starman), Is.False);
             Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUp.SuperLeaf), Is.True);
-            Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUp.Bomb), Is.False);
+            Assert.That(PowerUpEffects.PassesThroughWalls(ePowerUp.StunBomb), Is.False);
 
             Assert.That(PowerUpEffects.IsFireFlashWhite(TimeSpan.Zero), Is.True);
             Assert.That(PowerUpEffects.IsFireFlashWhite(TimeSpan.FromMilliseconds(PowerUpEffects.FIRE_FLASH_MS * 1.5)), Is.False);
@@ -1029,8 +1029,8 @@ namespace EatMeTests
         [Test]
         public void EveryNewEffect_HasAName()
         {
-            foreach (var effect in new[] { ePowerUp.Reinforcements, ePowerUp.Bomb,
-                ePowerUp.SuperLeaf, ePowerUp.WhiteSword, ePowerUp.HolyWater, ePowerUp.FireFlower })
+            foreach (var effect in new[] { ePowerUp.Reinforcements, ePowerUp.StunBomb,
+                ePowerUp.SuperLeaf, ePowerUp.WhiteSword, ePowerUp.HolyWater, ePowerUp.SunFlower })
                 Assert.That(PowerUpEffects.GetName(effect), Is.Not.EqualTo(Const.STRING_POWER_UP_NONE), effect.ToString());
         }
     }

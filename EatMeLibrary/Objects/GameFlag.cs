@@ -24,7 +24,7 @@ namespace EatMeLibrary
         public bool IsAtBase => !IsCarried && X == BaseX && Y == BaseY;
 
         /// <summary>
-        /// True while a living pac of the flag's team has Force Field (triforce) working: enemies can't pick it up.
+        /// True while a living pac of the flag's team has Force Field (triangle force) working: enemies can't pick it up.
         /// </summary>
         public bool IsSealed { get; set; }
 

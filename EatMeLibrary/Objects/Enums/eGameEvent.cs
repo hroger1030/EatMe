@@ -43,14 +43,14 @@ namespace EatMeLibrary
         AngelicRespawn,
 
         /// <summary>
-        /// A poke ball caught a ghost (TargetId) at X, Y.
+        /// A monster ball caught a ghost (TargetId) at X, Y.
         /// </summary>
-        PokeBallCapture,
+        MonsterBallCapture,
 
         /// <summary>
-        /// Something touched a poke ball holding a ghost (TargetId), which got out at X, Y.
+        /// Something touched a monster ball holding a ghost (TargetId), which got out at X, Y.
         /// </summary>
-        PokeBallRelease,
+        MonsterBallRelease,
 
         /// <summary>
         /// A pac with Super Size (mushroom) smashed one or more walls this tick; X, Y is where it is. Everyone hears

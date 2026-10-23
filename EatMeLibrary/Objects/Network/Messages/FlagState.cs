@@ -18,7 +18,7 @@ namespace EatMeLibrary
         public bool IsCarried => CarrierId != NO_CARRIER;
 
         /// <summary>
-        /// Whether the flag is sealed in a Force Field (triforce): enemies can't pick it up, and the client draws the field.
+        /// Whether the flag is sealed in a Force Field (triangle force): enemies can't pick it up, and the client draws the field.
         /// </summary>
         public bool IsSealed { get; }
 

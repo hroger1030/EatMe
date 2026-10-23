@@ -495,7 +495,7 @@ namespace EatMeTests
             var (slow, _) = Join(normal, 1, eTeamPreference.Red);
             var rushed = MakeServer();
             var (fast, _) = Join(rushed, 1, eTeamPreference.Red);
-            rushed.StartPowerUpEffect(fast, ePowerUp.Galaxian);
+            rushed.StartPowerUpEffect(fast, ePowerUp.Solarian);
 
             var start = slow.Location;
             normal.MovePacs(TimeSpan.FromMilliseconds(100));
@@ -576,8 +576,8 @@ namespace EatMeTests
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             blue.Location = red.Location;
             red.Size = 60f;
-            server.ApplyPowerUp(red, ePowerUp.Galaxian);
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Galaxian));
+            server.ApplyPowerUp(red, ePowerUp.Solarian);
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Solarian));
 
             server.UpdatePacFights();
 

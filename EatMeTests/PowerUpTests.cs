@@ -108,7 +108,7 @@ namespace EatMeTests
         [Test]
         public void PickItem_PicksOnlyFromTheSet_AndEveryItemInIt()
         {
-            var items = new[] { ePowerUp.Cherry, ePowerUp.Triforce, ePowerUp.PokeBall };
+            var items = new[] { ePowerUp.Cherry, ePowerUp.Triangleforce, ePowerUp.MonsterBall };
             var random = new Random(5);
             var seen = new HashSet<ePowerUp>();
 

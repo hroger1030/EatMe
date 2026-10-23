@@ -12,6 +12,9 @@ namespace EatMeLibrary
         /// <summary>Carrying the enemy flag: take it home, getting its own flag back first when that is close.</summary>
         CarryHome,
 
+        /// <summary>Carrying the enemy flag while its own is away from base: patrol near home until it comes back.</summary>
+        Patrol,
+
         /// <summary>Return its own dropped flag.</summary>
         Rescue,
 

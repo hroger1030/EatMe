@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace EatMeClient
 {
     /// <summary>
-    /// The performance overlay toggled by F1: ClientPerf's lines in Arial20 with a drop shadow, on a half-transparent
+    /// The performance overlay toggled by F1: ClientPerf's lines in Liberation Sans 20 with a drop shadow, on a half-transparent
     /// panel with rounded corners fitted to them, with its top left corner at the given position.
     /// </summary>
     public class PerfOverlay
@@ -19,7 +19,7 @@ namespace EatMeClient
 
         public void LoadContent(GraphicsDevice graphicsDevice)
         {
-            _font = AssetCache.GetFont(Const.FONT_ARIAL20);
+            _font = AssetCache.GetFont(Const.FONT_LIBERATION_SANS20);
             _pixel = TextureHelper.GetPixel(graphicsDevice);
         }
 

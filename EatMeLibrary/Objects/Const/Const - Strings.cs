@@ -76,7 +76,7 @@
         public const string STRING_TWISTER = "Twister";
         public const string STRING_INVINCIBLE = "Invincible";
         public const string STRING_REINFORCEMENTS = "Reinforce";
-        public const string STRING_BOMB = "Bomb";
+        public const string STRING_STUN_BOMB = "Stun Bomb";
         public const string STRING_RACCOON_TAIL = "Raccoon Tail";
         public const string STRING_SWORD_SWING = "Throw Sword";
         public const string STRING_HOLY_FIRE = "Holy Fire";
@@ -88,14 +88,14 @@
         public const string STRING_BFG = "BFG 9000";
         public const string STRING_SUPER_SIZE = "Super Size";
         public const string STRING_ENERGY_TANK = "Energy Tank";
-        public const string STRING_SCREW_ATTACK = "Screw Attack";
+        public const string STRING_ROLLING_THUNDER = "Rolling Thunder";
         public const string STRING_PEPPER = "Pepper";
         public const string STRING_SPREAD_SHOT = "Spread Shot";
         public const string STRING_FORCE_FIELD = "Force Field";
         public const string STRING_POW = "POW";
         public const string STRING_FULL_HEAL = "Full Heal";
         public const string STRING_GOTCHA = "Gotcha";
-        public const string STRING_BLUE_SHELL = "Blue Shell";
+        public const string STRING_COBALT_SHELL = "Cobalt Shell";
 
         // Respawn countdown, shown while the own pac is dead
         public const string STRING_RESPAWNING_IN = "Respawning in";
@@ -112,7 +112,6 @@
         public const string STRING_GHOSTS = "Ghosts";
         public const string STRING_CHOMPS = "Chomps";
         public const string STRING_RESCUES = "Rescues";
-        public const string STRING_POWER_UPS = "Power Ups";
         public const string STRING_PING = "Ping";
         public const string STRING_PING_UNKNOWN = "--";
         public const string STRING_MS = "ms";

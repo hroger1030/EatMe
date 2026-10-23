@@ -107,6 +107,11 @@ namespace EatMeLibrary
         public bool IsCommitted => Goal != eBotGoal.None && GoalMsLeft > 0;
 
         /// <summary>
+        /// The cell near home a carrier is patrolling to (eBotGoal.Patrol), or null before it has picked one.
+        /// </summary>
+        public (int X, int Y)? PatrolCell { get; private set; }
+
+        /// <summary>
         /// Counts every timer down by the elapsed time. Avoiding ends when its time is up.
         /// </summary>
         public void Update(TimeSpan elapsed)
@@ -132,7 +137,16 @@ namespace EatMeLibrary
             _ThreatCells.Clear();
             AvoidMsLeft = 0;
             TurnBackMsLeft = 0;
+            PatrolCell = null;
             ForgetThreat();
+        }
+
+        /// <summary>
+        /// Remembers the cell a patrolling carrier heads for next.
+        /// </summary>
+        public void SetPatrolCell((int X, int Y) cell)
+        {
+            PatrolCell = cell;
         }
 
         /// <summary>

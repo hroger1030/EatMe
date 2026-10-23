@@ -6,7 +6,7 @@ namespace EatMeTests
 {
     /// <summary>
     /// The action button's cooldown, flags and effects, the respawn countdown, and the pear, banana, heart container,
-    /// tetromino, hammer, BFG, mushroom, energy tank, screw attack, pepper shaker, spread gun and triforce.
+    /// tetromino, hammer, BFG, mushroom, energy tank, rolling thunder, pepper shaker, spread gun and triangle force.
     /// </summary>
     public class ItemEffectTests
     {
@@ -317,7 +317,7 @@ namespace EatMeTests
             PutOn(red, (x, y));
             red.Facing = eFacing.Right;
 
-            server.ApplyPowerUp(red, ePowerUp.Tetromino);
+            server.ApplyPowerUp(red, ePowerUp.Skyblock);
             server.HandleAction(red);
             server.UpdateWeaponEffects(TimeSpan.Zero);
             server.UpdateWeaponEffects(TimeSpan.Zero);
@@ -349,7 +349,7 @@ namespace EatMeTests
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             var (x, y) = FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Food);
             var ghost = server.Ghosts[0];
-            server.ApplyPowerUp(red, ePowerUp.Tetromino);
+            server.ApplyPowerUp(red, ePowerUp.Skyblock);
 
             // a pac in the cell left
             PutOn(red, (x, y));
@@ -406,7 +406,7 @@ namespace EatMeTests
             PutOn(red, (x, y));
             red.Facing = eFacing.Right;
 
-            server.ApplyPowerUp(red, ePowerUp.Hammer);
+            server.ApplyPowerUp(red, ePowerUp.HammerTime);
             Tick(server, 1);
 
             var hammer = server.WeaponEffects.Single();
@@ -437,7 +437,7 @@ namespace EatMeTests
             var (x, y) = FindCell(server, (left, right) => left == eGridDef.Food && right == eGridDef.Food);
             PutOn(red, (x, y));
             red.Facing = eFacing.Right;
-            server.ApplyPowerUp(red, ePowerUp.Hammer);
+            server.ApplyPowerUp(red, ePowerUp.HammerTime);
 
             PutOn(mate, (x + 1, y));
             Tick(server, 1);
@@ -715,10 +715,10 @@ namespace EatMeTests
         }
 
         [Test]
-        public void KillsOnContact_StarScrewAttackAndSuperSizeOnly()
+        public void KillsOnContact_StarRollingThunderAndSuperSizeOnly()
         {
             var killers = Enum.GetValues<ePowerUp>().Where(PowerUpEffects.KillsOnContact);
-            Assert.That(killers, Is.EquivalentTo(new[] { ePowerUp.Starman, ePowerUp.ScrewAttack, ePowerUp.Mushroom }));
+            Assert.That(killers, Is.EquivalentTo(new[] { ePowerUp.Starman, ePowerUp.RollingThunder, ePowerUp.Mushroom }));
         }
 
         [Test]
@@ -812,15 +812,15 @@ namespace EatMeTests
             Assert.That(red.Size, Is.EqualTo(40f));
         }
 
-        // Screw attack
+        // Rolling Thunder
 
         [Test]
-        public void ScrewAttack_EatsAnyEnemy_ButNotTheInvincible()
+        public void RollingThunder_EatsAnyEnemy_ButNotTheInvincible()
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
-            server.ApplyPowerUp(red, ePowerUp.ScrewAttack);
+            server.ApplyPowerUp(red, ePowerUp.RollingThunder);
             red.Size = 0f;
             blue.Size = 100f;
             blue.Location = red.Location;
@@ -837,11 +837,11 @@ namespace EatMeTests
         }
 
         [Test]
-        public void ScrewAttack_KillsGhosts_AndCantEat()
+        public void RollingThunder_KillsGhosts_AndCantEat()
         {
             var server = MakeServer(ghosts: 1);
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.ApplyPowerUp(red, ePowerUp.ScrewAttack);
+            server.ApplyPowerUp(red, ePowerUp.RollingThunder);
 
             var dot = FindCell(server, (cell, _) => cell == eGridDef.Food);
             PutOn(red, dot);
@@ -904,7 +904,7 @@ namespace EatMeTests
             Assert.That(server.Ghosts[0].Alive, Is.True);
         }
 
-        // Triforce
+        // Triangle Force
 
         [Test]
         public void ForceField_BringsTheTeamsFlagsHome_AsRescues_EvenFromACarrier()
@@ -917,9 +917,9 @@ namespace EatMeTests
             server.UpdateFlags();
             Assert.That(blue.HasFlag, Is.True);
 
-            server.ApplyPowerUp(red, ePowerUp.Triforce);
+            server.ApplyPowerUp(red, ePowerUp.Triangleforce);
 
-            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Triforce));
+            Assert.That(red.PowerUpEffect, Is.EqualTo(ePowerUp.Triangleforce));
             Assert.That(redFlag.IsAtBase, Is.True);
             Assert.That(blue.HasFlag, Is.False);
             Assert.That(red.FlagRescues, Is.EqualTo(1));
@@ -935,7 +935,7 @@ namespace EatMeTests
             var (red, _) = Join(server, 1, eTeamPreference.Red);
             var (blue, _) = Join(server, 2, eTeamPreference.Blue);
             var redFlag = server.Flags.First(f => f.Team == eTeam.Red);
-            server.ApplyPowerUp(red, ePowerUp.Triforce);
+            server.ApplyPowerUp(red, ePowerUp.Triangleforce);
             Assert.That(red.FlagRescues, Is.EqualTo(0), "nothing to bring home");
 
             blue.Location = new Point2(redFlag.X, redFlag.Y);
@@ -958,7 +958,7 @@ namespace EatMeTests
             mate.Team = eTeam.Red;
             CarryBlueFlag(server, red);
 
-            server.ApplyPowerUp(mate, ePowerUp.Triforce);
+            server.ApplyPowerUp(mate, ePowerUp.Triangleforce);
             var redFlag = server.Flags.First(f => f.Team == eTeam.Red);
             Assert.That(redFlag.IsSealed, Is.True);
 
@@ -972,7 +972,7 @@ namespace EatMeTests
         {
             var server = MakeServer();
             var (red, _) = Join(server, 1, eTeamPreference.Red);
-            server.ApplyPowerUp(red, ePowerUp.Triforce);
+            server.ApplyPowerUp(red, ePowerUp.Triangleforce);
 
             red.Alive = false;
             server.UpdateFlags();
@@ -1032,13 +1032,13 @@ namespace EatMeTests
         }
 
         [Test]
-        public void ScrewAttack_FlashesWhite_AndSpinsOnlyWhenMoving()
+        public void RollingThunder_FlashesWhite_AndSpinsOnlyWhenMoving()
         {
-            Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.ScrewAttack), Is.True);
-            Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.FireFlower), Is.True);
+            Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.RollingThunder), Is.True);
+            Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.SunFlower), Is.True);
             Assert.That(PowerUpEffects.FlashesWhite(ePowerUp.Cherry), Is.False);
-            Assert.That(PowerUpEffects.GetScrewAngle(3f, 4f), Is.EqualTo(PowerUpEffects.GetScrewAngle(3f, 4f)));
-            Assert.That(PowerUpEffects.GetScrewAngle(3.1f, 4f), Is.Not.EqualTo(PowerUpEffects.GetScrewAngle(3f, 4f)));
+            Assert.That(PowerUpEffects.GetRollingThunderAngle(3f, 4f), Is.EqualTo(PowerUpEffects.GetRollingThunderAngle(3f, 4f)));
+            Assert.That(PowerUpEffects.GetRollingThunderAngle(3.1f, 4f), Is.Not.EqualTo(PowerUpEffects.GetRollingThunderAngle(3f, 4f)));
         }
     }
 }

@@ -22,32 +22,32 @@ namespace EatMeLibrary
                 ePowerUp.Orange => Const.STRING_VITAMIN_C,
                 ePowerUp.Apple => Const.STRING_DOCTOR_AWAY,
                 ePowerUp.Melon => Const.STRING_MELON_ROLL,
-                ePowerUp.Galaxian => Const.STRING_WARP_SPEED,
+                ePowerUp.Solarian => Const.STRING_WARP_SPEED,
                 ePowerUp.Bell => Const.STRING_DINNER_BELL,
                 ePowerUp.Key => Const.STRING_LOCKDOWN,
                 ePowerUp.Pretzel => Const.STRING_TWISTER,
                 ePowerUp.Starman => Const.STRING_INVINCIBLE,
                 ePowerUp.Reinforcements => Const.STRING_REINFORCEMENTS,
-                ePowerUp.Bomb => Const.STRING_BOMB,
+                ePowerUp.StunBomb => Const.STRING_STUN_BOMB,
                 ePowerUp.SuperLeaf => Const.STRING_RACCOON_TAIL,
                 ePowerUp.WhiteSword => Const.STRING_SWORD_SWING,
                 ePowerUp.HolyWater => Const.STRING_HOLY_FIRE,
-                ePowerUp.FireFlower => Const.STRING_FIREBALL,
+                ePowerUp.SunFlower => Const.STRING_FIREBALL,
                 ePowerUp.Pear => Const.STRING_WARP,
                 ePowerUp.Banana => Const.STRING_BANANA_PEEL,
-                ePowerUp.Tetromino => Const.STRING_BLOCK_DROP,
-                ePowerUp.Hammer => Const.STRING_HAMMER_TIME,
+                ePowerUp.Skyblock => Const.STRING_BLOCK_DROP,
+                ePowerUp.HammerTime => Const.STRING_HAMMER_TIME,
                 ePowerUp.BFG => Const.STRING_BFG,
                 ePowerUp.Mushroom => Const.STRING_SUPER_SIZE,
                 ePowerUp.EnergyTank => Const.STRING_ENERGY_TANK,
-                ePowerUp.ScrewAttack => Const.STRING_SCREW_ATTACK,
+                ePowerUp.RollingThunder => Const.STRING_ROLLING_THUNDER,
                 ePowerUp.PepperShaker => Const.STRING_PEPPER,
                 ePowerUp.SpreadGun => Const.STRING_SPREAD_SHOT,
-                ePowerUp.Triforce => Const.STRING_FORCE_FIELD,
+                ePowerUp.Triangleforce => Const.STRING_FORCE_FIELD,
                 ePowerUp.PowBlock => Const.STRING_POW,
                 ePowerUp.HeartContainer => Const.STRING_FULL_HEAL,
-                ePowerUp.PokeBall => Const.STRING_GOTCHA,
-                ePowerUp.BlueShell => Const.STRING_BLUE_SHELL,
+                ePowerUp.MonsterBall => Const.STRING_GOTCHA,
+                ePowerUp.CobaltShell => Const.STRING_COBALT_SHELL,
                 _ => Const.STRING_POWER_UP_NONE,
             };
         }
@@ -124,19 +124,19 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if a pac with this effect kills any enemy pac or ghost it touches, and a ghost touching it doesn't kill
-        /// it: Invincible, Screw Attack and Super Size. Invincible beats the other two, and weapons still kill them.
+        /// it: Invincible, Rolling Thunder and Super Size. Invincible beats the other two, and weapons still kill them.
         /// </summary>
         public static bool KillsOnContact(ePowerUp effect)
         {
-            return effect == ePowerUp.Starman || effect == ePowerUp.ScrewAttack || effect == ePowerUp.Mushroom;
+            return effect == ePowerUp.Starman || effect == ePowerUp.RollingThunder || effect == ePowerUp.Mushroom;
         }
 
         /// <summary>
-        /// True if a pac with this effect can eat dots and power pills: every effect but Screw Attack.
+        /// True if a pac with this effect can eat dots and power pills: every effect but Rolling Thunder.
         /// </summary>
         public static bool CanEat(ePowerUp effect)
         {
-            return effect != ePowerUp.ScrewAttack;
+            return effect != ePowerUp.RollingThunder;
         }
 
         /// <summary>
@@ -149,11 +149,11 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if this pac seals its team's flags in a force field, so enemies can't pick them up: it is alive and has
-        /// Force Field (triforce) working.
+        /// Force Field (triangle force) working.
         /// </summary>
         public static bool SealsFlags(Player pac)
         {
-            return HasActiveEffect(pac, ePowerUp.Triforce);
+            return HasActiveEffect(pac, ePowerUp.Triangleforce);
         }
 
         /// <summary>
@@ -171,31 +171,31 @@ namespace EatMeLibrary
         public const int STUN_MS = 2000;
 
         /// <summary>
-        /// A pac with Fireball (fire flower) flashes white this often.
+        /// A pac with Fireball (sun flower) flashes white this often.
         /// </summary>
         public const int FIRE_FLASH_MS = 50;
 
         /// <summary>
-        /// True if a pac with this effect flashes white (IsFireFlashWhite): Fireball and Screw Attack.
+        /// True if a pac with this effect flashes white (IsFireFlashWhite): Fireball and Rolling Thunder.
         /// </summary>
         public static bool FlashesWhite(ePowerUp effect)
         {
-            return effect == ePowerUp.FireFlower || effect == ePowerUp.ScrewAttack;
+            return effect == ePowerUp.SunFlower || effect == ePowerUp.RollingThunder;
         }
 
         /// <summary>
-        /// A Screw Attack pac turns this many full turns for every cell it moves, so it spins fast, and only while moving.
+        /// A Rolling Thunder pac turns this many full turns for every cell it moves, so it spins fast, and only while moving.
         /// Kept well under half a turn per snapshot, or the spin looks like it runs backwards.
         /// </summary>
-        public const float SCREW_TURNS_PER_CELL = 0.5f;
+        public const float ROLLING_THUNDER_TURNS_PER_CELL = 0.5f;
 
         /// <summary>
-        /// The angle (radians, 0 to 2 pi) a Screw Attack pac at (x, y) is turned to: clockwise moving right or down and
+        /// The angle (radians, 0 to 2 pi) a Rolling Thunder pac at (x, y) is turned to: clockwise moving right or down and
         /// counter clockwise moving left or up.
         /// </summary>
-        public static float GetScrewAngle(float x, float y)
+        public static float GetRollingThunderAngle(float x, float y)
         {
-            var turns = (x + y) * SCREW_TURNS_PER_CELL;
+            var turns = (x + y) * ROLLING_THUNDER_TURNS_PER_CELL;
             return (turns - MathF.Floor(turns)) * MathF.PI * 2f;
         }
 
@@ -338,7 +338,7 @@ namespace EatMeLibrary
         /// </summary>
         public static bool HasSpeedTrail(ePowerUp effect)
         {
-            return effect == ePowerUp.Galaxian || effect == ePowerUp.Starman;
+            return effect == ePowerUp.Solarian || effect == ePowerUp.Starman;
         }
 
         /// <summary>
@@ -359,7 +359,7 @@ namespace EatMeLibrary
         /// The most characters a player state panel label may have, so it fits the panel at 1920x1080 (196 pixels of
         /// text in JLS Space Gothic 30, about 16 pixels for an average letter).
         /// </summary>
-        public const int MAX_LABEL_LENGTH = 12;
+        public const int MAX_LABEL_LENGTH = 15;
 
         /// <summary>
         /// The player state panel's label for an effect: just the effect's name, e.g. "Cherry Twin", or "No power up".

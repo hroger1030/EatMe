@@ -41,5 +41,17 @@ namespace EatMeLibrary
         /// whole map. Made once per level, filled with the bot's own blocked cells (PacBrain.GetBlocked).
         /// </summary>
         public IReadOnlyDictionary<(int X, int Y), PathMap> FlagBasePaths { get; set; } = new Dictionary<(int X, int Y), PathMap>();
+
+        /// <summary>
+        /// Players on each team, humans and bots, living or not. 0 when not known.
+        /// </summary>
+        public int RedTeamSize { get; set; }
+
+        public int BlueTeamSize { get; set; }
+
+        public int GetTeamSize(eTeam team)
+        {
+            return team == eTeam.Red ? RedTeamSize : BlueTeamSize;
+        }
     }
 }

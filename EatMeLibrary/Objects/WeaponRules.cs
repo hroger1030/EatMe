@@ -52,7 +52,7 @@ namespace EatMeLibrary
         public const int SPREAD_SHOT_INTERVAL_MS = 500;
 
         /// <summary>
-        /// The blue shell and poke ball move this many times PacSpeed.
+        /// The cobalt shell and monster ball move this many times PacSpeed.
         /// </summary>
         public const float SEEKER_SPEED_SCALE = 3f;
 
@@ -73,7 +73,7 @@ namespace EatMeLibrary
                 eWeaponEffect.Sword => SWORD_SPEED_SCALE,
                 eWeaponEffect.Fireball => FIREBALL_SPEED_SCALE,
                 eWeaponEffect.SpreadShot => SPREAD_SHOT_SPEED_SCALE,
-                eWeaponEffect.BlueShell or eWeaponEffect.PokeBall => SEEKER_SPEED_SCALE,
+                eWeaponEffect.CobaltShell or eWeaponEffect.MonsterBall => SEEKER_SPEED_SCALE,
                 _ => 0f,
             };
         }
@@ -139,11 +139,11 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// Who a blue shell fired by a pac on ownerTeam goes after: the living enemy carrying a flag, otherwise the
+        /// Who a cobalt shell fired by a pac on ownerTeam goes after: the living enemy carrying a flag, otherwise the
         /// living enemy with the highest level score (the higher total score, then the lower id, on a tie). Null if
         /// no enemy is alive.
         /// </summary>
-        public static Player PickBlueShellTarget(eTeam ownerTeam, IEnumerable<Player> pacs)
+        public static Player PickCobaltShellTarget(eTeam ownerTeam, IEnumerable<Player> pacs)
         {
             Player carrier = null;
             Player best = null;
@@ -165,7 +165,7 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// The living ghost nearest by path on paths (filled from the poke ball's cell), or null if no living ghost
+        /// The living ghost nearest by path on paths (filled from the monster ball's cell), or null if no living ghost
         /// can be reached.
         /// </summary>
         public static Ghost FindNearestGhost(IEnumerable<Ghost> ghosts, PathMap paths)

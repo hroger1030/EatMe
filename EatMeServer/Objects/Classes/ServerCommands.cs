@@ -19,8 +19,6 @@ namespace EatMeServer
         public const string RESTART = "restart";
         public const string NEW_GAME = "new game";
         public const string KICK = "kick";
-        public const string ADD_BOT = "add bot";
-        public const string REMOVE_BOT = "remove bot";
         public const string BOTS = "bots";
         public const string AUTO_BALANCE = "autobalance";
         public const string MOTD = "motd";
@@ -42,8 +40,6 @@ namespace EatMeServer
             { RESTART, "restart", "Restart the current level" },
             { NEW_GAME, "new game", "Go back to the starting level" },
             { KICK, "kick {name or id}", "Remove a player from the server" },
-            { ADD_BOT, "add bot [n]", "Keep n more players (default 1; per team with autobalance on)" },
-            { REMOVE_BOT, "remove bot [n]", "Keep n fewer players (default 1; per team with autobalance on)" },
             { BOTS, "bots [n]", "Show or set MinPlayers, the players (humans plus bots) the server keeps" },
             { AUTO_BALANCE, "autobalance [on|off]", "Show or set whether bots keep the teams the same size" },
             { MOTD, "motd [text]", "Show or set the message of the day for players who join from now on" },
@@ -62,8 +58,6 @@ namespace EatMeServer
             { "next", NEXT_LEVEL },
             { "nextlevel", NEXT_LEVEL },
             { "newgame", NEW_GAME },
-            { "addbot", ADD_BOT },
-            { "removebot", REMOVE_BOT },
             { "minplayers", BOTS },
             { "autobalanceteams", AUTO_BALANCE },
             { "messageoftheday", MOTD },
@@ -150,10 +144,6 @@ namespace EatMeServer
 
                 case KICK:
                     return Kick(game, argument);
-
-                case ADD_BOT:
-                case REMOVE_BOT:
-                    return ChangeBots(game, argument, command == ADD_BOT);
 
                 case BOTS:
                     if (argument.Length == 0)
@@ -341,7 +331,7 @@ namespace EatMeServer
             found.RemoveAll(serverPlayer => serverPlayer.IsBot);
 
             if (found.Count == 0)
-                return game.FindPlayers(nameOrId).Count > 0 ? $"{nameOrId} is a bot; use remove bot or bots" : $"No player {nameOrId}";
+                return game.FindPlayers(nameOrId).Count > 0 ? $"{nameOrId} is a bot; use bots" : $"No player {nameOrId}";
 
             if (found.Count > 1)
             {
@@ -354,28 +344,6 @@ namespace EatMeServer
 
             var name = found[0].Player.Name;
             return game.Kick(found[0]) ? $"Kicked {name}" : $"Couldn't kick {name}";
-        }
-
-        /// <summary>
-        /// add bot and remove bot change MinPlayers rather than the bots themselves, since every join and leave
-        /// rebalances the bots to it; with autobalance on each team keeps half of MinPlayers, so the step is two.
-        /// </summary>
-        private static string ChangeBots(GameServer game, string argument, bool add)
-        {
-            var count = 1;
-
-            if (argument.Length > 0 && (!int.TryParse(argument, out count) || count < 1))
-                return $"Usage: {(add ? ADD_BOT : REMOVE_BOT)} [n], n 1 or more";
-
-            var step = game.Settings.AutoBalanceTeams ? 2 : 1;
-            var config = game.Settings.GameConfig;
-
-            // start from what the teams hold now, so a MinPlayers already below the human count still changes something
-            var current = Math.Max(config.MinPlayers, game.PlayerCount + game.BotCount);
-            var change = count * step;
-
-            game.SetMinPlayers(add ? current + change : current - change);
-            return GetBotsText(game);
         }
 
         private static string GetBotsText(GameServer game)

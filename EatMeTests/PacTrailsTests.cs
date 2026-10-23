@@ -4,7 +4,7 @@ namespace EatMeTests
 {
     public class PacTrailsTests
     {
-        private static PacState Pac(int id, float x, float y, bool powered = true, bool alive = true, ePowerUp effect = ePowerUp.Galaxian)
+        private static PacState Pac(int id, float x, float y, bool powered = true, bool alive = true, ePowerUp effect = ePowerUp.Solarian)
         {
             return new PacState(id, eTeam.Blue, x, y, 0f, eFacing.Right, alive, false, false, powerUpEffect: powered ? effect : ePowerUp.None);
         }

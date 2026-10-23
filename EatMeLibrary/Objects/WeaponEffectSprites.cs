@@ -69,7 +69,7 @@ namespace EatMeLibrary
         public static bool IsOnFloor(eWeaponEffect effect)
         {
             return effect == eWeaponEffect.HolyFlame || effect == eWeaponEffect.BananaPeel || effect == eWeaponEffect.TetrisBlock
-                || effect == eWeaponEffect.Bomb;
+                || effect == eWeaponEffect.StunBomb;
         }
 
         /// <summary>

@@ -80,6 +80,17 @@ namespace EatMeLibrary
         public const int FLEE_TURN_BACK_MARGIN = 2;
 
         /// <summary>
+        /// How far from its base, in steps, a bot carrying the enemy flag patrols while its own flag is away.
+        /// </summary>
+        public const int PATROL_DISTANCE = 6;
+
+        /// <summary>
+        /// The most players a team can have for a bot carrying the enemy flag to go after the enemy carrying its own;
+        /// on a bigger team it leaves that to its teammates and patrols near home.
+        /// </summary>
+        public const int SMALL_TEAM_SIZE = 3;
+
+        /// <summary>
         /// The order PickGoal tries goals in, after CarryHome.
         /// </summary>
         private static readonly eBotGoal[] GOAL_ORDER =
@@ -165,12 +176,12 @@ namespace EatMeLibrary
             // only a kept goal's target can be flip-flopped between; a fresh pick may turn back
             var goalChanged = false;
             var target = memory.IsCommitted && !InterruptsGoal(world, me, x, y, paths, memory.Goal)
-                ? FindGoalTarget(world, me, x, y, paths, memory.Goal)
+                ? FindGoalTarget(world, me, x, y, paths, memory.Goal, memory, random)
                 : null;
 
             if (!target.HasValue)
             {
-                var goal = PickGoal(world, me, x, y, paths, out target);
+                var goal = PickGoal(world, me, x, y, paths, out target, memory, random);
                 goalChanged = true;
 
                 if (goal == eBotGoal.None)
@@ -197,20 +208,27 @@ namespace EatMeLibrary
 
         /// <summary>
         /// The goal a bot on cell (x, y) should go for now, highest priority first (eBotGoal), with its target cell.
-        /// A bot carrying a flag only ever takes it home. None (and a null target) if there's nothing worth going
-        /// to. paths must be filled from (x, y).
+        /// A bot carrying a flag only ever takes it home, patrolling near home while its own flag is away. None (and a
+        /// null target) if there's nothing worth going to. paths must be filled from (x, y). memory and random let a
+        /// patrolling bot keep and pick its patrol cell; without them it just heads for home.
         /// </summary>
-        public static eBotGoal PickGoal(BotWorld world, Player me, int x, int y, PathMap paths, out (int X, int Y)? target)
+        public static eBotGoal PickGoal(BotWorld world, Player me, int x, int y, PathMap paths, out (int X, int Y)? target,
+            BotMemory memory = null, Random random = null)
         {
             if (me.HasFlag)
             {
                 target = FindGoalTarget(world, me, x, y, paths, eBotGoal.CarryHome);
-                return target.HasValue ? eBotGoal.CarryHome : eBotGoal.None;
+
+                if (target.HasValue)
+                    return eBotGoal.CarryHome;
+
+                target = FindGoalTarget(world, me, x, y, paths, eBotGoal.Patrol, memory, random);
+                return target.HasValue ? eBotGoal.Patrol : eBotGoal.None;
             }
 
             foreach (var goal in me.IsInvincible ? INVINCIBLE_GOAL_ORDER : GOAL_ORDER)
             {
-                target = FindGoalTarget(world, me, x, y, paths, goal);
+                target = FindGoalTarget(world, me, x, y, paths, goal, memory, random);
 
                 if (target.HasValue)
                     return goal;
@@ -223,8 +241,10 @@ namespace EatMeLibrary
         /// <summary>
         /// The cell a bot on cell (x, y) heads for to work on goal, or null if the goal is done or can't be had
         /// right now. paths must be filled from (x, y). Targets beyond SEARCH_DISTANCE are always flag base cells.
+        /// memory and random are only used by Patrol (see PickGoal).
         /// </summary>
-        public static (int X, int Y)? FindGoalTarget(BotWorld world, Player me, int x, int y, PathMap paths, eBotGoal goal)
+        public static (int X, int Y)? FindGoalTarget(BotWorld world, Player me, int x, int y, PathMap paths, eBotGoal goal,
+            BotMemory memory = null, Random random = null)
         {
             var ghostKiller = CanKillGhosts(world, me);
 
@@ -238,10 +258,35 @@ namespace EatMeLibrary
                     if (!me.HasFlag)
                         return null;
 
-                    // a capture needs our flag at base; if it isn't, get it back when it's close, otherwise just go home
-                    var ownAway = !HasFlagAtBase(world, me.Team);
-                    var near = ownAway ? FindNearestFlag(world, paths, f => f.Team == me.Team, SEARCH_DISTANCE) : null;
-                    return near ?? FindNearestBase(world, x, y, f => f.Team == me.Team && (ownAway || f.IsAtBase));
+                    if (HasFlagAtBase(world, me.Team))
+                        return FindNearestBase(world, x, y, f => f.Team == me.Team && f.IsAtBase);
+
+                    // a capture needs our flag at base: get it back when it lies close, but go after the enemy carrying
+                    // it only on a small team, since on a big one teammates do that (HuntCarrier); otherwise Patrol
+                    var chaseCarrier = world.GetTeamSize(me.Team) <= SMALL_TEAM_SIZE;
+                    return FindNearestFlag(world, paths, f => f.Team == me.Team && !f.IsAtBase && (chaseCarrier || !f.IsCarried), SEARCH_DISTANCE);
+
+                case eBotGoal.Patrol:
+                    if (!me.HasFlag || HasFlagAtBase(world, me.Team))
+                        return null;
+
+                    var home = FindNearestBase(world, x, y, f => f.Team == me.Team);
+
+                    if (!home.HasValue)
+                        return null;
+
+                    // too far out to patrol yet (or nowhere to keep a patrol cell): head for home first
+                    var homePaths = world.FlagBasePaths[home.Value];
+
+                    if (memory == null || random == null || homePaths.GetDistance(x, y) > PATROL_DISTANCE)
+                        return home;
+
+                    if (memory.PatrolCell is { } kept && kept != (x, y) && IsPatrolCell(homePaths, kept))
+                        return kept;
+
+                    var patrolCell = PickPatrolCell(homePaths, x, y, random) ?? home.Value;
+                    memory.SetPatrolCell(patrolCell);
+                    return patrolCell;
 
                 case eBotGoal.Rescue:
                     return FindNearestFlag(world, paths, f => f.Team == me.Team && !f.IsAtBase && !f.IsCarried, RESCUE_DISTANCE);
@@ -272,7 +317,7 @@ namespace EatMeLibrary
                         return null;
 
                     // a loose enemy flag nearby, otherwise the enemy base, where the flag usually is; a flag sealed in a
-                    // force field (triforce) can't be taken, so it is left alone
+                    // force field (triangle force) can't be taken, so it is left alone
                     return FindNearestFlag(world, paths, f => f.CanBePickedUpBy(me.Team), SEARCH_DISTANCE)
                         ?? FindNearestBase(world, x, y, f => f.Team != me.Team && f.IsAtBase && !f.IsSealed);
 
@@ -289,12 +334,16 @@ namespace EatMeLibrary
         /// <summary>
         /// True if something more urgent than goal has come up, so a bot drops it at once rather than waiting for its
         /// time to run out: it picked up a flag (or lost the one it was taking home), its own flag needs rescuing, or an
-        /// enemy flag it can pick up has been dropped nearby.
+        /// enemy flag it can pick up has been dropped nearby. A patrolling carrier stops as soon as it can take its flag
+        /// home or go and get its own back.
         /// </summary>
         public static bool InterruptsGoal(BotWorld world, Player me, int x, int y, PathMap paths, eBotGoal goal)
         {
-            if (me.HasFlag != (goal == eBotGoal.CarryHome))
+            if (me.HasFlag != (goal is eBotGoal.CarryHome or eBotGoal.Patrol))
                 return true;
+
+            if (goal == eBotGoal.Patrol)
+                return FindGoalTarget(world, me, x, y, paths, eBotGoal.CarryHome).HasValue;
 
             // in chase mode a rescue waits its turn (INVINCIBLE_GOAL_ORDER)
             if (me.IsInvincible)
@@ -492,17 +541,17 @@ namespace EatMeLibrary
 
         /// <summary>
         /// True if a bot should press the action button now for its buff:
-        /// - Sword Swing, Fire Flower and BFG: the nearest pac or ghost in line ahead of it, within
+        /// - Sword Swing, Fireball and BFG: the nearest pac or ghost in line ahead of it, within
         ///   WeaponRules.FIRE_DISTANCE and before any wall, is an enemy pac that isn't invincible or a ghost (a
         ///   teammate in the way holds its fire). It fires the BFG even when the burst will catch it too.
-        /// - Gotcha: whenever any ghost is alive, since poke balls find ghosts by themselves.
+        /// - Gotcha: whenever any ghost is alive, since monster balls find ghosts by themselves.
         /// - POW: a ghost or an enemy pac that isn't invincible, neither stunned already, is within the standard effect
         ///   radius (PowerUpEffects.EFFECT_RADIUS).
-        /// - Bomb: its bomb isn't dropped yet and a ghost or enemy pac that isn't stunned is within the standard radius.
+        /// - Stun Bomb: its bomb isn't dropped yet and a ghost or enemy pac that isn't stunned is within the standard radius.
         /// - Banana Peel: a ghost or enemy pac that isn't stunned is within DANGER_DISTANCE cells.
         /// - Warp and Cherry Twin: something that can kill it (a ghost, or an enemy that IsThreat) is within
         ///   DANGER_DISTANCE cells.
-        /// - Blue Shell: its shell isn't fired yet and there is an enemy to send it after (WeaponRules.PickBlueShellTarget).
+        /// - Cobalt Shell: its shell isn't fired yet and there is an enemy to send it after (WeaponRules.PickCobaltShellTarget).
         /// - Melon Roll: it isn't rolling already, and something that can kill it is within DANGER_DISTANCE cells or a
         ///   target is in line ahead (as for Sword Swing).
         /// </summary>
@@ -510,7 +559,7 @@ namespace EatMeLibrary
         {
             switch (me.PowerUpEffect)
             {
-                case ePowerUp.PokeBall:
+                case ePowerUp.MonsterBall:
                     foreach (var ghost in world.Ghosts)
                         if (ghost.Alive)
                             return true;
@@ -518,14 +567,14 @@ namespace EatMeLibrary
                     return false;
 
                 case ePowerUp.WhiteSword:
-                case ePowerUp.FireFlower:
+                case ePowerUp.SunFlower:
                 case ePowerUp.BFG:
                     return HasTargetAhead(world, me);
 
                 case ePowerUp.PowBlock:
                     return HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, true);
 
-                case ePowerUp.Bomb:
+                case ePowerUp.StunBomb:
                     return !me.BombDropped && HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, false);
 
                 case ePowerUp.Banana:
@@ -535,8 +584,8 @@ namespace EatMeLibrary
                 case ePowerUp.Cherry:
                     return HasThreatNear(world, me, DANGER_DISTANCE);
 
-                case ePowerUp.BlueShell:
-                    return !me.BlueShellFired && WeaponRules.PickBlueShellTarget(me.Team, world.Pacs) != null;
+                case ePowerUp.CobaltShell:
+                    return !me.CobaltShellFired && WeaponRules.PickCobaltShellTarget(me.Team, world.Pacs) != null;
 
                 case ePowerUp.Melon:
                     return !me.IsRolling && (HasThreatNear(world, me, DANGER_DISTANCE) || HasTargetAhead(world, me));
@@ -796,6 +845,39 @@ namespace EatMeLibrary
             }
 
             return best;
+        }
+
+        /// <summary>
+        /// A random cell within PATROL_DISTANCE steps of a base, other than (x, y), for a carrier to patrol to.
+        /// basePaths is the base's full PathMap. Null if there is no such cell.
+        /// </summary>
+        public static (int X, int Y)? PickPatrolCell(PathMap basePaths, int x, int y, Random random)
+        {
+            (int X, int Y)? picked = null;
+            var count = 0;
+
+            foreach (var cell in basePaths.Order)
+            {
+                if (basePaths.GetDistance(cell.X, cell.Y) > PATROL_DISTANCE)
+                    break;
+
+                if (cell == (x, y))
+                    continue;
+
+                // each cell so far has the same chance of being the one picked
+                count++;
+
+                if (random.Next(count) == 0)
+                    picked = cell;
+            }
+
+            return picked;
+        }
+
+        private static bool IsPatrolCell(PathMap basePaths, (int X, int Y) cell)
+        {
+            var distance = basePaths.GetDistance(cell.X, cell.Y);
+            return distance != PathMap.UNREACHED && distance <= PATROL_DISTANCE;
         }
 
         private static bool HasFlagAtBase(BotWorld world, eTeam team)

@@ -9,6 +9,6 @@ namespace EatMeLibrary
         public const string FONT_JLSSPACEGOTHIC48 = "Fonts/JLSSpaceGothic48";
         public const string FONT_JLSSPACEGOTHIC60 = "Fonts/JLSSpaceGothic60";
         public const string FONT_JLSSPACEGOTHIC96 = "Fonts/JLSSpaceGothic96";
-        public const string FONT_ARIAL20 = "Fonts/Arial20";
+        public const string FONT_LIBERATION_SANS20 = "Fonts/LiberationSans20";
     }
 }

@@ -110,13 +110,13 @@ namespace EatMeTests
         }
 
         [Test]
-        public void ScrewAttack_IsNotFed()
+        public void RollingThunder_IsNotFed()
         {
             var server = MakeServer();
             var red = Join(server, 1, eTeamPreference.Red);
             PutOnSpawn(server, red, eGridDef.SpawnPointRed);
             red.Size = 0f;
-            server.StartPowerUpEffect(red, ePowerUp.ScrewAttack);
+            server.StartPowerUpEffect(red, ePowerUp.RollingThunder);
 
             server.UpdateEating(TimeSpan.FromMilliseconds(TICK_MS));
 

@@ -2,7 +2,7 @@ namespace EatMeLibrary
 {
     /// <summary>
     /// A projectile or object a power up effect put in the maze: a thrown sword, a fireball, a holy flame, a blue
-    /// shell or a poke ball. The server moves them (GameServer.UpdateWeaponEffects) and sends them in
+    /// shell or a monster ball. The server moves them (GameServer.UpdateWeaponEffects) and sends them in
     /// SnapshotMessage.WeaponEffects; the client draws Kind's row of the weapon effects sheet.
     /// </summary>
     public class WeaponEffect : GameEntity
@@ -21,7 +21,7 @@ namespace EatMeLibrary
         public bool OwnerClear { get; set; }
 
         /// <summary>
-        /// Id of the ghost a poke ball holds, or NO_GHOST while it is still flying.
+        /// Id of the ghost a monster ball holds, or NO_GHOST while it is still flying.
         /// </summary>
         public int CapturedGhostId { get; set; } = NO_GHOST;
 

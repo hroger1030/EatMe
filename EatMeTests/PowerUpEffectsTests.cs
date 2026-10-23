@@ -41,7 +41,7 @@ namespace EatMeTests
             Assert.That(PowerUpEffects.GetName(ePowerUp.Orange), Is.EqualTo(Const.STRING_VITAMIN_C));
             Assert.That(PowerUpEffects.GetName(ePowerUp.Apple), Is.EqualTo(Const.STRING_DOCTOR_AWAY));
             Assert.That(PowerUpEffects.GetName(ePowerUp.Melon), Is.EqualTo(Const.STRING_MELON_ROLL));
-            Assert.That(PowerUpEffects.GetName(ePowerUp.Galaxian), Is.EqualTo(Const.STRING_WARP_SPEED));
+            Assert.That(PowerUpEffects.GetName(ePowerUp.Solarian), Is.EqualTo(Const.STRING_WARP_SPEED));
         }
 
         private static Player MakePac(eTeam team, ePowerUp effect, bool alive = true)
@@ -184,7 +184,7 @@ namespace EatMeTests
         [Test]
         public void HasSpeedTrail_WarpSpeedAndInvincible()
         {
-            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Galaxian), Is.True);
+            Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Solarian), Is.True);
             Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Starman), Is.True);
             Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Cherry), Is.False);
             Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.PowerPill), Is.False);

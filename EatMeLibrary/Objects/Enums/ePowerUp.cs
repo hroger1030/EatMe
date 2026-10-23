@@ -39,7 +39,7 @@ namespace EatMeLibrary
         /// <summary>
         /// Warp Speed: moves PacRules.WARP_SPEED_SCALE times as fast and leaves a speed trail.
         /// </summary>
-        Galaxian = 6,
+        Solarian = 6,
 
         /// <summary>
         /// Dinner Bell: every ghost in the level moves PowerUpEffects.DINNER_BELL_GHOST_SPEED_SCALE times as fast.
@@ -81,7 +81,7 @@ namespace EatMeLibrary
         /// <summary>
         /// Fireball: the pac flashes white and the action button fires fireballs (one per WeaponRules.ACTION_COOLDOWN_MS).
         /// </summary>
-        FireFlower = 14,
+        SunFlower = 14,
 
         /// <summary>
         /// Invincible: PacRules.INVINCIBLE_SPEED_SCALE times as fast, can't be killed, and kills any enemy pac or ghost
@@ -104,13 +104,13 @@ namespace EatMeLibrary
         /// Hammer Time: a hammer swings in front of the pac, killing any pac or ghost it hits (unless invincible) and
         /// smashing walls (not the outer wall) into dot cells.
         /// </summary>
-        Hammer = 18,
+        HammerTime = 18,
 
         /// <summary>
         /// Force Field: when it starts every flag of the pac's team away from base goes home (a rescue for the pac each),
         /// and while it works the team's flags are sealed in a force field: enemies can't pick them up (GameFlag.IsSealed).
         /// </summary>
-        Triforce = 19,
+        Triangleforce = 19,
 
         /// <summary>
         /// Full Heal: when it starts the pac grows to PacMaxSize if smaller and its hunger resets, and it never starves
@@ -135,10 +135,10 @@ namespace EatMeLibrary
         Reinforcements = 23,
 
         /// <summary>
-        /// Screw Attack: the pac flashes white and spins, and kills any enemy pac or ghost it touches. It can't eat dots
+        /// Rolling Thunder: the pac flashes white and spins, and kills any enemy pac or ghost it touches. It can't eat dots
         /// or power pills.
         /// </summary>
-        ScrewAttack = 24,
+        RollingThunder = 24,
 
         /// <summary>
         /// Holy Fire: the pac leaves a trail of holy flames that kill anything that isn't invincible.
@@ -151,15 +151,15 @@ namespace EatMeLibrary
         SpreadGun = 26,
 
         /// <summary>
-        /// Blue Shell: the first press of the action button (once per Blue Shell eaten) fires a shell that follows the
+        /// Cobalt Shell: the first press of the action button (once per Cobalt Shell eaten) fires a shell that follows the
         /// maze to the enemy flag carrier, or else the enemy with the highest score, and kills it.
         /// </summary>
-        BlueShell = 27,
+        CobaltShell = 27,
 
         /// <summary>
         /// Block Drop: each plain open cell the pac leaves fills with a block that acts as a wall until the effect ends.
         /// </summary>
-        Tetromino = 28,
+        Skyblock = 28,
 
         /// <summary>
         /// BFG 9000: the action button fires a slow ball that bursts on the first pac, ghost or wall it hits, killing
@@ -168,10 +168,10 @@ namespace EatMeLibrary
         BFG = 29,
 
         /// <summary>
-        /// Bomb: the action button drops one bomb (once per buff) on the pac's cell. It goes off WeaponRules.BOMB_FUSE_MS
+        /// Stun Bomb: the action button drops one bomb (once per buff) on the pac's cell. It goes off WeaponRules.BOMB_FUSE_MS
         /// later, stunning every enemy pac and ghost within PowerUpEffects.EFFECT_RADIUS.
         /// </summary>
-        Bomb = 30,
+        StunBomb = 30,
 
         /// <summary>
         /// Pepper: a ghost that touches the pac is stunned instead of killing it.
@@ -182,6 +182,6 @@ namespace EatMeLibrary
         /// Gotcha: each press of the action button (at most one per WeaponRules.ACTION_COOLDOWN_MS) throws a poke
         /// ball that seeks the nearest ghost. Every ball still flying goes when the effect ends.
         /// </summary>
-        PokeBall = 32,
+        MonsterBall = 32,
     }
 }

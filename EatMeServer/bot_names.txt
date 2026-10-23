@@ -24,9 +24,8 @@ Screen_Burn
 Beep
 Trust_Me_Im_Real
 Monoceratops
-Squeak
+Called_In_Sick
 Policy_Enforcer
-Friendly_Fire_Fred
 Buttered_Toast
 Squeaky_Cheese
 Fizzle
@@ -35,7 +34,6 @@ Unhandled_Exception
 Level_Up_Grade
 1UP_Cup
 Ctrl_Alt_Defeat
-I_Eat_Food_Too
 Joust_In_Time
 Just_A_Guy
 Plink
@@ -62,7 +60,6 @@ Botty_McBotface
 Dev_Build_01
 Laggy_Larry
 Zap
-Multiplier_Effect
 Sir_Lag_A_Lot
 Low_Ping_Basterd
 Unforced_Error
@@ -75,7 +72,6 @@ Render_Distance_Low
 High_Score_Settler
 Target_Practice
 Joystick_In_The_Mud
-Gauntlet_Runner
 Robotron_2084K
 Gulp
 Leroy_Jenkins_Bot
@@ -113,7 +109,7 @@ Id_Hitbox_That
 GLaDOS_Intern
 No_More_Lives
 Floppy_Butt
-Stack_Overflow
+Slack_Overflow
 Middle_Management
 Definitely_A_Human
 Defective_Fridge
@@ -123,7 +119,7 @@ Honk
 Coin_Op
 One_Up_Manship
 HAL_9000_Glitch
-Dig_Dug_Deep
+I_Dig_Dug
 RAM_Shackle
 Helpdesk_Idiot
 Crackle
@@ -147,7 +143,6 @@ Low_Score
 Real_Meat_Computer
 Scanline_Fever
 Infinite_Loop
-Apex_Beta
 BurgerTime_Bandit
 STACK_UNDERFLOW
 Bonk
@@ -183,7 +178,6 @@ T-799_Discount
 Auto_Palm_Pilot
 Float_Error
 Mario_Kart_Racer
-Unbeatable_Bob
 Mild_Salsa
 TPS_Reports
 Not_A_Bot_I_Swear
@@ -213,7 +207,7 @@ Wrong_Way_Rory
 Speedwalker
 Contra_Banned
 Token_Gesture
-Apple_][e
+Apple][e
 Totally_Real_Player
 Null_Pointer
 Standing_In_Fire
@@ -233,10 +227,8 @@ Bloop
 Human_Person_Dave
 GLaDOS
 Game_Over
-One_Tap_Tommy
 Guest_WiFi_Router
 Doom_is_Better
 IT_Department
 Fear_My_Pixels
 Spicy_Meatball
-Headshot_Only

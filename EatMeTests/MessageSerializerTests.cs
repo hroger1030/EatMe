@@ -24,7 +24,7 @@ namespace EatMeTests
                 Pacs = [new PacState(1, eTeam.Red, 1.5f, 2.25f, 10f, eFacing.Up, true, false, true), new PacState(2, eTeam.Blue, 98f, 3f, 50.5f, eFacing.Right, false, true, false, 4, 7, 2, 9, ePowerUp.PowerPill, 4321, 1234, 750, true)],
                 Ghosts = [new GhostState(0, 50f, 50f, eFacing.Down, true), new GhostState(1, 5f, 6f, eFacing.Left, true, true)],
                 Flags = [new FlagState(0, eTeam.Red, 3.5f, 40.5f, FlagState.NO_CARRIER), new FlagState(1, eTeam.Blue, 12f, 13f, 1)],
-                PowerUps = [new PowerUpState(0, ePowerUp.Cherry, 49.5f, 50.25f), new PowerUpState(7, ePowerUp.PokeBall, 1f, 2f)],
+                PowerUps = [new PowerUpState(0, ePowerUp.Cherry, 49.5f, 50.25f), new PowerUpState(7, ePowerUp.MonsterBall, 1f, 2f)],
                 WeaponEffects = [new WeaponEffectState(3, eWeaponEffect.Sword, 12.25f, 4.5f, eFacing.Left, 1), new WeaponEffectState(9, eWeaponEffect.Decoy, 1.5f, 2.5f, eFacing.Up, 1_000_002)],
             };
             yield return new CellsChangedMessage { IsCatchUp = true, Cells = [new CellChange(4, 5, eGridDef.Food), new CellChange(99, 0, eGridDef.PowerPill | eGridDef.SpawnPointRed)] };

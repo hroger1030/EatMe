@@ -91,7 +91,7 @@
 
         /// <summary>
         /// True while an effect that destroys what it touches is working (PowerUpEffects.KillsOnContact: Invincible,
-        /// Screw Attack, Super Size): the pac kills any enemy pac or ghost it touches, and ghosts can't kill it.
+        /// Rolling Thunder, Super Size): the pac kills any enemy pac or ghost it touches, and ghosts can't kill it.
         /// </summary>
         public bool KillsOnContact => PowerUpEffects.KillsOnContact(PowerUpEffect) && PowerUpMs > 0;
 
@@ -121,7 +121,7 @@
         public (int X, int Y)? BlockDropCell { get; set; }
 
         /// <summary>
-        /// True once a pac with Bomb has dropped its one bomb; a new Bomb buff gives it another.
+        /// True once a pac with Stun Bomb has dropped its one bomb; a new Stun Bomb buff gives it another.
         /// </summary>
         public bool BombDropped { get; set; }
 
@@ -132,8 +132,8 @@
         public bool IsRolling { get; set; }
 
         /// <summary>
-        /// True once a pac with Blue Shell has fired its one shell; a new Blue Shell buff gives it another.
+        /// True once a pac with Cobalt Shell has fired its one shell; a new Cobalt Shell gives it another.
         /// </summary>
-        public bool BlueShellFired { get; set; }
+        public bool CobaltShellFired { get; set; }
     }
 }

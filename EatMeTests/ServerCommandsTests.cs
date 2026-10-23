@@ -39,9 +39,6 @@ namespace EatMeTests
         [TestCase("next", ServerCommands.NEXT_LEVEL, "")]
         [TestCase("level 5", ServerCommands.LEVEL, "5")]
         [TestCase("kick Big Pac", ServerCommands.KICK, "Big Pac")]
-        [TestCase("add bot 3", ServerCommands.ADD_BOT, "3")]
-        [TestCase("addbot", ServerCommands.ADD_BOT, "")]
-        [TestCase("remove bot", ServerCommands.REMOVE_BOT, "")]
         [TestCase("new game", ServerCommands.NEW_GAME, "")]
         [TestCase("motd Hello  there", ServerCommands.MOTD, "Hello  there")]
         [TestCase("stop", ServerCommands.QUIT, "")]
@@ -194,51 +191,6 @@ namespace EatMeTests
             Assert.That(Run(server, $"kick {bot.Player.Name}"), Does.Contain("is a bot"));
             Assert.That(Run(server, "kick"), Does.StartWith("Usage"));
             Assert.That(server.BotCount, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void Execute_AddAndRemoveBot_ChangeMinPlayers()
-        {
-            var server = MakeServer();
-
-            Run(server, "add bot 3");
-            Assert.That(server.BotCount, Is.EqualTo(3));
-            Assert.That(server.Settings.GameConfig.MinPlayers, Is.EqualTo(3));
-
-            Run(server, "remove bot");
-            Assert.That(server.BotCount, Is.EqualTo(2));
-
-            // and a join doesn't undo it
-            Join(server, 1, "Pac");
-            Assert.That(server.PlayerCount + server.BotCount, Is.EqualTo(2));
-
-            Run(server, "remove bot 10");
-            Assert.That(server.BotCount, Is.Zero);
-            Assert.That(server.Settings.GameConfig.MinPlayers, Is.Zero);
-        }
-
-        [Test]
-        public void Execute_AddBot_WithHumansAboveMinPlayers_StillAddsOne()
-        {
-            var server = MakeServer();
-            Join(server, 1, "Pac");
-            Join(server, 2, "Other");
-
-            Run(server, "add bot");
-
-            Assert.That(server.BotCount, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void Execute_AddBot_WithAutoBalance_AddsOnePerTeam()
-        {
-            var server = MakeServer(autoBalanceTeams: true);
-
-            Run(server, "add bot");
-
-            Assert.That(server.BotCount, Is.EqualTo(2));
-            Assert.That(server.Players.Count(p => p.Player.Team == eTeam.Red), Is.EqualTo(1));
-            Assert.That(server.Players.Count(p => p.Player.Team == eTeam.Blue), Is.EqualTo(1));
         }
 
         [Test]

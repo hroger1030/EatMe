@@ -1,26 +1,71 @@
-# EatMe
+# Eat Me
 
-A multiplayer, retro-style arcade game for LAN and Internet play: capture-the-flag Pac-Man in a large, randomly generated maze. Two teams (red and blue) of pacs eat dots, grow, eat each other, and dodge ghosts.
+A multiplayer, retro-style arcade game for LAN and Internet play: capture-the-flag Pac-Man in a large, randomly generated maze. Two teams of pacs, blue on the left and red on the right, eat dots to grow, eat each other, dodge ghosts, grab power ups and steal each other's flags. The first team to the target score wins the level.
 
-See [Specs.md](Specs.md) for the full design and game rules.
+The game is split into a headless server, which runs the whole simulation and its bots, and a MonoGame client, which draws what the server sends and passes the player's input back. Both are written in C# on .NET 10 and share a common library.
 
-## Projects
-
-| Project | Type | Description |
-|---|---|---|
-| `EatMeClient` | MonoGame DesktopGL app | Game client: title, settings, high scores, attract, credits and game screens. |
-| `EatMeServer` | Console app (headless) | Game server. Reads its configuration from `server.cfg` on startup. |
-| `EatMeLibrary` | Class library | Code shared by the client and server. Referenced by both. |
-| `EatMeTests` | NUnit test project | Unit tests for the library and server. Run with `dotnet test EatMeTests`. |
-
-The client also references two sibling projects that must be checked out next to this repo:
-
-- `..\FastG\FastG\FastG.csproj` (geometry)
+The full design and game rules are in [Specs.md](Specs.md).
 
 ## Requirements
 
 - .NET 10 SDK
-- MonoGame 3.8 (restored via NuGet; the content builder runs as a local dotnet tool)
+- Windows to build the client's content: the content build runs as a local dotnet tool (MonoGame 3.8, restored automatically)
+- The **FastG** geometry library checked out next to this repo (see below).
+
+## Getting the source
+
+The library and client reference `..\FastG\FastG\FastG.csproj`, so clone both repos into the same parent folder:
+
+```
+<parent>\
+    EatMe\      this repo
+    FastG\      FastG\FastG.csproj
+```
+
+## Folder structure
+
+```
+EatMe\
+    EatMe.sln               Solution with all four projects
+    Specs.md                Product spec: game rules, levels, maps, networking
+    CLAUDE.md               Detailed notes on how the code is put together
+    ~PublishPC.bat          Publishes Windows release builds to publish\
+    ~PublishMac.bat         Publishes macOS (Apple silicon) release builds to publish\
+    ~StartServer.bat        Runs the published Windows server
+    ~StartClient.bat        Runs the published Windows client
+
+    EatMeClient\            MonoGame DesktopGL game client
+        Content\            Content.mgcb and every asset it builds
+            audio\          Sound effects and announcer clips (WAV)
+            effects\        Shaders (.fx): brightness, bloom, pixel art, rainbow walls
+            fonts\          Sprite fonts and the JLS Space Gothic and Liberation Sans font files
+            images\         Sprite sheets, tiles, backgrounds and the logo
+            music\          Title theme and level tracks (MP3)
+            text\           Plain text such as the attract screen story
+        Objects\
+            Screens\        Title, attract, join, settings, high scores and game screens
+            Controls\       UI controls: menus, sliders, mini map, player list, overlays
+            Managers\       Assets, input, music, sound, settings and the content pack
+            Classes\        Camera, settings, shader wrappers
+            Helpers\        Drawing, text, texture and clipboard helpers
+        readme.txt          Player notes, shipped with the published client
+
+    EatMeServer\            Headless console server
+        Objects\            Game server, console commands, logging, networking
+        server.cfg          Server settings (JSON)
+        LoadingScreenTips.txt   One tip per line, shown between levels
+        bot_names.txt       Names given to bots, one per line
+        highscores.txt      The server's high score table
+        readme.txt          Host notes, shipped with the published server
+
+    EatMeLibrary\           Code shared by client and server (no MonoGame dependency)
+        Objects\            Map generation, movement, rules, bot and ghost brains, levels
+            Network\        Messages, serialization and the TCP connection
+            Const\          Content names and UI strings
+            Enums\          Shared enums
+
+    EatMeTests\             NUnit tests for the library and server
+```
 
 ## Building
 
@@ -28,17 +73,114 @@ The client also references two sibling projects that must be checked out next to
 dotnet build EatMe.sln
 ```
 
-## Running the server
+The first build restores NuGet packages and the MonoGame content builder tool, then builds every asset in `EatMeClient/Content/Content.mgcb`.
+
+## Running the tests
+
+```
+dotnet test EatMeTests
+```
+
+The tests need no network setup: the loopback tests use a free port on 127.0.0.1.
+
+## Running a game locally
+
+Start the server first, then the client.
+
+**Server:**
 
 ```
 dotnet run --project EatMeServer
 ```
 
-The server loads `server.cfg` from its output directory, prints the loaded settings, then runs its tick loop until Ctrl+C or `quit`. Type `help` in its window for the console commands; the prompt shows how long the server has been up, as `[up hh.mm.ss]`, and stays on the bottom row with the log scrolling above it, so a busy log never breaks into what you are typing (Up/Down bring back earlier commands, Esc clears the line). If `server.cfg` is missing or invalid, it prints an error and exits with code 1.
+The server reads `server.cfg` from its output folder, prints the settings it loaded, then runs until you type `quit` or press Ctrl+C. If `server.cfg` is missing or invalid it prints an error and exits with code 1. While no players are connected the game is paused; bots fill the teams up to `MinPlayers`.
 
-### Console commands
+**Client:**
 
-Commands are typed into the server's window while it runs. Command names ignore case. Nothing a command changes is written back to `server.cfg`, so a restart goes back to the file's values.
+```
+dotnet run --project EatMeClient
+```
+
+Pick Join Game, type a name, pick a team, and choose the server from the LAN games list (or type `127.0.0.1`). The client opens full screen at the desktop resolution; the Display setting switches to a window. Settings are saved to `settings.ini` next to the executable. Only one client runs at a time per Windows login. F1 shows a performance overlay.
+
+Controls and how to play are in [EatMeClient/readme.txt](EatMeClient/readme.txt).
+
+## Publishing
+
+| Script | Output |
+|---|---|
+| `~PublishPC.bat` | Windows x64 builds in `publish\pc_client` and `publish\pc_server` |
+| `~PublishMac.bat` | macOS Apple silicon builds in `publish\mac_client` and `publish\mac_server` |
+
+Both make Release, single-file, framework-dependent builds (players need the .NET 10 runtime) with no `.pdb` files. The client's content is packed into `Resource.pac` next to the exe. Each folder also gets its project's `readme.txt`.
+
+`~StartServer.bat` and `~StartClient.bat` run the published Windows builds from their own folders, so run `~PublishPC.bat` first.
+
+The client and server versions must match (`NetworkConstants.APP_VERSION`, shown in the top right of the title screen). Servers of another version are greyed out in the LAN list.
+
+## Server configuration
+
+### Files
+
+| File | What it holds |
+|---|---|
+| `server.cfg` | Settings, in JSON. Game rules are in the `GameConfig` block. Edit `EatMeServer/server.cfg`; it is copied to the output folder on build. |
+| `LoadingScreenTips.txt` | One tip per line. Every player gets them all, and one is shown at random between levels. A missing file means no tips. |
+| `bot_names.txt` | Names given to bots, one per line. |
+| `highscores.txt` | The server's high score table, one `Name,Score,Date` per line. The server rewrites it when it changes; a build doesn't overwrite it unless the source file is newer. |
+
+### server.cfg
+
+The shipped file lists every setting. Anything left out of the file keeps its built-in default. Out of range values are clamped, except `MazeSize`, which must be valid or the server won't start.
+
+| Setting | Type | server.cfg | Description |
+|---|---|---|---|
+| `ServerName` | string | `Eat Me Server` | Name shown in the LAN games list. |
+| `MessageOfTheDay` | string | | Scrolls across the bottom of each player's title screen after they've played on the server. Empty or missing uses a built-in message. |
+| `Port` | int | 7777 | TCP port players connect to. |
+| `DiscoveryPort` | int | 7778 | UDP port that answers LAN game searches. |
+| `TickRate` | int | 60 | Simulation ticks per second. |
+| `ClientUpdatesPerSecond` | int | 30 | Times per second the game state is sent to players. |
+| `AutoBalanceTeams` | bool | true | Bots keep both teams the same size. |
+| `StartingLevel` | int | 1 | Level the server starts on (and goes back to on `new game`). |
+| `RandomLevels` | bool | false | Every level after the starting one is picked at random, never the one just played. |
+| `GameConfig.MaxPlayers` | int | 128 | Most players at once. |
+| `GameConfig.MinPlayers` | int | 4 | Players (humans plus bots) the server keeps; bots make up the difference. |
+| `GameConfig.MaxScore` | int | 100 | Team score needed to win the level. |
+| `GameConfig.FlagScore` | int | 20 | Points for capturing a flag. |
+| `GameConfig.FlagRescue` | int | 3 | Points for returning your own dropped flag. |
+| `GameConfig.PlayerKill` | int | 1 | Points for eating an enemy pac. |
+| `GameConfig.GhostKill` | int | 2 | Points for killing a ghost. |
+| `GameConfig.MazeSize` | int | 100 | Width and height of the maze in cells. Must be even and at least 22. |
+| `GameConfig.WarpTunnelCount` | int | 4 | Warp tunnels through the outer wall. |
+| `GameConfig.GhostCount` | int | 6 | Ghosts in the maze. |
+| `GameConfig.PowerPillCount` | int | 8 | Power pills in the maze, split between the two halves. |
+| `GameConfig.FlagCount` | int | 1 | Flags per team. |
+| `GameConfig.PlayerBaseCount` | int | 1 | Spawn points per team. |
+| `GameConfig.GhostVisionDistance` | int | 10 | Cells within which a ghost spots and chases a pac. |
+| `GameConfig.GhostRegenTimeMs` | int | 5000 | ms before a dead ghost comes back. |
+| `GameConfig.DotRegenPercent` | int | 50 | Percent (0–100) of a level's dots that stay eaten; past that, each dot eaten brings back the oldest eaten one. |
+| `GameConfig.PowerPillRegenTimeMs` | int | 30000 | ms before an eaten power pill comes back. |
+| `GameConfig.PlayerRespawnTimeMs` | int | 10000 | ms before a dead pac respawns. |
+| `GameConfig.PacMaxSize` | float | 100.0 | The most dots can make a pac. A pac needs this size and a power pill working to eat ghosts. |
+| `GameConfig.PacSpeed` | float | 6.0 | Cells per second of a size 0 pac; a full sized pac is 20% faster. |
+| `GameConfig.GhostSpeed` | float | 6.0 | Ghost speed in cells per second. |
+| `GameConfig.PowerUpSpeed` | float | 2.5 | Power up speed in cells per second. |
+| `GameConfig.PacShrinkPerSecond` | float | 5.0 | Size a starving pac loses each second. |
+| `GameConfig.MsUntilStarvation` | int | 1000 | ms after a pac last ate before it starts starving. |
+| `GameConfig.DotSizeGain` | float | 1.0 | Size gained per dot. |
+| `GameConfig.PowerPillSizeGain` | float | 100.0 | Size gained from a power pill, and lost again when it wears off. |
+| `GameConfig.PowerUpDurationMs` | int | 10000 | ms every power up effect lasts. |
+| `GameConfig.IntermissionTimeMs` | int | 10000 | ms the results are shown between levels. |
+| `GameConfig.PowerUpSpawnTimerMs` | int | 30000 | ms between power up spawns; 0 for none. |
+| `GameConfig.TurnBufferTimeMs` | int | 400 | ms a tapped direction is remembered for the next junction. 0 is off. |
+| `GameConfig.TurnGraceDistance` | float | 0.3 | Cells past a junction a late turn still happens. 0 is off. |
+| `GameConfig.LagCompensationMaxMs` | int | 250 | Most ms of a player's lag that widen their late turn window. 0 is off. |
+| `GameConfig.ServerSeed` | int | 424242 | Seed for the maps; each level's map comes from this plus the level number. |
+
+## Server console commands
+
+Commands are typed into the server's window while it runs and ignore case. The prompt at the bottom shows the uptime as `[up hh.mm.ss]`; Up and Down bring back earlier commands and Esc clears the line. Nothing a command changes is written back to `server.cfg`, so a restart goes back to the file's values.
 
 | Command | What it does |
 |---|---|
@@ -50,19 +192,19 @@ Commands are typed into the server's window while it runs. Command names ignore 
 | `restart` | Restarts the current level. |
 | `new game` | Goes back to the starting level. |
 | `kick {name or id}` | Removes a player from the server. |
-| `add bot [n]` | Keeps n more players (default 1; per team with autobalance on). |
-| `remove bot [n]` | Keeps n fewer players (default 1; per team with autobalance on). |
 | `bots [n]` | Shows or sets MinPlayers. |
 | `autobalance [on\|off]` | Shows or sets AutoBalanceTeams. |
-| `motd [text]` | Shows or sets the message of the day. |
-| `settings` | Lists every setting with the command that changes it and its value. |
+| `motd [text]` | Shows or sets the message of the day for players who join from now on. |
+| `settings` | Lists every setting with its command and value. |
 | `perf [on\|off]` | Shows or sets perf logging: every 5 seconds, tick rate and times, load, GC, memory, traffic and each step's times. |
 | `clear` (or `cls`) | Clears the console. |
 | `quit` (or `stop`, `exit`) | Stops the server. |
 
-Every other `server.cfg` setting has its own command, its name in lower case: typed alone it shows the value, typed with a value it changes it, e.g. `pacspeed 7.5`, `mazesize 60`, `tickrate 30`, `servername Friday Night Pac`. `MinPlayers`, `AutoBalanceTeams` and `MessageOfTheDay` are `bots`, `autobalance` and `motd` (`minplayers`, `autobalanceteams` and `messageoftheday` work too). `Port` and `DiscoveryPort` have none, since they only count at startup. `help` lists them all.
+### Setting commands
 
-| Setting command | Setting |
+Every other `server.cfg` setting except `Port` and `DiscoveryPort` has its own command, its name in lower case. Typed alone it shows the value; typed with a value it changes it, e.g. `pacspeed 7.5`, `mazesize 60`, `randomlevels on`, `servername Friday Night Pac`. `[n]` is a whole number and `[x]` can have decimals.
+
+| Command | Setting |
 |---|---|
 | `servername [text]` | ServerName |
 | `tickrate [n]` | TickRate |
@@ -102,98 +244,47 @@ Every other `server.cfg` setting has its own command, its name in lower case: ty
 | `lagcompensationmaxms [n]` | LagCompensationMaxMs |
 | `serverseed [n]` | ServerSeed |
 
-`[n]` is a whole number, `[x]` can have decimals.
+`MinPlayers`, `AutoBalanceTeams` and `MessageOfTheDay` are `bots`, `autobalance` and `motd` (`minplayers`, `autobalanceteams` and `messageoftheday` work too).
 
-Values are checked the same way as in `server.cfg`:
-
-- A bad `MazeSize` (odd or too small) is ignored and the old value stays.
-- Anything else out of range is clamped, e.g. `DotRegenPercent` to 0–100, `TickRate` to at least 1.
+Values are checked as in `server.cfg`: a bad `MazeSize` (odd or too small) is ignored and the old value stays; anything else out of range is clamped.
 
 When a change takes effect:
 
 - **Now:** most settings. Game rule changes are sent to every connected player.
 - **Next level** (or now, with `restart`): the map settings, `MazeSize`, `WarpTunnelCount`, `GhostCount`, `PowerPillCount`, `FlagCount`, `PlayerBaseCount` and `ServerSeed`.
-- **Next level change:** `RandomLevels`. When it's on, each level after the starting one is random, never a repeat of the one just played.
+- **Next level change:** `RandomLevels`.
 - **Next `new game`:** `StartingLevel`.
 
-### server.cfg
+## Hosting notes
 
-JSON, deserialized into `ServerSettings`. Edit `EatMeServer/server.cfg`; it is copied to the output directory on build. The shipped file lists every setting at its default value. Game rules live in the `GameConfig` block, which maps to `EatMeLibrary.GameConfiguration`; any game setting left out of the file keeps its default.
+The server listens on all IPv4 interfaces, so nothing in the code needs changing to host.
 
-| Setting | Type | Default | Description |
-|---|---|---|---|
-| `ServerName` | string | `Eat Me Server` | Display name of the server. |
-| `MessageOfTheDay` | string | `Find Friends, Play Games. Visit https://GamrTable.com` | Scrolls across the bottom of each player's title screen after they've played on the server. Empty or missing uses the default. |
-| `Port` | int | 7777 | TCP port players connect to. |
-| `DiscoveryPort` | int | 7778 | UDP port that answers LAN game searches. |
-| `TickRate` | int | 60 | Simulation ticks per second. |
-| `ClientUpdatesPerSecond` | int | 30 | Times per second the game state is sent to clients. |
-| `GameConfig.MaxPlayers` | int | 128 | Maximum connected players. |
-| `GameConfig.MaxScore` | int | 100 | Team score needed to win the level. |
-| `GameConfig.FlagScore` | int | 20 | Points for capturing a flag. |
-| `GameConfig.FlagRescue` | int | 3 | Points for returning your own dropped flag to base. |
-| `GameConfig.PlayerKill` | int | 1 | Points for eating an enemy pac. |
-| `GameConfig.GhostKill` | int | 2 | Points for killing a ghost. |
-| `GameConfig.MazeSize` | int | 100 | Width and height of the maze in cells. Must be even, minimum 22. |
-| `GameConfig.WarpTunnelCount` | int | 4 | Warp tunnels through the outer wall; a hole warps to the hole directly opposite. Symmetry may add one extra. |
-| `GameConfig.GhostCount` | int | 6 | Number of ghosts in the maze. Each gets a personality; past the 21 unique ones, the rest are Norm. |
-| `GameConfig.PowerPillCount` | int | 4 | Power pills in the maze, split evenly between the two halves. |
-| `GameConfig.FlagCount` | int | 1 | Flags per team. |
-| `GameConfig.PlayerBaseCount` | int | 1 | Player spawn points per team. |
-| `GameConfig.GhostVisionDistance` | int | 10 | Distance within which a ghost spots and chases a pac. |
-| `GameConfig.GhostRegenTimeMs` | int | 5000 | ms before a dead ghost reappears. |
-| `GameConfig.DotRegenPercent` | int | 50 | Percent (0-100) of a level's dots that stay eaten: once that many are eaten, each dot eaten brings back the oldest eaten one. |
-| `GameConfig.PowerPillRegenTimeMs` | int | 5000 | ms before an eaten power pill reappears. |
-| `GameConfig.PlayerRespawnTimeMs` | int | 10000 | ms before a dead player respawns at base. |
-| `GameConfig.PacMaxSize` | float | 100.0 | The most dots can make a pac (power pills can take it past this). A pac needs at least this size and a power pill working to eat ghosts. |
-| `GameConfig.PacSpeed` | float | 6.0 | Speed in map cells per second of a size 0 pac; a pac at max size is 20% faster. |
-| `GameConfig.GhostSpeed` | float | 5.0 | Ghost speed in map cells per second. |
-| `GameConfig.PowerUpSpeed` | float | 2.5 | Power up speed in map cells per second. |
-| `GameConfig.PacShrinkPerSecond` | float | 3.0 | Size a starving pac loses each second. |
-| `GameConfig.MsUntilStarvation` | int | 1000 | ms after a pac last ate a dot or power pill before it starts starving (shrinking). |
-| `GameConfig.DotSizeGain` | float | 1.0 | Size a pac gains for each dot it eats. |
-| `GameConfig.PowerPillSizeGain` | float | 100.0 | Size a pac gains from a power pill, and loses again when it wears off. |
-| `GameConfig.PowerUpDurationMs` | int | 10000 | ms every power up effect (a power pill included) lasts. A pac has one effect at a time; a new one replaces it and restarts the timer. |
-| `GameConfig.TurnBufferTimeMs` | int | 400 | ms a human pac remembers a direction pressed and let go, so an early tap still turns at the next open junction. 0 is off. |
-| `GameConfig.TurnGraceDistance` | float | 0.3 | Cells past an open junction a late turn still happens there. Lag widens it, up to 0.9. 0 is off. |
-| `GameConfig.LagCompensationMaxMs` | int | 250 | Most ms of a player's measured lag that widen their late turn window. 0 is off. |
+| Port | Protocol | Used for |
+|---|---|---|
+| `Port` (7777) | TCP | Players connect on it. The only port Internet players need. |
+| `DiscoveryPort` (7778) | UDP | Answers LAN game searches. Don't forward it. |
 
-Map seeds aren't a server setting; each level has its own seed in `EatMeLibrary/Objects/Levels.cs`.
+**On a LAN**, players find the game in the Join Game screen's LAN games list. Allow the server through the PC's firewall; Windows usually asks the first time it runs.
 
-### LoadingScreenTips.txt
+**Over the Internet**, players type in an address, and your router has to let them through.
 
-Loading screen tips. Edit `EatMeServer/LoadingScreenTips.txt`; it is copied to the output directory on build. One tip per line, as many as you like; blank lines are skipped. Every player gets the tips when they join, and one picked at random is shown at the bottom of each intermission screen. A missing file just means no tips.
-
-### Hosting over the Internet
-
-The server listens on all IPv4 interfaces, so nothing in the code needs changing. Players on the same LAN find the game through discovery (UDP `DiscoveryPort`), but players on the Internet must type in an address, and your router has to let them through. Only the TCP game port (`Port`, 7777 by default) needs to be reachable; don't forward the discovery port.
-
-**Port forwarding (for home users):**
-
-1. Find your PC's local IP: run `ipconfig` and take the IPv4 address of your real network adapter (e.g. `192.168.0.3`). 
-2. Allow the port through any firewalls. An OS will usually asks the first time the server runs; if set it manually. Here is and an example of how to do it from Windows PowerShell:
+1. Find your PC's local IP: run `ipconfig` and take the IPv4 address of your network adapter (e.g. `192.168.0.3`).
+2. Allow the game port through the firewall. From an administrator PowerShell:
    ```powershell
    New-NetFirewallRule -DisplayName "EatMe Server" -Direction Inbound -Protocol TCP -LocalPort 7777 -Action Allow
    ```
-3. In the router's port forwarding page, forward to your PC's local IP:
-   - Device / IP address: your PC's local IP
-   - Starting and ending port: `7777`
-   - Protocol: `TCP`
-   - Remote IP: all IP addresses
-4. Find your public IP (e.g. at whatismyip.com). Players enter it in the Join screen's address box, adding `:port` if you changed `Port` (e.g. `222.0.143.15:7777`).
+3. In the router's port forwarding page, forward TCP port `7777` to your PC's local IP, from all remote addresses.
+4. Find your public IP (e.g. at whatismyip.com). Players enter it in the Join Game address box, adding `:port` if you changed `Port` (e.g. `203.0.113.5:7777`).
 5. When you're done, delete the forwarding rule.
 
 Your public IP can change, and connecting to it from inside your own network often fails (many routers lack NAT loopback), so test from another network such as a phone hotspot.
 
-**Tunnel (no router changes):** if you can't change the router, or your ISP uses CGNAT (the router's WAN IP differs from the public IP), run a TCP tunnel such as playit.gg pointed at local port 7777. It gives you a `host:port` address that players type into the Join screen. Close the tunnel when you're done.
+**Tunnel (no router changes):** if you can't change the router, or your ISP uses CGNAT (the router's WAN IP differs from your public IP), run a TCP tunnel such as playit.gg pointed at local port 7777. It gives you a `host:port` address that players type into the Join Game screen. Close the tunnel when you're done.
 
-The protocol has no login, so anyone who knows the address can join while the port is open.
+**Security:** there is no login and no ban list, so anyone who knows the address can join while the port is open. Use `kick` to remove a player.
 
-## Running the client
+## Further reading
 
-```
-dotnet run --project EatMeClient
-```
-
-The client runs fullscreen at the desktop resolution. Settings (music volume, sound volume, controller type, pac shape) are saved to `settings.ini` next to the executable. F1 shows or hides a performance overlay (frame rate, update and draw times, memory, and in a game snapshot rate, traffic and ping).
-
+- [Specs.md](Specs.md): the game design and rules.
+- [EatMeClient/readme.txt](EatMeClient/readme.txt): player notes, controls and how to play.
+- [EatMeServer/readme.txt](EatMeServer/readme.txt): host notes shipped with the server.

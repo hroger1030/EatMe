@@ -111,7 +111,7 @@ namespace EatMeClient
         private Texture2D _WinRedTexture;
         private Texture2D _FlagTexture;
 
-        // the Triforce's force field, built from ForceField.GetAlpha (white, tinted gold when drawn)
+        // the Triangle Force's force field, built from ForceField.GetAlpha (white, tinted gold when drawn)
         private Texture2D _ForceFieldTexture;
         private const int FORCE_FIELD_TEXTURE_PIXELS = 96;
         private Texture2D _PacSheet;
@@ -230,7 +230,7 @@ namespace EatMeClient
         public void LoadContent()
         {
             _Font = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48);
-            _NameFont = AssetCache.GetFont(Const.FONT_ARIAL20);
+            _NameFont = AssetCache.GetFont(Const.FONT_LIBERATION_SANS20);
             _PhaseFont = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC96);
             _PlayerState = new PlayerState(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30),
                 AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48));
@@ -659,7 +659,7 @@ namespace EatMeClient
                 eGameEvent.GhostKilled => Const.SFX_EAT_GHOST,
                 eGameEvent.PowerUpEaten => Const.SFX_POWER_UP_EATEN,
                 eGameEvent.Blast => Const.SFX_POW,
-                eGameEvent.PokeBallCapture or eGameEvent.PokeBallRelease or eGameEvent.DecoyPopped => Const.SFX_BLOOP,
+                eGameEvent.MonsterBallCapture or eGameEvent.MonsterBallRelease or eGameEvent.DecoyPopped => Const.SFX_BLOOP,
                 eGameEvent.BfgBurst => Const.SFX_BFG_BURST,
                 _ => null,
             };
@@ -1127,7 +1127,7 @@ namespace EatMeClient
         /// The results screen between levels, over the winning team's picture (winblue or winred, scaled to cover the
         /// screen): the winning team at the top, then each team's score and its players ranked by score (blue on the
         /// left, red on the right), "Next Level in n" near the bottom and, under it at the bottom centre, a loading screen
-        /// tip in Arial and in quotes if the server sent any, drawn straight onto the picture. Each team's score and
+        /// tip in Liberation Sans and in quotes if the server sent any, drawn straight onto the picture. Each team's score and
         /// list sit on their own black panel, fitted tightly around them, so they can be read over the picture.
         /// </summary>
         private void DrawResults(SpriteBatch spriteBatch, Viewport viewport)
@@ -1277,7 +1277,7 @@ namespace EatMeClient
             var pac = ownPac.Value;
             var textY = barTop + (float)Math.Round((barHeight - _Font.LineSpacing) * 0.5f);
             var size = $"{Const.STRING_STATS}  {Const.STRING_SCORE} {pac.TotalScore}  ";
-            var stats = $"{Const.STRING_FLAGS} {pac.FlagCaps}  {Const.STRING_GHOSTS} {pac.GhostKills}  {Const.STRING_CHOMPS} {pac.PlayerKills}  {Const.STRING_RESCUES} {pac.Rescues}  {Const.STRING_POWER_UPS} {pac.PowerUps}";
+            var stats = $"{Const.STRING_FLAGS} {pac.FlagCaps}  {Const.STRING_GHOSTS} {pac.GhostKills}  {Const.STRING_CHOMPS} {pac.PlayerKills}  {Const.STRING_RESCUES} {pac.Rescues}";
 
             spriteBatch.DrawString(_Font, size + stats, new Vector2(HUD_MARGIN, textY), ClientColors.COLOR_PAC_WHITE);
 
@@ -1571,7 +1571,7 @@ namespace EatMeClient
 
         /// <summary>
         /// Flags nobody is carrying, one cell wide, in their team's color, at base or wherever they were dropped. A flag
-        /// sealed by a Force Field (triforce) has a pulsing gold bubble over it, ForceField.FIELD_CELLS wide.
+        /// sealed by a Force Field (triangle force) has a pulsing gold bubble over it, ForceField.FIELD_CELLS wide.
         /// </summary>
         private void DrawLooseFlags(SpriteBatch spriteBatch, Viewport viewport)
         {
@@ -1700,9 +1700,9 @@ namespace EatMeClient
                 if (pac.Stunned)
                     rotation += PowerUpEffects.GetStunSpinAngle(_AnimationTime);
 
-                // a Screw Attack pac spins very fast as it moves
-                if (pac.PowerUpEffect == ePowerUp.ScrewAttack)
-                    rotation += PowerUpEffects.GetScrewAngle(pac.X, pac.Y);
+                // a Rolling Thunder pac spins very fast as it moves
+                if (pac.PowerUpEffect == ePowerUp.RollingThunder)
+                    rotation += PowerUpEffects.GetRollingThunderAngle(pac.X, pac.Y);
 
                 // a Melon Roll pac spins while it rolls
                 if (pac.Rolling)

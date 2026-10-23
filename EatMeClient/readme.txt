@@ -82,3 +82,4 @@ soft_oal.dll
 CREDITS
 -------
 The UI font is JLS Space Gothic, freeware for non-commercial use only.
+Player names use Liberation Sans, under the SIL Open Font License 1.1.

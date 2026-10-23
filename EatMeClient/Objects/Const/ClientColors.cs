@@ -53,7 +53,7 @@ namespace EatMeClient
 
         public static readonly Color COLOR_GHOST_SCARED = new(33, 33, 222);
 
-        // Effects: the Triforce's force field over a sealed flag, and its blink on the mini map.
+        // Effects: the Triangle Force's force field over a sealed flag, and its blink on the mini map.
 
         public static readonly Color COLOR_FORCE_FIELD = new(255, 215, 0);
 
@@ -138,7 +138,7 @@ namespace EatMeClient
 
         /// <summary>
         /// A pac's tint at animationTime, the same on the board and the mini map: its color (GetPacColor), pulsing
-        /// to white with a power pill, blinking yellow while invincible, flashing white with Fire Flower or Screw Attack,
+        /// to white with a power pill, blinking yellow while invincible, flashing white with Sun Flower or Rolling Thunder,
         /// and blinking purple while it charges on its spawn.
         /// </summary>
         public static Color GetPacTint(PacState pac, bool isOwn, TimeSpan animationTime)

@@ -29,7 +29,7 @@ namespace EatMeLibrary
         public const string SFX_POW = "Audio/SoundFX_Pow";
         // A pac respawned at once thanks to a teammate's Reinforcements (only that player hears it, at full volume)
         public const string SFX_ANGELIC_CHORUS = "Audio/SoundFX_AngelicChorus";
-        // A poke ball caught a ghost, or the ghost got out
+        // A monster ball caught a ghost, or the ghost got out
         public const string SFX_BLOOP = "Audio/SoundFX_Bloop";
         // A BFG ball burst: sizzling, crackling electricity (an in-world sound)
         public const string SFX_BFG_BURST = "Audio/SoundFX_BfgBurst";

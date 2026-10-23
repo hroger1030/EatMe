@@ -861,6 +861,141 @@ namespace EatMeTests
                 Assert.That(Choose(MakeWorld(corridor, [carrier], flags: flags), carrier, random, 100), Is.EqualTo(eFacing.Left));
         }
 
+        private static readonly string[] LONG_CORRIDOR =
+        [
+            "##########################################",
+            "#........................................#",
+            "##########################################",
+        ];
+
+        /// <summary>
+        /// A red carrier on (x, 1) of LONG_CORRIDOR with its base at (1, 1) and its own flag at (flagX, 1), carried by
+        /// an enemy there if carried.
+        /// </summary>
+        private static (BotWorld World, Player Me, GameFlag Flag) MakeCarrierWorld(int x, int flagX, bool carried, int teamSize)
+        {
+            var map = MakeMap(LONG_CORRIDOR);
+            var me = MakePac(1, eTeam.Red, x, 1);
+            me.HasFlag = true;
+            var flag = new GameFlag(1, eTeam.Red, 1.5f, 1.5f) { X = flagX + 0.5f, Y = 1.5f };
+            var pacs = new List<Player> { me };
+
+            if (carried)
+            {
+                var enemy = MakePac(4, eTeam.Blue, flagX, 1);
+                enemy.HasFlag = true;
+                flag.CarrierId = enemy.Id;
+                pacs.Add(enemy);
+            }
+
+            var world = MakeWorld(map, pacs, flags: [flag]);
+            world.RedTeamSize = teamSize;
+            return (world, me, flag);
+        }
+
+        [Test]
+        public void Carrier_OwnFlagAway_PatrolsNearBase()
+        {
+            var (world, me, _) = MakeCarrierWorld(3, 35, true, 8);
+            var paths = Fill(world.Map, me);
+            var basePaths = world.FlagBasePaths[(1, 1)];
+            var targets = new HashSet<(int X, int Y)>();
+
+            for (var i = 0; i < 50; i++)
+            {
+                var goal = PacBrain.PickGoal(world, me, 3, 1, paths, out var target, new BotMemory(), new Random(i));
+
+                Assert.That(goal, Is.EqualTo(eBotGoal.Patrol));
+                Assert.That(target, Is.Not.EqualTo((3, 1)));
+                Assert.That(basePaths.GetDistance(target.Value.X, target.Value.Y), Is.InRange(0, PacBrain.PATROL_DISTANCE));
+                targets.Add(target.Value);
+            }
+
+            Assert.That(targets, Has.Count.GreaterThan(1), "doesn't just sit on the base");
+        }
+
+        [Test]
+        public void Carrier_KeepsItsPatrolCellUntilItGetsThere()
+        {
+            var (world, me, _) = MakeCarrierWorld(3, 35, true, 8);
+            var paths = Fill(world.Map, me);
+            var memory = new BotMemory();
+
+            PacBrain.PickGoal(world, me, 3, 1, paths, out var first, memory, new Random(1));
+
+            Assert.That(memory.PatrolCell, Is.EqualTo(first));
+            Assert.That(PacBrain.FindGoalTarget(world, me, 3, 1, paths, eBotGoal.Patrol, memory, new Random(2)), Is.EqualTo(first));
+
+            var (fx, fy) = first.Value;
+            me.Location = new Point2(fx + 0.5f, fy + 0.5f);
+            var there = Fill(world.Map, me);
+
+            Assert.That(PacBrain.FindGoalTarget(world, me, fx, fy, there, eBotGoal.Patrol, memory, new Random(2)), Is.Not.EqualTo(first), "picks another once there");
+        }
+
+        [Test]
+        public void Carrier_FarFromHome_HeadsForBaseFirst()
+        {
+            var (world, me, _) = MakeCarrierWorld(20, 38, true, 8);
+            var paths = Fill(world.Map, me);
+
+            Assert.That(PacBrain.PickGoal(world, me, 20, 1, paths, out var target, new BotMemory(), new Random(1)), Is.EqualTo(eBotGoal.Patrol));
+            Assert.That(target, Is.EqualTo((1, 1)));
+        }
+
+        [Test]
+        public void Carrier_StopsPatrolling_WhenItsFlagIsHome()
+        {
+            var (world, me, flag) = MakeCarrierWorld(3, 35, false, 8);
+            var paths = Fill(world.Map, me);
+
+            Assert.That(PacBrain.InterruptsGoal(world, me, 3, 1, paths, eBotGoal.Patrol), Is.False);
+
+            flag.ReturnToBase();
+
+            Assert.That(PacBrain.InterruptsGoal(world, me, 3, 1, paths, eBotGoal.Patrol), Is.True);
+            Assert.That(PacBrain.PickGoal(world, me, 3, 1, paths, out var target, new BotMemory(), new Random(1)), Is.EqualTo(eBotGoal.CarryHome));
+            Assert.That(target, Is.EqualTo((1, 1)));
+        }
+
+        [Test]
+        public void Carrier_ChasesTheEnemyCarrier_OnlyOnASmallTeam()
+        {
+            var (small, smallMe, _) = MakeCarrierWorld(3, 12, true, PacBrain.SMALL_TEAM_SIZE);
+
+            Assert.That(PacBrain.PickGoal(small, smallMe, 3, 1, Fill(small.Map, smallMe), out var target, new BotMemory(), new Random(1)), Is.EqualTo(eBotGoal.CarryHome));
+            Assert.That(target, Is.EqualTo((12, 1)));
+
+            var (big, bigMe, _) = MakeCarrierWorld(3, 12, true, PacBrain.SMALL_TEAM_SIZE + 1);
+
+            Assert.That(PacBrain.PickGoal(big, bigMe, 3, 1, Fill(big.Map, bigMe), out _, new BotMemory(), new Random(1)), Is.EqualTo(eBotGoal.Patrol));
+        }
+
+        [Test]
+        public void Carrier_GrabsItsLooseFlag_WhateverTheTeamSize()
+        {
+            var (world, me, _) = MakeCarrierWorld(3, 12, false, 8);
+
+            Assert.That(PacBrain.PickGoal(world, me, 3, 1, Fill(world.Map, me), out var target, new BotMemory(), new Random(1)), Is.EqualTo(eBotGoal.CarryHome));
+            Assert.That(target, Is.EqualTo((12, 1)));
+        }
+
+        [Test]
+        public void PickPatrolCell_StaysInRangeAndOffTheBot()
+        {
+            var map = MakeMap(LONG_CORRIDOR);
+            var basePaths = new PathMap();
+            basePaths.Fill(map, 1, 1);
+
+            for (var i = 0; i < 100; i++)
+            {
+                var cell = PacBrain.PickPatrolCell(basePaths, 2, 1, new Random(i));
+
+                Assert.That(cell, Is.Not.Null.And.Not.EqualTo((2, 1)));
+                Assert.That(basePaths.GetDistance(cell.Value.X, cell.Value.Y), Is.InRange(0, PacBrain.PATROL_DISTANCE));
+            }
+        }
+
         private static PathMap Fill(eGridDef[,] map, Player me)
         {
             var paths = new PathMap();

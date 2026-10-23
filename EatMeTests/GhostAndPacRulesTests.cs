@@ -153,7 +153,7 @@ namespace EatMeTests
         [Test]
         public void GetEffectSpeedScale_WarpSpeedIsFaster()
         {
-            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.Galaxian), Is.EqualTo(PacRules.WARP_SPEED_SCALE));
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.Solarian), Is.EqualTo(PacRules.WARP_SPEED_SCALE));
             Assert.That(PacRules.WARP_SPEED_SCALE, Is.GreaterThan(1f));
             Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.Cherry), Is.EqualTo(1f), "Cherry Twin doesn't change speed");
             Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.PowerPill), Is.EqualTo(1f));

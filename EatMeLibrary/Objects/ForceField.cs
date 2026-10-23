@@ -3,7 +3,7 @@ using System;
 namespace EatMeLibrary
 {
     /// <summary>
-    /// How the client draws the Triforce's force field over a sealed flag (GameFlag.IsSealed): a gold bubble with a
+    /// How the client draws the Triangle Force's force field over a sealed flag (GameFlag.IsSealed): a gold bubble with a
     /// bright rim, pulsing, FIELD_CELLS wide; on the mini map the flag's triangle blinks gold.
     /// </summary>
     public static class ForceField

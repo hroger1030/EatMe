@@ -47,12 +47,12 @@
 /processorParam:TextureFormat=Compressed
 /build:Fonts/JLSSpaceGothic96.spritefont
 
-#begin Fonts/Arial20.spritefont
+#begin Fonts/LiberationSans20.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
-/build:Fonts/Arial20.spritefont
+/build:Fonts/LiberationSans20.spritefont
 
 #begin Music/TitleTheme.mp3
 /importer:Mp3Importer

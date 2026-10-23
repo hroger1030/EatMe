@@ -99,7 +99,7 @@ namespace EatMeClient
 
         public static void LoadFonts()
         {
-            var fontList = new List<string> { Const.FONT_JLSSPACEGOTHIC30, Const.FONT_JLSSPACEGOTHIC36, Const.FONT_JLSSPACEGOTHIC48, Const.FONT_JLSSPACEGOTHIC60, Const.FONT_JLSSPACEGOTHIC96, Const.FONT_ARIAL20 };
+            var fontList = new List<string> { Const.FONT_JLSSPACEGOTHIC30, Const.FONT_JLSSPACEGOTHIC36, Const.FONT_JLSSPACEGOTHIC48, Const.FONT_JLSSPACEGOTHIC60, Const.FONT_JLSSPACEGOTHIC96, Const.FONT_LIBERATION_SANS20 };
 
             foreach (var name in fontList)
             {

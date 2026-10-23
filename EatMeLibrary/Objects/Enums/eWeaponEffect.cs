@@ -19,26 +19,26 @@ namespace EatMeLibrary
         /// <summary>Holy water's blue flames.</summary>
         HolyFlame,
 
-        /// <summary>Blue shell, flying.</summary>
-        BlueShell,
+        /// <summary>Cobalt shell, flying.</summary>
+        CobaltShell,
 
         /// <summary>Tetromino's block, a wall for a while.</summary>
         TetrisBlock,
 
-        /// <summary>Poke ball.</summary>
-        PokeBall,
+        /// <summary>Monster ball.</summary>
+        MonsterBall,
 
         /// <summary>Hammer, upright then swung a quarter turn.</summary>
         Hammer,
 
-        /// <summary>Fire flower's fireball.</summary>
+        /// <summary>Sun flower's fireball.</summary>
         Fireball,
 
         /// <summary>Spread gun's shot.</summary>
         SpreadShot,
 
-        /// <summary>Bomb, upright, its fuse burning.</summary>
-        Bomb,
+        /// <summary>Stun Bomb, upright, its fuse burning.</summary>
+        StunBomb,
 
         /// <summary>Cherry Twin's decoy twin, drawn as a copy of its owner's pac.</summary>
         Decoy,

@@ -15,7 +15,7 @@ namespace EatMeTests
             Assert.That(PowerUpSprites.GetCellIndex(ePowerUp.Cherry), Is.EqualTo(0));
             Assert.That(PowerUpSprites.GetCellIndex(ePowerUp.Key), Is.EqualTo(7));
             Assert.That(PowerUpSprites.GetCellIndex(ePowerUp.Pretzel), Is.EqualTo(8));
-            Assert.That(PowerUpSprites.GetCellIndex(ePowerUp.PokeBall), Is.EqualTo(31));
+            Assert.That(PowerUpSprites.GetCellIndex(ePowerUp.MonsterBall), Is.EqualTo(31));
         }
 
         [Test]
@@ -37,8 +37,8 @@ namespace EatMeTests
             Assert.That(PowerUpSprites.GetCellY(ePowerUp.Key), Is.EqualTo(0));
             Assert.That(PowerUpSprites.GetCellX(ePowerUp.Pretzel), Is.EqualTo(0));
             Assert.That(PowerUpSprites.GetCellY(ePowerUp.Pretzel), Is.EqualTo(60));
-            Assert.That(PowerUpSprites.GetCellX(ePowerUp.PokeBall), Is.EqualTo(420));
-            Assert.That(PowerUpSprites.GetCellY(ePowerUp.PokeBall), Is.EqualTo(180));
+            Assert.That(PowerUpSprites.GetCellX(ePowerUp.MonsterBall), Is.EqualTo(420));
+            Assert.That(PowerUpSprites.GetCellY(ePowerUp.MonsterBall), Is.EqualTo(180));
         }
 
         [Test]

@@ -29,7 +29,7 @@ namespace EatMeLibrary
         public const float MAX_SIZE_SPEED_BONUS = 0.2f;
 
         /// <summary>
-        /// A pac with Warp Speed (galaxian) moves this many times as fast.
+        /// A pac with Warp Speed (solarian) moves this many times as fast.
         /// </summary>
         public const float WARP_SPEED_SCALE = 1.5f;
 
@@ -171,7 +171,7 @@ namespace EatMeLibrary
         {
             return effect switch
             {
-                ePowerUp.Galaxian => WARP_SPEED_SCALE,
+                ePowerUp.Solarian => WARP_SPEED_SCALE,
                 ePowerUp.Starman => INVINCIBLE_SPEED_SCALE,
                 ePowerUp.EnergyTank => ENERGY_TANK_SPEED_SCALE,
                 _ => 1f,

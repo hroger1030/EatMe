@@ -54,9 +54,9 @@ namespace EatMeClient
         private const int STAR_PAC_GAP = 128;
 
         /// <summary>
-        /// Space between the castle and the bottom of the screen, in pixels.
+        /// Share of the biggest size that fits the castle is drawn at.
         /// </summary>
-        private const int CASTLE_BOTTOM_GAP_PIXELS = 24;
+        private const float CASTLE_SCALE = 0.5f;
 
         private readonly Action _OnDone;
         private SpriteFont _TitleFont;
@@ -137,22 +137,22 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// The castle at the bottom of the left half, centred, as big as fits between the story and
-        /// CASTLE_BOTTOM_GAP_PIXELS above the bottom of the screen and within the story's margins.
+        /// The castle under the story in the left half, CASTLE_SCALE of the biggest size that fits between the story
+        /// and the bottom of the screen within the story's margins, centred in that space both ways.
         /// </summary>
         private void DrawCastle(SpriteBatch spriteBatch, Viewport viewport, float storyBottom)
         {
             var margin = viewport.Width * STORY_MARGIN_RATIO;
             var maxWidth = viewport.Width / 2f - margin * 2f;
-            var maxHeight = viewport.Height - CASTLE_BOTTOM_GAP_PIXELS - storyBottom;
+            var maxHeight = viewport.Height - storyBottom;
 
             if (maxWidth <= 0f || maxHeight <= 0f)
                 return;
 
-            var scale = Math.Min(maxWidth / _Castle.Width, maxHeight / _Castle.Height);
+            var scale = Math.Min(maxWidth / _Castle.Width, maxHeight / _Castle.Height) * CASTLE_SCALE;
             var width = (int)(_Castle.Width * scale);
             var height = (int)(_Castle.Height * scale);
-            var picture = new Rectangle((int)((viewport.Width / 2f - width) / 2f), viewport.Height - CASTLE_BOTTOM_GAP_PIXELS - height, width, height);
+            var picture = new Rectangle((int)((viewport.Width / 2f - width) / 2f), (int)(storyBottom + (maxHeight - height) / 2f), width, height);
 
             spriteBatch.Draw(_Castle, picture, Color.White);
         }

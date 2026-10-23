@@ -96,7 +96,7 @@ namespace EatMeServer
         private GameConfiguration _LevelConfig;
 
         /// <summary>
-        /// Swords, fireballs, holy flames, blue shells, poke balls, banana peels, Tetromino blocks, hammers, BFG balls and
+        /// Swords, fireballs, holy flames, cobalt shells, monster balls, banana peels, Tetromino blocks, hammers, BFG balls and
         /// spread shots in the maze (UpdateWeaponEffects).
         /// </summary>
         private readonly List<WeaponEffect> _WeaponEffects = [];
@@ -117,7 +117,7 @@ namespace EatMeServer
         private readonly HashSet<(int X, int Y)> _Occupied = [];
 
         /// <summary>
-        /// Scratch path map for the seekers (blue shell, poke ball), reused between ticks.
+        /// Scratch path map for the seekers (cobalt shell, monster ball), reused between ticks.
         /// </summary>
         private readonly PathMap _SeekerPaths = new();
 
@@ -762,7 +762,12 @@ namespace EatMeServer
 
             CollectLiving();
             CollectBotPacs();
-            var world = new BotWorld { Map = Map, MaxSize = config.PacMaxSize, PerceptionSeed = _LevelSeed, Pacs = _BotPacs, Ghosts = _Ghosts, Flags = _Flags, PowerUps = _PowerUps, WeaponEffects = _WeaponEffects };
+            CountTeams(out var redCount, out var blueCount, out _, out _);
+            var world = new BotWorld
+            {
+                Map = Map, MaxSize = config.PacMaxSize, PerceptionSeed = _LevelSeed, Pacs = _BotPacs, Ghosts = _Ghosts, Flags = _Flags, PowerUps = _PowerUps,
+                WeaponEffects = _WeaponEffects, RedTeamSize = redCount, BlueTeamSize = blueCount
+            };
 
             foreach (var serverPlayer in _Players.Values)
             {
@@ -1050,7 +1055,7 @@ namespace EatMeServer
                 var cell = Map[x, y];
                 var maxSize = PowerUpEffects.GetMaxSize(player.PowerUpEffect, config.PacMaxSize);
 
-                // Screw Attack can't eat, and nothing is eaten inside a wall (a Tetromino block dropped on a dot)
+                // Rolling Thunder can't eat, and nothing is eaten inside a wall (a Tetromino block dropped on a dot)
                 if (!PowerUpEffects.CanEat(player.PowerUpEffect) || cell.HasFlag(eGridDef.Wall))
                     cell &= ~(eGridDef.Food | eGridDef.PowerPill);
 
@@ -1230,7 +1235,7 @@ namespace EatMeServer
         /// <summary>
         /// Enemy pacs that touch: the bigger one eats the smaller (PlayerKill points), and equal sizes bounce
         /// off each other. An invincible pac (Player.IsInvincible) eats any enemy whatever its size, and two
-        /// invincible pacs bounce. Any other pac that kills on contact (Player.KillsOnContact: Screw Attack, Super Size)
+        /// invincible pacs bounce. Any other pac that kills on contact (Player.KillsOnContact: Rolling Thunder, Super Size)
         /// eats any enemy that isn't invincible, and two of them bounce.
         /// Friendly pacs pass through each other.
         /// </summary>
@@ -1279,7 +1284,7 @@ namespace EatMeServer
 
         /// <summary>
         /// What decides a fight before size does: 2 for an invincible pac, 1 for any other pac that kills on contact
-        /// (Screw Attack, Super Size), 0 for anything else.
+        /// (Rolling Thunder, Super Size), 0 for anything else.
         /// </summary>
         private static int GetContactRank(Player pac)
         {
@@ -1477,7 +1482,7 @@ namespace EatMeServer
             {
                 if (!ghost.Alive)
                 {
-                    // a ghost held in a poke ball waits there until something lets it out
+                    // a ghost held in a monster ball waits there until something lets it out
                     if (ghost.IsCaptured)
                         continue;
 
@@ -1775,7 +1780,7 @@ namespace EatMeServer
                 if (!player.Alive || player.PassesThrough || !PacRules.IsTouchingGhost(player.Location, player.Size, ghost.Location, ghostRadius))
                     continue;
 
-                // a pac that kills on contact (Invincible, Screw Attack, Super Size) kills any ghost it touches and can't be killed by one
+                // a pac that kills on contact (Invincible, Rolling Thunder, Super Size) kills any ghost it touches and can't be killed by one
                 if (player.KillsOnContact || PacRules.CanKillGhost(player.Size, player.IsPowered, config.PacMaxSize))
                 {
                     KillGhost(ghost, player);
@@ -1943,9 +1948,9 @@ namespace EatMeServer
         ///   or ghost they touch dies, and the shot is gone.
         /// - Holy flames go down in each cell a pac with Holy Fire leaves, and kill any pac or ghost that touches them
         ///   (the pac that laid them too, once it has moved off). They all go when its Holy Fire ends or it dies.
-        /// - A blue shell follows the maze to the enemy flag carrier, or else the enemy with the highest score, and
+        /// - A cobalt shell follows the maze to the enemy flag carrier, or else the enemy with the highest score, and
         ///   kills it on contact; it ignores everything else and is gone once it hits or there is no enemy alive.
-        /// - A poke ball (thrown by a pac with Gotcha) follows the maze to the nearest ghost (wandering the corridors
+        /// - A monster ball (thrown by a pac with Gotcha) follows the maze to the nearest ghost (wandering the corridors
         ///   when there is none) and catches the first ghost it touches, then sits still holding it; when any pac or
         ///   ghost touches it the ghost comes back out there and the ball is gone. A ball still flying goes when its
         ///   pac's Gotcha isn't active any more; one holding a ghost stays.
@@ -1990,14 +1995,14 @@ namespace EatMeServer
                 {
                     eWeaponEffect.Sword or eWeaponEffect.Fireball => UpdateShot(effect, elapsed),
                     eWeaponEffect.HolyFlame => UpdateHolyFlame(effect),
-                    eWeaponEffect.BlueShell => UpdateBlueShell(effect, elapsed),
-                    eWeaponEffect.PokeBall => UpdatePokeBall(effect, elapsed),
+                    eWeaponEffect.CobaltShell => UpdateCobaltShell(effect, elapsed),
+                    eWeaponEffect.MonsterBall => UpdateMonsterBall(effect, elapsed),
                     eWeaponEffect.BananaPeel => UpdateBananaPeel(effect),
                     eWeaponEffect.TetrisBlock => true,
                     eWeaponEffect.Hammer => UpdateHammer(effect),
                     eWeaponEffect.BfgShot => UpdateBfgShot(effect, elapsed),
                     eWeaponEffect.SpreadShot => UpdateSpreadShot(effect, elapsed),
-                    eWeaponEffect.Bomb => UpdateBomb(effect, elapsed),
+                    eWeaponEffect.StunBomb => UpdateBomb(effect, elapsed),
                     eWeaponEffect.Decoy => UpdateDecoy(effect, elapsed),
                     _ => false,
                 };
@@ -2035,7 +2040,7 @@ namespace EatMeServer
                 var effect = _WeaponEffects[i];
 
                 if (effect.Kind != eWeaponEffect.TetrisBlock
-                    || (FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.Tetromino)))
+                    || (FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.Skyblock)))
                     continue;
 
                 var (x, y) = MazeMovement.GetCell(effect.Location);
@@ -2062,7 +2067,7 @@ namespace EatMeServer
             {
                 var player = serverPlayer.Player;
 
-                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.Tetromino))
+                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.Skyblock))
                 {
                     player.BlockDropCell = null;
                     continue;
@@ -2108,7 +2113,7 @@ namespace EatMeServer
         private void UpdateHammers()
         {
             _WeaponEffects.RemoveAll(effect => effect.Kind == eWeaponEffect.Hammer
-                && !(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.Hammer)));
+                && !(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.HammerTime)));
 
             var width = Map.GetLength(0);
             var height = Map.GetLength(1);
@@ -2117,7 +2122,7 @@ namespace EatMeServer
             {
                 var player = serverPlayer.Player;
 
-                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.Hammer))
+                if (!PowerUpEffects.HasActiveEffect(player, ePowerUp.HammerTime))
                     continue;
 
                 var facing = MazeMovement.ToFacing(serverPlayer.Input) ?? player.Facing;
@@ -2502,9 +2507,9 @@ namespace EatMeServer
             MazeMovement.Move(Map, effect, wanted, distance, canWarp: true, blocked: eGridDef.Wall);
         }
 
-        private bool UpdateBlueShell(WeaponEffect effect, TimeSpan elapsed)
+        private bool UpdateCobaltShell(WeaponEffect effect, TimeSpan elapsed)
         {
-            var target = WeaponRules.PickBlueShellTarget(effect.Team, _Living);
+            var target = WeaponRules.PickCobaltShellTarget(effect.Team, _Living);
 
             if (target == null)
                 return false;
@@ -2522,7 +2527,7 @@ namespace EatMeServer
             return false;
         }
 
-        private bool UpdatePokeBall(WeaponEffect effect, TimeSpan elapsed)
+        private bool UpdateMonsterBall(WeaponEffect effect, TimeSpan elapsed)
         {
             var ghostRadius = PacRules.GHOST_RADIUS;
 
@@ -2530,7 +2535,7 @@ namespace EatMeServer
                 return !TryReleaseGhost(effect, ghostRadius);
 
             // a ball still flying goes when its pac's Gotcha isn't active any more (ran out, replaced, died or left)
-            if (!(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.PokeBall)))
+            if (!(FindPlayer(effect.OwnerId) is { } owner && PowerUpEffects.HasActiveEffect(owner, ePowerUp.MonsterBall)))
                 return false;
 
             if (TryCatchGhost(effect, ghostRadius))
@@ -2556,7 +2561,7 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// A flying poke ball catches the first living ghost it touches: the ghost is gone (not counting down to
+        /// A flying monster ball catches the first living ghost it touches: the ghost is gone (not counting down to
         /// respawn) and the ball sits still on its cell holding it.
         /// </summary>
         private bool TryCatchGhost(WeaponEffect effect, float ghostRadius)
@@ -2574,8 +2579,8 @@ namespace EatMeServer
                 var (x, y) = MazeMovement.GetCell(effect.Location);
                 effect.Location = new Point2(x + CELL_CENTER, y + CELL_CENTER);
 
-                Broadcast(new GameEventMessage { EventType = eGameEvent.PokeBallCapture, ActorId = effect.OwnerId, TargetId = ghost.Id, X = effect.Location.X, Y = effect.Location.Y });
-                ServerLog.Write(eLogType.PowerUp, $"A poke ball caught {ghost.Name}");
+                Broadcast(new GameEventMessage { EventType = eGameEvent.MonsterBallCapture, ActorId = effect.OwnerId, TargetId = ghost.Id, X = effect.Location.X, Y = effect.Location.Y });
+                ServerLog.Write(eLogType.PowerUp, $"A monster ball caught {ghost.Name}");
                 return true;
             }
 
@@ -2583,7 +2588,7 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// A poke ball holding a ghost lets it out where the ball is as soon as any living pac or ghost touches it.
+        /// A monster ball holding a ghost lets it out where the ball is as soon as any living pac or ghost touches it.
         /// </summary>
         private bool TryReleaseGhost(WeaponEffect effect, float ghostRadius)
         {
@@ -2608,8 +2613,8 @@ namespace EatMeServer
                 ghost.Location = effect.Location;
                 ghost.StunMs = 0;
                 ghost.CurrentTarget = null;
-                Broadcast(new GameEventMessage { EventType = eGameEvent.PokeBallRelease, ActorId = effect.OwnerId, TargetId = ghost.Id, X = effect.Location.X, Y = effect.Location.Y });
-                ServerLog.Write(eLogType.PowerUp, $"{ghost.Name} got out of a poke ball");
+                Broadcast(new GameEventMessage { EventType = eGameEvent.MonsterBallRelease, ActorId = effect.OwnerId, TargetId = ghost.Id, X = effect.Location.X, Y = effect.Location.Y });
+                ServerLog.Write(eLogType.PowerUp, $"{ghost.Name} got out of a monster ball");
             }
 
             return true;
@@ -2638,8 +2643,8 @@ namespace EatMeServer
                     }
                     break;
 
-                // Fire Flower: a fireball the way the pac faces, as many in flight as you like
-                case ePowerUp.FireFlower:
+                // Sun Flower: a fireball the way the pac faces, as many in flight as you like
+                case ePowerUp.SunFlower:
                     AddWeaponEffect(eWeaponEffect.Fireball, player, player.Location, player.Facing);
                     acted = true;
                     break;
@@ -2656,12 +2661,12 @@ namespace EatMeServer
                     acted = DropBananaPeel(player);
                     break;
 
-                case ePowerUp.Bomb:
+                case ePowerUp.StunBomb:
                     acted = DropBomb(player);
                     break;
 
-                case ePowerUp.BlueShell:
-                    acted = FireBlueShell(player);
+                case ePowerUp.CobaltShell:
+                    acted = FireCobaltShell(player);
                     break;
 
                 // BFG 9000: a slow ball the way the pac faces
@@ -2680,9 +2685,9 @@ namespace EatMeServer
                     acted = StartMelonRoll(player);
                     break;
 
-                // Gotcha: a poke ball that seeks the nearest ghost, as many in flight as you like
-                case ePowerUp.PokeBall:
-                    AddWeaponEffect(eWeaponEffect.PokeBall, player, player.Location, player.Facing);
+                // Gotcha: a monster ball that seeks the nearest ghost, as many in flight as you like
+                case ePowerUp.MonsterBall:
+                    AddWeaponEffect(eWeaponEffect.MonsterBall, player, player.Location, player.Facing);
                     acted = true;
                     break;
 
@@ -2831,7 +2836,7 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Bomb: drops the pac's one bomb on the centre of its cell, lit to go off in WeaponRules.BOMB_FUSE_MS. Returns
+        /// Stun Bomb: drops the pac's one bomb on the centre of its cell, lit to go off in WeaponRules.BOMB_FUSE_MS. Returns
         /// false if the pac has dropped it already.
         /// </summary>
         public bool DropBomb(Player player)
@@ -2840,23 +2845,23 @@ namespace EatMeServer
                 return false;
 
             var (x, y) = MazeMovement.GetCell(player.Location);
-            var bomb = AddWeaponEffect(eWeaponEffect.Bomb, player, new Point2(x + CELL_CENTER, y + CELL_CENTER), player.Facing);
+            var bomb = AddWeaponEffect(eWeaponEffect.StunBomb, player, new Point2(x + CELL_CENTER, y + CELL_CENTER), player.Facing);
             bomb.FuseMs = WeaponRules.BOMB_FUSE_MS;
             player.BombDropped = true;
             return true;
         }
 
         /// <summary>
-        /// Blue Shell: fires the pac's one shell, which seeks the enemy flag carrier or else the enemy with the highest
-        /// score (WeaponRules.PickBlueShellTarget). Returns false if the pac has fired it already.
+        /// Cobalt Shell: fires the pac's one shell, which seeks the enemy flag carrier or else the enemy with the highest
+        /// score (WeaponRules.PickCobaltShellTarget). Returns false if the pac has fired it already.
         /// </summary>
-        public bool FireBlueShell(Player player)
+        public bool FireCobaltShell(Player player)
         {
-            if (player.BlueShellFired)
+            if (player.CobaltShellFired)
                 return false;
 
-            AddWeaponEffect(eWeaponEffect.BlueShell, player, player.Location, player.Facing);
-            player.BlueShellFired = true;
+            AddWeaponEffect(eWeaponEffect.CobaltShell, player, player.Location, player.Facing);
+            player.CobaltShellFired = true;
             return true;
         }
 
@@ -2870,18 +2875,18 @@ namespace EatMeServer
 
             switch (item)
             {
-                // Bomb: one bomb to drop with the action button, a new one with every Bomb eaten
-                case ePowerUp.Bomb:
+                // Stun Bomb: one bomb to drop with the action button, a new one with every Stun Bomb eaten
+                case ePowerUp.StunBomb:
                     player.BombDropped = false;
                     break;
 
-                // Blue Shell: one shell to fire with the action button, a new one with every Blue Shell eaten
-                case ePowerUp.BlueShell:
-                    player.BlueShellFired = false;
+                // Cobalt Shell: one shell to fire with the action button, a new one with every Cobalt Shell eaten
+                case ePowerUp.CobaltShell:
+                    player.CobaltShellFired = false;
                     break;
 
                 // Force Field: the team's flags come home (rescues), then stay sealed while it works
-                case ePowerUp.Triforce:
+                case ePowerUp.Triangleforce:
                     RecallFlags(player);
                     SealFlags();
                     break;
@@ -3144,7 +3149,7 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Seals every flag whose team has a living pac with Force Field (triforce) working, and unseals the rest.
+        /// Seals every flag whose team has a living pac with Force Field (triangle force) working, and unseals the rest.
         /// </summary>
         public void SealFlags()
         {
@@ -3166,7 +3171,7 @@ namespace EatMeServer
         }
 
         /// <summary>
-        /// Force Field (triforce): every flag of the pac's team away from its base goes home, taken off any enemy carrying
+        /// Force Field (triangle force): every flag of the pac's team away from its base goes home, taken off any enemy carrying
         /// it, each one a rescue for the pac (FlagRescue points and a FlagReturned event).
         /// </summary>
         public void RecallFlags(Player player)

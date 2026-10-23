@@ -112,7 +112,7 @@ namespace EatMeClient
             {
                 var (x, y) = GetFlagPosition(flag, snapshot.Pacs);
 
-                // a flag sealed in a force field (triforce) blinks gold
+                // a flag sealed in a force field (triangle force) blinks gold
                 var color = flag.IsSealed && ForceField.IsMiniMapGold(animationTime) ? ClientColors.COLOR_FORCE_FIELD : ClientColors.GetFlagColor(flag.Team, animationTime);
                 DrawIcon(spriteBatch, _icons, eMiniMapIcon.Flag, inner, mapSize, x, y, color);
             }
