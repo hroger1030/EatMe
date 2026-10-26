@@ -291,6 +291,7 @@ namespace EatMeServer
                 serverPlayer.Player.Score = 0;
                 serverPlayer.Memory.Reset();
                 Respawn(serverPlayer.Player);
+                HoldForInput(serverPlayer);
             }
 
             Broadcast(BuildLevelStart());
@@ -605,6 +606,7 @@ namespace EatMeServer
                 if (player.Team == eTeam.Red ? redReinforced : blueReinforced)
                 {
                     Respawn(player);
+                    HoldForInput(serverPlayer);
 
                     if (serverPlayer.Connection != null)
                         Send(serverPlayer.Connection, new GameEventMessage { EventType = eGameEvent.AngelicRespawn, TargetId = player.Id, X = player.Location.X, Y = player.Location.Y, Team = player.Team });
@@ -613,8 +615,40 @@ namespace EatMeServer
                 }
 
                 if (player.RespawnTimer <= 0 && !(player.Team == eTeam.Red ? redLocked : blueLocked))
+                {
                     Respawn(player);
+                    HoldForInput(serverPlayer);
+                }
             }
+        }
+
+        /// <summary>
+        /// Keeps a human's freshly spawned pac still until a direction is held or pressed (MovePacs). A turn buffered
+        /// before it spawned is dropped, so only a direction held now or pressed from now on starts it. Bots never wait.
+        /// </summary>
+        public static void HoldForInput(ServerPlayer serverPlayer)
+        {
+            serverPlayer.AwaitingInput = !serverPlayer.IsBot;
+            serverPlayer.BufferedTurn = null;
+            serverPlayer.BufferedTurnMs = 0;
+            serverPlayer.HasNewTurnRequest = false;
+            serverPlayer.StraightDistance = 0f;
+        }
+
+        /// <summary>
+        /// True while a pac held by HoldForInput still waits: no direction held and none buffered. Clears the wait once
+        /// there is one.
+        /// </summary>
+        public static bool IsAwaitingInput(ServerPlayer serverPlayer)
+        {
+            if (!serverPlayer.AwaitingInput)
+                return false;
+
+            if (MazeMovement.ToFacing(serverPlayer.Input) == null && !serverPlayer.BufferedTurn.HasValue)
+                return true;
+
+            serverPlayer.AwaitingInput = false;
+            return false;
         }
 
         /// <summary>
@@ -856,7 +890,8 @@ namespace EatMeServer
 
                     serverPlayer.HasNewTurnRequest = false;
                 }
-                else
+                // a freshly spawned human's pac stays put until a direction is held or pressed
+                else if (!IsAwaitingInput(serverPlayer))
                     MovePac(serverPlayer, speed, distance, blocked, elapsed);
 
                 if (pac.HasFlag && IsSpawnCell(MazeMovement.GetCell(pac.Location)))
@@ -1960,7 +1995,7 @@ namespace EatMeServer
         ///   Drop isn't active; then the cells open again.
         /// - A pac with Hammer Time has a hammer one cell ahead (the way it is pressing, else the way it faces) that kills
         ///   any enemy pac or ghost it touches (not the invincible) and smashes the wall it is in (never the outer wall).
-        /// - A BFG ball flies straight on at GhostSpeed until it touches a pac (the owner once clear) or ghost, or a wall
+        /// - A BFG ball flies straight on at WeaponRules.BFG_SPEED_SCALE times GhostSpeed until it touches a pac (the owner once clear) or ghost, or a wall
         ///   stops it; then it bursts, killing every pac (the owner too) and ghost within PowerUpEffects.EFFECT_RADIUS
         ///   that isn't invincible.
         /// - A pac with Spread Shot fires a shot each way every WeaponRules.SPREAD_SHOT_INTERVAL_MS; a shot flies straight
@@ -2358,9 +2393,9 @@ namespace EatMeServer
 
         private float GetWeaponDistance(WeaponEffect effect, TimeSpan elapsed)
         {
-            // the BFG ball is as slow as a ghost
+            // the BFG ball goes by ghost speed
             if (effect.Kind == eWeaponEffect.BfgShot)
-                return _Settings.GameConfig.GhostSpeed * (float)elapsed.TotalSeconds;
+                return _Settings.GameConfig.GhostSpeed * WeaponRules.BFG_SPEED_SCALE * (float)elapsed.TotalSeconds;
 
             return _Settings.GameConfig.PacSpeed * WeaponRules.GetSpeedScale(effect.Kind) * (float)elapsed.TotalSeconds;
         }

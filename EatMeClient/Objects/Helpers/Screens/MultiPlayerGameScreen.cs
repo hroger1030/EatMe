@@ -22,8 +22,11 @@ namespace EatMeClient
         /// <summary>
         /// The power pill's cell on the power up sheet, used for the map's power pills too (tinted the dot color).
         /// </summary>
-        private static readonly Rectangle POWER_PILL_SOURCE = new Rectangle(PowerUpSprites.GetCellX(ePowerUp.PowerPill), PowerUpSprites.GetCellY(ePowerUp.PowerPill),
-            PowerUpSprites.CELL_PIXELS, PowerUpSprites.CELL_PIXELS);
+        private static readonly Rectangle POWER_PILL_SOURCE = new Rectangle(
+            PowerUpSprites.GetCellX(ePowerUp.PowerPill),
+            PowerUpSprites.GetCellY(ePowerUp.PowerPill),
+            PowerUpSprites.CELL_PIXELS,
+            PowerUpSprites.CELL_PIXELS);
 
         private const int PING_INTERVAL_MS = 2000;
         private const int PAC_FRAME_MS = 80;
@@ -40,6 +43,17 @@ namespace EatMeClient
         /// Space above and below the score text in the bar across the top of the game.
         /// </summary>
         private const int HUD_BAR_PADDING = 8;
+
+        /// <summary>
+        /// Space either side of a scoring bar item's sprite, from what the sprite actually draws (its cell's transparent
+        /// margin is cropped off), so every sprite has the same space each side.
+        /// </summary>
+        private const float SCORING_ICON_GAP = 12f;
+
+        /// <summary>
+        /// The scoring bar's enemy pac is this chomp frame, mouth wide open.
+        /// </summary>
+        private const int SCORING_PAC_FRAME = 2;
 
         /// <summary>
         /// The mini-map is a square this share of the smaller screen side.
@@ -124,6 +138,15 @@ namespace EatMeClient
         private Texture2D _WeaponEffectSheet;
         private Texture2D _PacDeathSheet;
         private Texture2D[] _GhostSheets;
+
+        // the scoring bar's sprites, indexed by eScoringIcon: the texture, the cell drawn from it and the part of that
+        // cell that isn't transparent (BuildScoringIcons)
+        private readonly Texture2D[] _ScoringIconTextures = new Texture2D[Enum.GetValues<eScoringIcon>().Length];
+        private readonly Rectangle[] _ScoringIconCells = new Rectangle[Enum.GetValues<eScoringIcon>().Length];
+        private readonly Rectangle[] _ScoringIconSources = new Rectangle[Enum.GetValues<eScoringIcon>().Length];
+
+        // the ping's fixed width on the scoring bar (ScoringBar.GetPingWidthSamples)
+        private float _PingBoxWidth;
         private Texture2D _GhostEyesSheet;
 
         /// <summary>
@@ -232,8 +255,7 @@ namespace EatMeClient
             _Font = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48);
             _NameFont = AssetCache.GetFont(Const.FONT_LIBERATION_SANS20);
             _PhaseFont = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC96);
-            _PlayerState = new PlayerState(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30),
-                AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48));
+            _PlayerState = new PlayerState(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30), AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC48));
             _PlayerList = new PlayerList(AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC30));
             _DotTexture = AssetCache.GetTexture(Const.IMAGE_DOT);
             _PacBaseTexture = AssetCache.GetTexture(Const.IMAGE_PAC_BASE);
@@ -253,12 +275,18 @@ namespace EatMeClient
             _RainbowWall = new RainbowWallEffect(AssetCache.GetEffect(Const.EFFECT_RAINBOW_WALL), CELL_PIXELS);
 
             var whiteGhost = AssetCache.GetTexture(Const.IMAGE_GHOST);
+
             // one sheet per personality, indexed by GhostPersonality.Id
             _GhostSheets = new Texture2D[GhostPersonalities.ALL.Count];
+
             foreach (var personality in GhostPersonalities.ALL)
                 _GhostSheets[personality.Id] = ImageFactory.GenerateGhostSheet(whiteGhost, ClientColors.ToColor(personality.Color));
 
             _GhostEyesSheet = ImageFactory.GenerateGhostEyesSheet(whiteGhost);
+            BuildScoringIcons();
+
+            foreach (var sample in ScoringBar.GetPingWidthSamples())
+                _PingBoxWidth = Math.Max(_PingBoxWidth, _Font.MeasureString(sample).X);
 
             _EatLoop = AssetCache.GetSfx(Const.SFX_EAT).CreateInstance();
             _EatLoop.IsLooped = true;
@@ -300,6 +328,7 @@ namespace EatMeClient
                 BlueDotColor = ClientColors.ToFastColor(ClientColors.COLOR_PAC_DOTS_BLUE),
                 RedDotColor = ClientColors.ToFastColor(ClientColors.COLOR_PAC_DOTS_RED),
             };
+            
             _Client = new NetworkClient();
             _PingTimer = TimeSpan.Zero;
             _LastDirection = eDirection.None;
@@ -1261,8 +1290,8 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// The bar across the bottom: "Stats:", then our pac's running total score, flag captures, ghost kills, enemies eaten, flag rescues
-        /// and power ups eaten on the left and its ping on the right.
+        /// The bar across the bottom: what the server's scoring is set to on the left (ScoringBar.GetItems: a flag
+        /// capture, a flag return, an enemy pac and a ghost, each as label, sprite, points) and the ping on the right.
         /// </summary>
         private void DrawStatsBar(SpriteBatch spriteBatch, Viewport viewport)
         {
@@ -1270,16 +1299,10 @@ namespace EatMeClient
             var barTop = viewport.Height - barHeight;
             spriteBatch.Draw(_Pixel, new Rectangle(0, barTop, viewport.Width, barHeight), Color.Black);
 
-            var ownPac = _State.GetOwnPac();
-            if (!ownPac.HasValue)
-                return;
-
-            var pac = ownPac.Value;
             var textY = barTop + (float)Math.Round((barHeight - _Font.LineSpacing) * 0.5f);
-            var size = $"{Const.STRING_STATS}  {Const.STRING_SCORE} {pac.TotalScore}  ";
-            var stats = $"{Const.STRING_FLAGS} {pac.FlagCaps}  {Const.STRING_GHOSTS} {pac.GhostKills}  {Const.STRING_CHOMPS} {pac.PlayerKills}  {Const.STRING_RESCUES} {pac.Rescues}";
-
-            spriteBatch.DrawString(_Font, size + stats, new Vector2(HUD_MARGIN, textY), ClientColors.COLOR_PAC_WHITE);
+            var iconPixels = _Font.LineSpacing;
+            var iconY = barTop + (barHeight - iconPixels) / 2;
+            var items = _State.GameConfig != null ? ScoringBar.GetItems(_State.GameConfig) : [];
 
             var pingColor = ClientColors.COLOR_PAC_WHITE;
             if (_State.PingMs >= 0)
@@ -1287,9 +1310,95 @@ namespace EatMeClient
                 var heat = ColorRamp.GetPingColor(_State.PingMs);
                 pingColor = ClientColors.ToColor(heat);
             }
-            var ping = _State.GetPingText();
-            var pingSize = _Font.MeasureString(ping);
-            spriteBatch.DrawString(_Font, ping, new Vector2(viewport.Width - HUD_MARGIN - pingSize.X, textY), pingColor);
+
+            // the items and the ping's fixed width box spread evenly from the left margin to the right
+            var totalWidth = _PingBoxWidth;
+            foreach (var item in items)
+                totalWidth += GetScoringItemWidth(item, iconPixels);
+
+            var gap = ScoringBar.GetEvenGap(totalWidth, items.Count + 1, HUD_MARGIN, viewport.Width - HUD_MARGIN);
+            var x = HUD_MARGIN;
+
+            foreach (var item in items)
+            {
+                spriteBatch.DrawString(_Font, item.Label, new Vector2((float)Math.Round(x), textY), ClientColors.COLOR_PAC_WHITE);
+                x += _Font.MeasureString(item.Label).X + SCORING_ICON_GAP;
+
+                var bounds = GetScoringIconBounds(item.Icon, (int)Math.Round(x), iconY, iconPixels);
+                DrawScoringIcon(spriteBatch, item.Icon, bounds);
+                x += bounds.Width + SCORING_ICON_GAP;
+
+                spriteBatch.DrawString(_Font, item.Value, new Vector2((float)Math.Round(x), textY), ClientColors.COLOR_PAC_WHITE);
+                x += _Font.MeasureString(item.Value).X + gap;
+            }
+
+            spriteBatch.DrawString(_Font, _State.GetPingText(), new Vector2((float)Math.Round(x), textY), pingColor);
+        }
+
+        /// <summary>
+        /// How wide a scoring bar item is drawn: its label, its sprite and its points.
+        /// </summary>
+        private float GetScoringItemWidth(ScoringBarItem item, int iconPixels)
+        {
+            var iconWidth = GetScoringIconBounds(item.Icon, 0, 0, iconPixels).Width;
+            return _Font.MeasureString(item.Label).X + SCORING_ICON_GAP + iconWidth + SCORING_ICON_GAP + _Font.MeasureString(item.Value).X;
+        }
+
+        /// <summary>
+        /// Finds each scoring bar sprite's cell and the part of it that isn't transparent, so the bar can draw only that.
+        /// </summary>
+        private void BuildScoringIcons()
+        {
+            var ghostSheet = _GhostSheets[GhostPersonalities.NORM.Id];
+            var ghostFrameWidth = ghostSheet.Width / GHOST_FRAME_COUNT;
+
+            SetScoringIcon(eScoringIcon.EnemyFlag, _FlagTexture, _FlagTexture.Bounds);
+            SetScoringIcon(eScoringIcon.OwnFlag, _FlagTexture, _FlagTexture.Bounds);
+            SetScoringIcon(eScoringIcon.EnemyPac, _PacSheet, GetPacSource(_PacSheet, PacShapes.DEFAULT, SCORING_PAC_FRAME));
+            SetScoringIcon(eScoringIcon.Ghost, ghostSheet, new Rectangle(GetGhostFrame(eFacing.Right) * ghostFrameWidth, 0, ghostFrameWidth, ghostSheet.Height));
+        }
+
+        private void SetScoringIcon(eScoringIcon icon, Texture2D texture, Rectangle cell)
+        {
+            var pixels = new uint[texture.Width * texture.Height];
+            texture.GetData(pixels);
+            var opaque = SpriteBounds.GetOpaqueBounds(pixels, texture.Width, new CellBox(cell.X, cell.Y, cell.Width, cell.Height));
+
+            _ScoringIconTextures[(int)icon] = texture;
+            _ScoringIconCells[(int)icon] = cell;
+            _ScoringIconSources[(int)icon] = new Rectangle(opaque.X, opaque.Y, opaque.Width, opaque.Height);
+        }
+
+        /// <summary>
+        /// Where a scoring bar sprite's visible part is drawn with its left edge at x: at the size it has when its whole
+        /// cell is iconPixels tall, in the same place up and down as in its cell.
+        /// </summary>
+        private Rectangle GetScoringIconBounds(eScoringIcon icon, int x, int iconY, int iconPixels)
+        {
+            var cell = _ScoringIconCells[(int)icon];
+            var source = _ScoringIconSources[(int)icon];
+            var scale = (float)iconPixels / cell.Height;
+
+            return new Rectangle(x, iconY + (int)Math.Round((source.Y - cell.Y) * scale),
+                (int)Math.Round(source.Width * scale), (int)Math.Round(source.Height * scale));
+        }
+
+        /// <summary>
+        /// One scoring bar sprite's visible part, filling the bounds: a flag in its team's solid color, an enemy pac (the
+        /// default shape, mouth open, facing right) or the Norm ghost.
+        /// </summary>
+        private void DrawScoringIcon(SpriteBatch spriteBatch, eScoringIcon icon, Rectangle bounds)
+        {
+            var enemy = ScoringBar.GetEnemyTeam(_State.Team);
+            var color = icon switch
+            {
+                eScoringIcon.EnemyFlag => ClientColors.GetTeamColor(enemy),
+                eScoringIcon.OwnFlag => ClientColors.GetTeamColor(_State.Team),
+                eScoringIcon.EnemyPac => ClientColors.GetPacColor(enemy, false),
+                _ => Color.White,
+            };
+
+            spriteBatch.Draw(_ScoringIconTextures[(int)icon], bounds, _ScoringIconSources[(int)icon], color);
         }
 
         /// <summary>

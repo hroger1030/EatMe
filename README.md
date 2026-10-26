@@ -101,7 +101,7 @@ The server reads `server.cfg` from its output folder, prints the settings it loa
 dotnet run --project EatMeClient
 ```
 
-Pick Join Game, type a name, pick a team, and choose the server from the LAN games list (or type `127.0.0.1`). The client opens full screen at the desktop resolution; the Display setting switches to a window. Settings are saved to `settings.ini` next to the executable. Only one client runs at a time per Windows login. F1 shows a performance overlay.
+Pick Join Multiplayer Game, type a name, pick a team, and choose the server from the LAN games list (or type `127.0.0.1`). The client opens full screen at the desktop resolution; the Display setting switches to a window. Settings are saved to `settings.ini` next to the executable. Only one client runs at a time per Windows login. F1 shows a performance overlay.
 
 Controls and how to play are in [EatMeClient/readme.txt](EatMeClient/readme.txt).
 
@@ -264,7 +264,7 @@ The server listens on all IPv4 interfaces, so nothing in the code needs changing
 | `Port` (7777) | TCP | Players connect on it. The only port Internet players need. |
 | `DiscoveryPort` (7778) | UDP | Answers LAN game searches. Don't forward it. |
 
-**On a LAN**, players find the game in the Join Game screen's LAN games list. Allow the server through the PC's firewall; Windows usually asks the first time it runs.
+**On a LAN**, players find the game in the Join Multiplayer Game screen's LAN games list. Allow the server through the PC's firewall; Windows usually asks the first time it runs.
 
 **Over the Internet**, players type in an address, and your router has to let them through.
 
@@ -274,12 +274,12 @@ The server listens on all IPv4 interfaces, so nothing in the code needs changing
    New-NetFirewallRule -DisplayName "EatMe Server" -Direction Inbound -Protocol TCP -LocalPort 7777 -Action Allow
    ```
 3. In the router's port forwarding page, forward TCP port `7777` to your PC's local IP, from all remote addresses.
-4. Find your public IP (e.g. at whatismyip.com). Players enter it in the Join Game address box, adding `:port` if you changed `Port` (e.g. `203.0.113.5:7777`).
+4. Find your public IP (e.g. at whatismyip.com). Players enter it in the Join Multiplayer Game address box, adding `:port` if you changed `Port` (e.g. `203.0.113.5:7777`).
 5. When you're done, delete the forwarding rule.
 
 Your public IP can change, and connecting to it from inside your own network often fails (many routers lack NAT loopback), so test from another network such as a phone hotspot.
 
-**Tunnel (no router changes):** if you can't change the router, or your ISP uses CGNAT (the router's WAN IP differs from your public IP), run a TCP tunnel such as playit.gg pointed at local port 7777. It gives you a `host:port` address that players type into the Join Game screen. Close the tunnel when you're done.
+**Tunnel (no router changes):** if you can't change the router, or your ISP uses CGNAT (the router's WAN IP differs from your public IP), run a TCP tunnel such as playit.gg pointed at local port 7777. It gives you a `host:port` address that players type into the Join Multiplayer Game screen. Close the tunnel when you're done.
 
 **Security:** there is no login and no ban list, so anyone who knows the address can join while the port is open. Use `kick` to remove a player.
 

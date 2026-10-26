@@ -38,7 +38,7 @@
         public const string STRING_QUIT_GAME = "Disconnect from server";
 
         // Join game screen
-        public const string STRING_JOIN_GAME = "Join Game";
+        public const string STRING_JOIN_GAME = "Join Multiplayer Game";
         public const string STRING_PLAYER_NAME = "Name";
         public const string STRING_TEAM = "Preferred Team";
         public const string STRING_TEAM_RED = "Red";
@@ -63,6 +63,7 @@
         public const string STRING_BLUE_WINS = "Blue team wins!";
         public const string STRING_NEXT_LEVEL_IN = "Next Level in";
         public const string STRING_LEVEL = "Level";
+        public const string STRING_TO_WIN = "to win";
         public const string STRING_POWER_UP_NONE = "No power up";
         public const string STRING_POWER_PILL = "Power Pill";
         public const string STRING_CHERRY_TWIN = "Cherry Twin";
@@ -104,14 +105,13 @@
         public const string STRING_VICTORY = "Victory!";
         public const string STRING_STARTING_IN = "Starting in...";
 
-        // Game screen stats bar
-        public const string STRING_STATS = "Stats:";
+        // Game screen scoring bar and player state panel
         public const string STRING_SIZE = "Size";
         public const string STRING_STUNNED = "Stunned!";
-        public const string STRING_FLAGS = "Flags";
-        public const string STRING_GHOSTS = "Ghosts";
-        public const string STRING_CHOMPS = "Chomps";
-        public const string STRING_RESCUES = "Rescues";
+        public const string STRING_SCORING_CAPTURE = "capture";
+        public const string STRING_SCORING_RETURN = "return";
+        public const string STRING_SCORING_EAT = "eat";
+        public const string STRING_SCORING_POINTS = "pt";
         public const string STRING_PING = "Ping";
         public const string STRING_PING_UNKNOWN = "--";
         public const string STRING_MS = "ms";

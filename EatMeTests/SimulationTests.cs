@@ -30,6 +30,14 @@ namespace EatMeTests
             return (server.Players.Single(p => p.Connection == connection).Player, connection);
         }
 
+        /// <summary>
+        /// Holds the way the pac faces, so a freshly spawned pac (which waits for input) sets off as it faces.
+        /// </summary>
+        private static void HoldFacing(GameServer server, FakeConnection connection, Player player)
+        {
+            server.HandleMessage(connection, new InputMessage { Direction = MazeMovement.ToDirection(player.Facing) });
+        }
+
         private static (int X, int Y) FindCell(GameServer server, eGridDef item)
         {
             for (var x = 0; x < server.Map.GetLength(0); x++)
@@ -471,10 +479,13 @@ namespace EatMeTests
         public void Twister_SlowsOthersInRangeToHalfSpeed()
         {
             var normal = MakeServer();
-            var (alone, _) = Join(normal, 2, eTeamPreference.Blue);
+            var (alone, aloneConnection) = Join(normal, 2, eTeamPreference.Blue);
             var twisted = MakeServer();
-            var (slowed, _) = Join(twisted, 2, eTeamPreference.Blue);
-            var (red, _) = Join(twisted, 1, eTeamPreference.Red);
+            var (slowed, slowedConnection) = Join(twisted, 2, eTeamPreference.Blue);
+            var (red, redConnection) = Join(twisted, 1, eTeamPreference.Red);
+            HoldFacing(normal, aloneConnection, alone);
+            HoldFacing(twisted, slowedConnection, slowed);
+            HoldFacing(twisted, redConnection, red);
             red.Location = slowed.Location;
             twisted.StartPowerUpEffect(red, ePowerUp.Pretzel);
 
@@ -492,9 +503,11 @@ namespace EatMeTests
         public void WarpSpeed_MovesFaster()
         {
             var normal = MakeServer();
-            var (slow, _) = Join(normal, 1, eTeamPreference.Red);
+            var (slow, slowConnection) = Join(normal, 1, eTeamPreference.Red);
             var rushed = MakeServer();
-            var (fast, _) = Join(rushed, 1, eTeamPreference.Red);
+            var (fast, fastConnection) = Join(rushed, 1, eTeamPreference.Red);
+            HoldFacing(normal, slowConnection, slow);
+            HoldFacing(rushed, fastConnection, fast);
             rushed.StartPowerUpEffect(fast, ePowerUp.Solarian);
 
             var start = slow.Location;
@@ -566,6 +579,102 @@ namespace EatMeTests
             Assert.That(red.Alive, Is.True);
             Assert.That(red.Size, Is.EqualTo(GameServer.PAC_START_SIZE));
             Assert.That(server.Map[(int)red.Location.X, (int)red.Location.Y].HasFlag(eGridDef.SpawnPointRed), Is.True);
+        }
+
+        [Test]
+        public void SpawnedPac_StaysPut_UntilADirectionIsPressed()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            var start = red.Location;
+
+            server.MovePacs(TimeSpan.FromMilliseconds(500));
+            Assert.That(red.Location, Is.EqualTo(start));
+
+            HoldFacing(server, connection, red);
+            server.MovePacs(TimeSpan.FromMilliseconds(500));
+            Assert.That(red.Location, Is.Not.EqualTo(start));
+        }
+
+        [Test]
+        public void SpawnedPac_KeepsGoing_AfterTheDirectionIsLetGo()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            HoldFacing(server, connection, red);
+            server.MovePacs(TimeSpan.FromMilliseconds(100));
+            server.HandleMessage(connection, new InputMessage { Direction = eDirection.None });
+
+            var before = red.Location;
+            server.MovePacs(TimeSpan.FromMilliseconds(100));
+
+            Assert.That(red.Location, Is.Not.EqualTo(before));
+        }
+
+        [Test]
+        public void RespawnedPac_StaysPut_EvenWithATurnBufferedBeforeItDied()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            HoldFacing(server, connection, red);
+            server.MovePacs(TimeSpan.FromMilliseconds(100));
+            server.HandleMessage(connection, new InputMessage { Direction = eDirection.None });
+            red.Location = server.Ghosts[0].Location;
+            server.UpdateGhosts(TimeSpan.Zero);
+            Assert.That(red.Alive, Is.False);
+
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(Config.PlayerRespawnTimeMs));
+            Assert.That(red.Alive, Is.True);
+
+            var start = red.Location;
+            server.MovePacs(TimeSpan.FromMilliseconds(500));
+            Assert.That(red.Location, Is.EqualTo(start));
+        }
+
+        [Test]
+        public void RespawnedPac_SetsOffAtOnce_WhileADirectionIsHeld()
+        {
+            var server = MakeServer(ghosts: 1);
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            HoldFacing(server, connection, red);
+            red.Location = server.Ghosts[0].Location;
+            server.UpdateGhosts(TimeSpan.Zero);
+
+            server.UpdateRespawns(TimeSpan.FromMilliseconds(Config.PlayerRespawnTimeMs));
+            HoldFacing(server, connection, red);
+
+            var start = red.Location;
+            server.MovePacs(TimeSpan.FromMilliseconds(500));
+            Assert.That(red.Location, Is.Not.EqualTo(start));
+        }
+
+        [Test]
+        public void LevelStart_HoldsEveryHumanPacUntilADirectionIsPressed()
+        {
+            var server = MakeServer();
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            HoldFacing(server, connection, red);
+            server.MovePacs(TimeSpan.FromMilliseconds(100));
+            server.HandleMessage(connection, new InputMessage { Direction = eDirection.None });
+
+            server.StartLevel(2);
+            var start = red.Location;
+            server.MovePacs(TimeSpan.FromMilliseconds(500));
+
+            Assert.That(red.Location, Is.EqualTo(start));
+        }
+
+        [Test]
+        public void HoldForInput_NeverHoldsBots()
+        {
+            var bot = new ServerPlayer(null, new Player());
+            var human = new ServerPlayer(new FakeConnection(1), new Player()) { AwaitingInput = false };
+
+            GameServer.HoldForInput(bot);
+            GameServer.HoldForInput(human);
+
+            Assert.That(bot.AwaitingInput, Is.False);
+            Assert.That(human.AwaitingInput, Is.True);
         }
 
         [Test]
@@ -896,7 +1005,8 @@ namespace EatMeTests
         public void Stunned_PacsAndGhostsDontMove_UntilItWearsOff()
         {
             var server = MakeServer(ghosts: 1);
-            var (red, _) = Join(server, 1, eTeamPreference.Red);
+            var (red, connection) = Join(server, 1, eTeamPreference.Red);
+            HoldFacing(server, connection, red);
             var ghost = server.Ghosts[0];
             red.StunMs = PowerUpEffects.POW_STUN_MS;
             ghost.StunMs = PowerUpEffects.POW_STUN_MS;

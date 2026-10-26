@@ -26,6 +26,11 @@ namespace EatMeLibrary
         public const float FIREBALL_SPEED_SCALE = 3.75f;
 
         /// <summary>
+        /// A BFG shot moves this many times GhostSpeed.
+        /// </summary>
+        public const float BFG_SPEED_SCALE = 2f;
+
+        /// <summary>
         /// After the action button does something it does nothing again for this long, whatever the effect, so it
         /// can't be spammed.
         /// </summary>

@@ -35,6 +35,12 @@ namespace EatMeServer
         public float StraightDistance { get; set; }
 
         /// <summary>
+        /// True from a human's pac spawning (joining, a level's start or a respawn) until a direction is held or
+        /// buffered; the pac stays put until then. Always false for bots.
+        /// </summary>
+        public bool AwaitingInput { get; set; }
+
+        /// <summary>
         /// This player's round trip, measured with ServerPing/ServerPong.
         /// </summary>
         public LagEstimate Lag { get; } = new();
@@ -66,6 +72,7 @@ namespace EatMeServer
         {
             Connection = connection;
             Player = player;
+            AwaitingInput = connection != null;
         }
     }
 }

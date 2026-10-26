@@ -21,7 +21,7 @@ REQUIREMENTS
 GETTING STARTED
 ---------------
 1. Run the EatMeClient executable. Only one copy runs at a time.
-2. Pick Join Game, type your name and pick a team (or Either).
+2. Pick Join Multiplayer Game, type your name and pick a team (or Either).
 3. Pick a game from the LAN games list, or type a server's address
    (add :port if it doesn't use 7777, e.g. 203.0.113.5:7777).
 
@@ -49,6 +49,8 @@ Ctrl+C to copy the whole box and Ctrl+X to cut it (Command on a Mac).
 
 HOW TO PLAY
 -----------
+- Your pac waits where it spawns (at the start of each level and after
+  every respawn) until you press a direction.
 - Eat dots to grow. A bigger pac eats a smaller enemy pac, and moves faster.
 - Stop eating and you start to starve and shrink.
 - Grab the enemy's flag and bring it back to your own flag base to score.
@@ -57,7 +59,9 @@ HOW TO PLAY
 - Power ups float through the maze toward the warp tunnels. Eat one for its
   effect; some are used with the action button. You can't carry a flag while
   a power up effect is working.
-- The first team to the server's target score wins the level.
+- The first team to the server's target score wins the level. The bar along
+  the bottom of the screen shows what a flag capture, a flag return, an
+  enemy pac and a ghost are worth.
 
 
 SETTINGS

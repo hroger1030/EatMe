@@ -292,7 +292,16 @@ namespace EatMeTests
         {
             var state = JoinedState();
 
-            Assert.That(state.GetLevelTitle(), Is.EqualTo($"Level 2 {Levels.GetLevel(2).Name}"));
+            Assert.That(state.GetLevelTitle(), Is.EqualTo($"Level 2 {Levels.GetLevel(2).Name} ({state.GameConfig.MaxScore}pt to win)"));
+        }
+
+        [Test]
+        public void ClientState_GetLevelTitle_FollowsAChangedMaxScore()
+        {
+            var state = JoinedState();
+            state.GameConfig.MaxScore = 250;
+
+            Assert.That(state.GetLevelTitle(), Does.EndWith("(250pt to win)"));
         }
 
         [Test]

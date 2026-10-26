@@ -181,9 +181,17 @@ namespace EatMeLibrary
         /// </summary>
         public string GetPingText()
         {
-            return PingMs < 0
+            return FormatPingText(PingMs);
+        }
+
+        /// <summary>
+        /// "Ping n ms", or "Ping --" for a negative (not yet measured) ping.
+        /// </summary>
+        public static string FormatPingText(long pingMs)
+        {
+            return pingMs < 0
                 ? $"{Const.STRING_PING} {Const.STRING_PING_UNKNOWN}"
-                : $"{Const.STRING_PING} {PingMs} {Const.STRING_MS}";
+                : $"{Const.STRING_PING} {pingMs} {Const.STRING_MS}";
         }
 
         /// <summary>
@@ -195,13 +203,19 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// The level title for the score bar: "Level n name", or empty before the first LevelStart.
+        /// The level title for the score bar: "Level n name (100pt to win)", or empty before the first LevelStart. The
+        /// points to win are left off until the server's GameConfig has arrived.
         /// </summary>
         public string GetLevelTitle()
         {
-            return LevelInfo == null
-                ? string.Empty
-                : $"{Const.STRING_LEVEL} {Level} {LevelInfo.Name}";
+            if (LevelInfo == null)
+                return string.Empty;
+
+            var title = $"{Const.STRING_LEVEL} {Level} {LevelInfo.Name}";
+
+            return GameConfig == null
+                ? title
+                : $"{title} ({ScoringBar.GetPointsText(GameConfig.MaxScore)} {Const.STRING_TO_WIN})";
         }
 
         public bool IsJoined => PlayerId != NO_PLAYER;
