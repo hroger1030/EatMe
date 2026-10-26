@@ -1,4 +1,4 @@
-EAT ME VERSION 0.91 - GAME CLIENT
+EAT ME VERSION 0.92 - GAME CLIENT
 ====================
 
 Eat Me is a multiplayer, retro-style arcade game for LAN and Internet play:
