@@ -15,6 +15,13 @@ namespace EatMeLibrary
 
         private readonly Dictionary<int, PlayerInfo> _Players = [];
 
+        // when each pac (by player id) and ghost (by ghost id) last came to life, on the client's clock, and which were
+        // alive in the last snapshot, so a pac or ghost that wasn't counts as spawning (SpawnDissolve)
+        private readonly Dictionary<int, long> _PacSpawnMs = [];
+        private readonly Dictionary<int, long> _GhostSpawnMs = [];
+        private readonly HashSet<int> _AlivePacs = [];
+        private readonly HashSet<int> _AliveGhosts = [];
+
         /// <summary>
         /// Our own player id, or NO_PLAYER until the server's Welcome arrives.
         /// </summary>
@@ -272,6 +279,8 @@ namespace EatMeLibrary
                     PenCentre = GhostEyes.FindPenCentre(Map);
                     DotColors = BuildDotColors(Map.GetLength(0), Map.GetLength(1), BlueDotColor, RedDotColor);
                     Snapshot = null;
+                    _AlivePacs.Clear();
+                    _AliveGhosts.Clear();
                     LevelWinner = null;
                     VictoryTeam = null;
                     CountdownEndMs = nowMs + Math.Max(0, levelStart.CountdownMs);
@@ -286,6 +295,7 @@ namespace EatMeLibrary
                     if (Snapshot == null || snapshot.Tick > Snapshot.Tick)
                     {
                         Snapshot = snapshot;
+                        RecordSpawns(nowMs);
                         RemoveRespawnedEyes();
                     }
                     break;
@@ -337,6 +347,47 @@ namespace EatMeLibrary
                     HasPlayerList = true;
                     break;
             }
+        }
+
+        /// <summary>
+        /// Notes when each pac and ghost in the newest snapshot came to life: alive now but not in the last snapshot (or
+        /// the first snapshot of a level) means it spawned just now.
+        /// </summary>
+        private void RecordSpawns(long nowMs)
+        {
+            foreach (var pac in Snapshot.Pacs)
+                if (pac.Alive && !_AlivePacs.Contains(pac.PlayerId))
+                    _PacSpawnMs[pac.PlayerId] = nowMs;
+
+            foreach (var ghost in Snapshot.Ghosts)
+                if (ghost.Alive && !_AliveGhosts.Contains(ghost.GhostId))
+                    _GhostSpawnMs[ghost.GhostId] = nowMs;
+
+            _AlivePacs.Clear();
+            foreach (var pac in Snapshot.Pacs)
+                if (pac.Alive)
+                    _AlivePacs.Add(pac.PlayerId);
+
+            _AliveGhosts.Clear();
+            foreach (var ghost in Snapshot.Ghosts)
+                if (ghost.Alive)
+                    _AliveGhosts.Add(ghost.GhostId);
+        }
+
+        /// <summary>
+        /// How long ago a player's pac last came to life, or TimeSpan.MaxValue if it never has.
+        /// </summary>
+        public TimeSpan GetPacSinceSpawn(int playerId, long nowMs)
+        {
+            return _PacSpawnMs.TryGetValue(playerId, out var spawnMs) ? TimeSpan.FromMilliseconds(nowMs - spawnMs) : TimeSpan.MaxValue;
+        }
+
+        /// <summary>
+        /// How long ago a ghost last came to life, or TimeSpan.MaxValue if it never has.
+        /// </summary>
+        public TimeSpan GetGhostSinceSpawn(int ghostId, long nowMs)
+        {
+            return _GhostSpawnMs.TryGetValue(ghostId, out var spawnMs) ? TimeSpan.FromMilliseconds(nowMs - spawnMs) : TimeSpan.MaxValue;
         }
 
         /// <summary>

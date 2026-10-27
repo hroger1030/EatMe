@@ -213,8 +213,8 @@ namespace EatMeLibrary
         public const float DINNER_BELL_GHOST_SPEED_SCALE = 2f;
 
         /// <summary>
-        /// The standard radius in cells of every power up effect that works on an area around the pac (IsInEffectRange):
-        /// a square reaching this far horizontally and vertically from it. The POW block's stun, Twister's slow.
+        /// The standard radius in cells of every power up effect that works on an area (IsInEffectRange): a circle this
+        /// many cells round its centre. The POW block's stun, the Stun Bomb, the BFG burst, Doctor Away and Twister.
         /// </summary>
         public const float EFFECT_RADIUS = 15f;
 
@@ -251,12 +251,32 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// True for area effect events that kick the board's colors apart (ChromaticKick) for everyone inside the
+        /// standard radius: a Blast and a BFG burst. Smashed walls kick every screen, as they shake it.
+        /// </summary>
+        public static bool KicksColors(eGameEvent eventType)
+        {
+            return eventType == eGameEvent.Blast || eventType == eGameEvent.BfgBurst;
+        }
+
+        /// <summary>
+        /// True for events that send a shockwave ring out from where they happened (Shockwaves): a Blast (the POW block,
+        /// a Stun Bomb) and a BFG burst.
+        /// </summary>
+        public static bool MakesShockwave(eGameEvent eventType)
+        {
+            return eventType == eGameEvent.Blast || eventType == eGameEvent.BfgBurst;
+        }
+
+        /// <summary>
         /// True if a position is inside the standard radius of an effect's centre: no more than EFFECT_RADIUS cells
-        /// away horizontally and no more than EFFECT_RADIUS vertically (a square area).
+        /// away in a straight line (a circle).
         /// </summary>
         public static bool IsInEffectRange(Point2 from, Point2 to)
         {
-            return MathF.Abs(to.X - from.X) <= EFFECT_RADIUS && MathF.Abs(to.Y - from.Y) <= EFFECT_RADIUS;
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            return dx * dx + dy * dy <= EFFECT_RADIUS * EFFECT_RADIUS;
         }
 
         /// <summary>
@@ -339,20 +359,6 @@ namespace EatMeLibrary
         public static bool HasSpeedTrail(ePowerUp effect)
         {
             return effect == ePowerUp.Solarian || effect == ePowerUp.Starman;
-        }
-
-        /// <summary>
-        /// An invincible pac switches between its team color and yellow this often.
-        /// </summary>
-        public const int STAR_BLINK_MS = 80;
-
-        /// <summary>
-        /// True if an invincible pac is drawn yellow at a time (otherwise its team color): yellow for the first
-        /// STAR_BLINK_MS of every two.
-        /// </summary>
-        public static bool IsStarBlinkYellow(TimeSpan time)
-        {
-            return time.TotalMilliseconds % (STAR_BLINK_MS * 2) < STAR_BLINK_MS;
         }
 
         /// <summary>

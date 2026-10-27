@@ -1,6 +1,7 @@
-// Colour bloom, drawn by TitleScreen.Draw over the finished frame before the Brightness pass.
-// BrightPass keeps what is above Threshold in each channel; Blur is one direction of a Gaussian blur.
-// Keep the maths in step with EatMeLibrary.DisplayAdjust.ApplyBloomThreshold and GetBlurWeights.
+// Colour bloom: BoardPostProcess blurs the game board's glow target (only the glowing things, see
+// EatMeLibrary.GlowSources) at half and quarter size with Blur, one direction of a Gaussian blur, and adds both over
+// the board with Combine, many times over (Gain: DisplayAdjust.GetBloomTightGain and GetBloomWideGain).
+// Keep the maths in step with EatMeLibrary.DisplayAdjust.GetBlurWeights.
 
 #if OPENGL
 	#define SV_POSITION POSITION
@@ -14,13 +15,14 @@
 // DisplayAdjust.BLOOM_BLUR_TAPS
 #define BLUR_TAPS 5
 
-float Threshold = 0.5;
-
 // one texel of the target being blurred, along the blur's direction
 float2 TexelStep = float2(0.0, 0.0);
 
 // centre first, then one per texel outwards, used on both sides
 float Weights[BLUR_TAPS];
+
+// how many times over Combine adds the blurred glow
+float Gain = 1.0;
 
 Texture2D SpriteTexture;
 
@@ -36,13 +38,6 @@ struct VertexShaderOutput
 	float2 TextureCoordinates : TEXCOORD0;
 };
 
-float4 BrightPassPS(VertexShaderOutput input) : COLOR
-{
-	float4 color = tex2D(SpriteTextureSampler, input.TextureCoordinates);
-	float3 bright = saturate((color.rgb - Threshold) / (1.0 - Threshold));
-	return float4(bright, 1.0);
-}
-
 float4 BlurPS(VertexShaderOutput input) : COLOR
 {
 	float3 sum = tex2D(SpriteTextureSampler, input.TextureCoordinates).rgb * Weights[0];
@@ -57,11 +52,16 @@ float4 BlurPS(VertexShaderOutput input) : COLOR
 	return float4(sum, 1.0);
 }
 
-technique BrightPass
+float4 CombinePS(VertexShaderOutput input) : COLOR
+{
+	return float4(tex2D(SpriteTextureSampler, input.TextureCoordinates).rgb * Gain, 1.0);
+}
+
+technique Combine
 {
 	pass P0
 	{
-		PixelShader = compile PS_SHADERMODEL BrightPassPS();
+		PixelShader = compile PS_SHADERMODEL CombinePS();
 	}
 };
 

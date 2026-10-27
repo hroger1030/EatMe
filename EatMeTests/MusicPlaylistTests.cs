@@ -7,7 +7,7 @@ namespace EatMeTests
         [Test]
         public void GetTrackNames_PlaysNormalTracksThenBTracks()
         {
-            var names = MusicPlaylist.GetTrackNames(["Track2b.xnb", "Track10.xnb", "Track1b.xnb", "Track2.xnb", "Track1.xnb"]);
+            var names = MusicPlaylist.GetTrackNames(["Track2b.ogg", "Track10.ogg", "Track1b.ogg", "Track2.ogg", "Track1.ogg"]);
 
             Assert.That(names, Is.EqualTo(new[] { "Music/Track1", "Music/Track2", "Music/Track10", "Music/Track1b", "Music/Track2b" }));
         }
@@ -15,15 +15,15 @@ namespace EatMeTests
         [Test]
         public void GetTrackNames_LeavesOutOtherFiles()
         {
-            var names = MusicPlaylist.GetTrackNames(["TitleTheme.xnb", "SoundFX_Death.xnb", "Track.xnb", "Track1c.xnb", "MyTrack1.xnb", "Track3.xnb"]);
+            var names = MusicPlaylist.GetTrackNames(["TitleTheme.ogg", "SoundFX_Death.ogg", "Track.ogg", "Track1c.ogg", "MyTrack1.ogg", "Track3.ogg"]);
 
             Assert.That(names, Is.EqualTo(new[] { "Music/Track3" }));
         }
 
         [Test]
-        public void GetTrackNames_IgnoresPathsAndListsEachTrackOnce()
+        public void GetTrackNames_IgnoresPaths()
         {
-            var names = MusicPlaylist.GetTrackNames([@"C:\Game\Content\Audio\Track1.xnb", "Track1.ogg"]);
+            var names = MusicPlaylist.GetTrackNames([@"C:\Game\Content\Music\Track1.ogg"]);
 
             Assert.That(names, Is.EqualTo(new[] { "Music/Track1" }));
         }

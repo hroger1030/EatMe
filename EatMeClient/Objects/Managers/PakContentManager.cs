@@ -41,17 +41,18 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Paths (within the content folder) of the files in one of its folders, from the pack when it has any there.
+        /// Paths (within the content folder) of the files with an extension (e.g. ".ogg") in one of its folders, from the
+        /// pack when it has any there.
         /// </summary>
-        public List<string> GetFiles(string folder)
+        public List<string> GetFiles(string folder, string extension)
         {
-            var files = _Pack?.GetFiles(folder);
+            var files = _Pack?.GetFiles(folder, extension);
 
             if (files is { Count: > 0 })
                 return files;
 
             var directory = Path.Combine(AppContext.BaseDirectory, RootDirectory, folder);
-            return Directory.Exists(directory) ? Directory.GetFiles(directory, "*", SearchOption.AllDirectories).Select(path => Path.GetRelativePath(Path.Combine(AppContext.BaseDirectory, RootDirectory), path)).ToList() : [];
+            return Directory.Exists(directory) ? Directory.GetFiles(directory, "*" + extension, SearchOption.AllDirectories).Select(path => Path.GetRelativePath(Path.Combine(AppContext.BaseDirectory, RootDirectory), path)).ToList() : [];
         }
 
         protected override void Dispose(bool disposing)

@@ -340,15 +340,15 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsOwnPacInEffectRange_EveryoneInsideTheSquare()
+        public void IsOwnPacInEffectRange_EveryoneInsideTheRadius()
         {
             var state = JoinedState(playerId: 3);
             var pow = new GameEventMessage { EventType = eGameEvent.Blast, ActorId = 7, X = 10.5f, Y = 10.5f };
 
             Assert.That(state.IsOwnPacInEffectRange(pow), Is.False, "no snapshot yet");
 
-            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f + PowerUpEffects.EFFECT_RADIUS, 10.5f + PowerUpEffects.EFFECT_RADIUS, 50f, eFacing.Left, true, false, false)] }, 0);
-            Assert.That(state.IsOwnPacInEffectRange(pow), Is.True, "the square's corner");
+            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 10.5f + PowerUpEffects.EFFECT_RADIUS, 10.5f, 50f, eFacing.Left, true, false, false)] }, 0);
+            Assert.That(state.IsOwnPacInEffectRange(pow), Is.True, "the edge of the radius");
             Assert.That(state.IsOwnPacInEffectRange(new GameEventMessage { EventType = eGameEvent.Blast, ActorId = 3, X = 10.5f, Y = 10.5f }), Is.True, "the pac that set it off too");
 
             state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 10.5f, 10.5f + PowerUpEffects.EFFECT_RADIUS + 1f, 50f, eFacing.Left, true, false, false)] }, 0);
@@ -363,6 +363,40 @@ namespace EatMeTests
         {
             foreach (var eventType in Enum.GetValues<eGameEvent>())
                 Assert.That(PowerUpEffects.ShakesScreen(eventType), Is.EqualTo(eventType == eGameEvent.Blast), eventType.ToString());
+        }
+
+        [Test]
+        public void KicksColors_BlastAndBfgBurst()
+        {
+            foreach (var eventType in Enum.GetValues<eGameEvent>())
+                Assert.That(PowerUpEffects.KicksColors(eventType), Is.EqualTo(eventType is eGameEvent.Blast or eGameEvent.BfgBurst), eventType.ToString());
+        }
+
+        [Test]
+        public void MakesShockwave_BlastAndBfgBurst()
+        {
+            foreach (var eventType in Enum.GetValues<eGameEvent>())
+                Assert.That(PowerUpEffects.MakesShockwave(eventType), Is.EqualTo(eventType is eGameEvent.Blast or eGameEvent.BfgBurst), eventType.ToString());
+        }
+
+        [Test]
+        public void SpawnTimes_PacsAndGhostsSpawnWhenTheyComeToLife()
+        {
+            var state = JoinedState(playerId: 3);
+            Assert.That(state.GetPacSinceSpawn(3, 0), Is.EqualTo(TimeSpan.MaxValue), "never seen");
+
+            state.Apply(new SnapshotMessage { Tick = 1, Pacs = [new PacState(3, eTeam.Blue, 1, 1, 0, eFacing.Up, true, false, false)], Ghosts = [new GhostState(0, 2, 2, eFacing.Up, true)] }, 100);
+            Assert.That(state.GetPacSinceSpawn(3, 150), Is.EqualTo(TimeSpan.FromMilliseconds(50)), "the level's first snapshot");
+            Assert.That(state.GetGhostSinceSpawn(0, 150), Is.EqualTo(TimeSpan.FromMilliseconds(50)));
+
+            state.Apply(new SnapshotMessage { Tick = 2, Pacs = [new PacState(3, eTeam.Blue, 1, 1, 0, eFacing.Up, true, false, false)], Ghosts = [new GhostState(0, 2, 2, eFacing.Up, false)] }, 200);
+            Assert.That(state.GetPacSinceSpawn(3, 300), Is.EqualTo(TimeSpan.FromMilliseconds(200)), "still alive, so not again");
+
+            state.Apply(new SnapshotMessage { Tick = 3, Pacs = [new PacState(3, eTeam.Blue, 1, 1, 0, eFacing.Up, false, false, false)], Ghosts = [new GhostState(0, 2, 2, eFacing.Up, true)] }, 300);
+            Assert.That(state.GetGhostSinceSpawn(0, 300), Is.EqualTo(TimeSpan.Zero), "back to life");
+
+            state.Apply(new SnapshotMessage { Tick = 4, Pacs = [new PacState(3, eTeam.Blue, 1, 1, 0, eFacing.Up, true, false, false)] }, 400);
+            Assert.That(state.GetPacSinceSpawn(3, 400), Is.EqualTo(TimeSpan.Zero), "respawned");
         }
 
         [Test]

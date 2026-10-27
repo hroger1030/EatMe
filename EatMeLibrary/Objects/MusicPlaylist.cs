@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace EatMeLibrary
 {
@@ -21,7 +20,7 @@ namespace EatMeLibrary
         /// </summary>
         public const string MUSIC_FILE_EXTENSION = ".ogg";
 
-        private static readonly Regex TRACK_NAME = new(@"^Track(\d+)(b?)$", RegexOptions.IgnoreCase);
+        private const string TRACK_PREFIX = "Track";
 
         /// <summary>
         /// Picks the tracks out of a list of file names (paths and extensions are ignored) and returns their content
@@ -31,13 +30,26 @@ namespace EatMeLibrary
         {
             ArgumentNullException.ThrowIfNull(fileNames);
 
-            return fileNames
-                .Select(Path.GetFileNameWithoutExtension)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Select(name => new { Name = name, Match = TRACK_NAME.Match(name) })
-                .Where(track => track.Match.Success)
-                .OrderBy(track => track.Match.Groups[2].Length)
-                .ThenBy(track => int.Parse(track.Match.Groups[1].Value))
+            var tracks = new List<(string Name, int Number, bool IsB)>();
+
+            foreach (string name in fileNames.Select(Path.GetFileNameWithoutExtension))
+            {
+                if (!name.StartsWith(TRACK_PREFIX, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string rest = name.Substring(TRACK_PREFIX.Length);
+                bool isB = rest.EndsWith("b", StringComparison.OrdinalIgnoreCase);
+
+                if (isB)
+                    rest = rest.Substring(0, rest.Length - 1);
+
+                if (rest.Length > 0 && rest.All(char.IsAsciiDigit))
+                    tracks.Add((name, int.Parse(rest), isB));
+            }
+
+            return tracks
+                .OrderBy(track => track.IsB)
+                .ThenBy(track => track.Number)
                 .Select(track => TRACK_FOLDER + "/" + track.Name)
                 .ToList();
         }

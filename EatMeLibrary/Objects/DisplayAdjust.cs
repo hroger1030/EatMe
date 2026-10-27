@@ -4,8 +4,9 @@ namespace EatMeLibrary
 {
     /// <summary>
     /// Limits and colour maths for the client's brightness and colour bloom settings. The client's Brightness and
-    /// Bloom shaders do the same sums on the whole screen; AdjustColor, ApplyBloomThreshold and GetBlurWeights
-    /// mirror them so they can be tested.
+    /// Bloom shaders do the same sums; AdjustColor and GetBlurWeights mirror them so they can be tested. The bloom
+    /// only glows what the game board draws into its glow target (GlowSources), blurred into a tight halo and a wide
+    /// one and added back many times over (GetBloomTightGain, GetBloomWideGain), so the maze reads as neon.
     /// </summary>
     public static class DisplayAdjust
     {
@@ -22,7 +23,7 @@ namespace EatMeLibrary
         public const float BRIGHTNESS_MAX = 100f;
 
         /// <summary>
-        /// Colour bloom in percent; the default is off, leaving the picture unchanged.
+        /// Colour bloom in percent; 0 is off.
         /// </summary>
         public const float BLOOM_DEFAULT = 0f;
 
@@ -34,11 +35,6 @@ namespace EatMeLibrary
         public const float BLOOM_MAX = 100f;
 
         /// <summary>
-        /// Colour channels (0 to 1) below this don't glow; above it the excess is stretched back to 0 to 1.
-        /// </summary>
-        public const float BLOOM_THRESHOLD = 0.5f;
-
-        /// <summary>
         /// Blur taps from the centre out, centre included, so 2 * BLOOM_BLUR_TAPS - 1 samples per pass.
         /// The Bloom shader's Weights array is this long.
         /// </summary>
@@ -48,6 +44,16 @@ namespace EatMeLibrary
         /// Spread of the Gaussian blur, in texels of the half size bloom target.
         /// </summary>
         public const float BLOOM_BLUR_SIGMA = 2f;
+
+        /// <summary>
+        /// How many times over the blurred glow is added back at 100%, so the halo is strong enough to read as neon light.
+        /// </summary>
+        public const float BLOOM_MAX_GAIN = 4f;
+
+        /// <summary>
+        /// The wide halo (blurred at quarter size) is added at this share of the gain, the tight one (half size) at the rest.
+        /// </summary>
+        public const float BLOOM_WIDE_SHARE = 0.6f;
 
         /// <summary>
         /// Share of the desktop's width and height the game's window takes in windowed mode, so it and its title bar fit.
@@ -102,17 +108,21 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// The Bloom shader's bright pass on one colour (channels 0 to 1): what is left of each channel above
-        /// BLOOM_THRESHOLD, stretched back to 0 to 1, so saturated colours glow in their own colour.
+        /// How many times over the tight halo (the glow blurred at half size) is added back for a colour bloom in percent:
+        /// 0 for 0%, up to BLOOM_MAX_GAIN times (1 - BLOOM_WIDE_SHARE) at 100%.
         /// </summary>
-        public static (float R, float G, float B) ApplyBloomThreshold(float r, float g, float b)
+        public static float GetBloomTightGain(float bloom)
         {
-            return (Threshold(r), Threshold(g), Threshold(b));
+            return GetBloomIntensity(bloom) * BLOOM_MAX_GAIN * (1f - BLOOM_WIDE_SHARE);
         }
 
-        private static float Threshold(float channel)
+        /// <summary>
+        /// How many times over the wide halo (the glow blurred at quarter size) is added back for a colour bloom in
+        /// percent: 0 for 0%, up to BLOOM_MAX_GAIN times BLOOM_WIDE_SHARE at 100%.
+        /// </summary>
+        public static float GetBloomWideGain(float bloom)
         {
-            return Math.Clamp((channel - BLOOM_THRESHOLD) / (1f - BLOOM_THRESHOLD), 0f, 1f);
+            return GetBloomIntensity(bloom) * BLOOM_MAX_GAIN * BLOOM_WIDE_SHARE;
         }
 
         /// <summary>

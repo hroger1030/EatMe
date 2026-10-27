@@ -1,4 +1,4 @@
-// Whole screen brightness, drawn by TitleScreen.Draw over the finished frame.
+// The finished frame, copied to the screen by TitleScreen.DrawToScreen with the brightness applied.
 // Keep the maths in step with EatMeLibrary.DisplayAdjust.AdjustColor.
 
 #if OPENGL
@@ -6,8 +6,8 @@
 	#define VS_SHADERMODEL vs_3_0
 	#define PS_SHADERMODEL ps_3_0
 #else
-	#define VS_SHADERMODEL vs_4_0_level_9_1
-	#define PS_SHADERMODEL ps_4_0_level_9_1
+	#define VS_SHADERMODEL vs_4_0
+	#define PS_SHADERMODEL ps_4_0
 #endif
 
 float Brightness = 1.0;  // 1 = no change, below 1 dims

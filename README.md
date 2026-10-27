@@ -37,7 +37,7 @@ EatMe\
     EatMeClient\            MonoGame DesktopGL game client
         Content\            Content.mgcb and every asset it builds
             audio\          Sound effects and announcer clips (WAV)
-            effects\        Shaders (.fx): brightness, bloom, pixel art, rainbow walls
+            effects\        Shaders (.fx): screen (brightness), bloom, pixel art, rainbow walls, board distortion and grade, spawn dissolve
             fonts\          Sprite fonts and the JLS Space Gothic and Liberation Sans font files
             images\         Sprite sheets, tiles, backgrounds and the logo
             music\          Title theme and level tracks (MP3)

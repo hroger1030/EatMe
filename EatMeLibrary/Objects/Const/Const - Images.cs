@@ -38,6 +38,9 @@ namespace EatMeLibrary
         // Starfield tiled behind the maze on levels with LevelInfo.BackgroundImage set (Pac Paradise)
         public const string IMAGE_SPACE_FILL = "Images/SpaceFill (256x256x1)";
 
+        // White whirlpool circle, magenta keyed out, tinted and spun round a pac to show an area effect's reach (EffectRange)
+        public const string IMAGE_EFFECT_RANGE = "Images/EffectRange (256x256x1)";
+
         // Greyscale line art sketch of a castle on a hill, magenta keyed out
         public const string IMAGE_CASTLE = "Images/castle";
     }

@@ -49,6 +49,11 @@ namespace EatMeLibrary
         public const float ENERGY_TANK_SPEED_SCALE = 1.3f;
 
         /// <summary>
+        /// A pac with Rolling Thunder moves this many times as fast.
+        /// </summary>
+        public const float ROLLING_THUNDER_SPEED_SCALE = 1.2f;
+
+        /// <summary>
         /// A pac charging on its own spawn (PacState.SpawnFeeding) blinks purple, showing it for this long out of every two.
         /// </summary>
         public const int SPAWN_CHARGE_BLINK_MS = 150;
@@ -165,7 +170,8 @@ namespace EatMeLibrary
 
         /// <summary>
         /// What a power up effect multiplies a pac's speed (GetSpeed) by: WARP_SPEED_SCALE for Warp Speed,
-        /// INVINCIBLE_SPEED_SCALE for Invincible, ENERGY_TANK_SPEED_SCALE for Energy Tank, otherwise 1.
+        /// INVINCIBLE_SPEED_SCALE for Invincible, ENERGY_TANK_SPEED_SCALE for Energy Tank, ROLLING_THUNDER_SPEED_SCALE
+        /// for Rolling Thunder, otherwise 1.
         /// </summary>
         public static float GetEffectSpeedScale(ePowerUp effect)
         {
@@ -174,6 +180,7 @@ namespace EatMeLibrary
                 ePowerUp.Solarian => WARP_SPEED_SCALE,
                 ePowerUp.Starman => INVINCIBLE_SPEED_SCALE,
                 ePowerUp.EnergyTank => ENERGY_TANK_SPEED_SCALE,
+                ePowerUp.RollingThunder => ROLLING_THUNDER_SPEED_SCALE,
                 _ => 1f,
             };
         }

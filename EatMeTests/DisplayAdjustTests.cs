@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using EatMeLibrary;
 
@@ -72,13 +73,19 @@ namespace EatMeTests
         }
 
         [Test]
-        public void ApplyBloomThreshold_KeepsOnlyBrightChannels()
+        public void BloomGains_AreOffAtZeroAndAddUpToTheMaxGain()
         {
-            var (r, g, b) = DisplayAdjust.ApplyBloomThreshold(1f, DisplayAdjust.BLOOM_THRESHOLD, 0.2f);
-            Assert.That(new[] { r, g, b }, Is.EqualTo(new[] { 1f, 0f, 0f }).Within(TOLERANCE));
+            Assert.That(DisplayAdjust.GetBloomTightGain(0f), Is.EqualTo(0f));
+            Assert.That(DisplayAdjust.GetBloomWideGain(0f), Is.EqualTo(0f));
+            Assert.That(DisplayAdjust.GetBloomTightGain(100f) + DisplayAdjust.GetBloomWideGain(100f), Is.EqualTo(DisplayAdjust.BLOOM_MAX_GAIN).Within(TOLERANCE));
+            Assert.That(DisplayAdjust.GetBloomWideGain(50f), Is.EqualTo(DisplayAdjust.GetBloomWideGain(100f) * 0.5f).Within(TOLERANCE));
+        }
 
-            var (r2, _, _) = DisplayAdjust.ApplyBloomThreshold(0.75f, 0f, 0f);
-            Assert.That(r2, Is.EqualTo(0.5f).Within(TOLERANCE));
+        [Test]
+        public void GlowSources_EveryStrengthIsInRangeAndGlows()
+        {
+            foreach (eGlowSource source in Enum.GetValues(typeof(eGlowSource)))
+                Assert.That(GlowSources.GetStrength(source), Is.GreaterThan(0f).And.LessThanOrEqualTo(1f), source.ToString());
         }
 
         [Test]

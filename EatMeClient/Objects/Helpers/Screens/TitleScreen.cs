@@ -17,23 +17,6 @@ namespace EatMeClient
         private const int DISPLAY_SETTLE_MS = 250;
         private const float PERF_OVERLAY_MARGIN = 16f;
 
-        /// <summary>
-        /// Times the bloom glow is blurred each way; more makes it wider and softer.
-        /// </summary>
-        private const int BLOOM_BLUR_PASSES = 2;
-
-        /// <summary>
-        /// Adds the glow straight onto the frame. BlendState.Additive would also multiply by the tint's alpha,
-        /// applying the bloom strength twice.
-        /// </summary>
-        private static readonly BlendState BLEND_ADD_GLOW = new()
-        {
-            ColorSourceBlend = Blend.One,
-            ColorDestinationBlend = Blend.One,
-            AlphaSourceBlend = Blend.One,
-            AlphaDestinationBlend = Blend.One,
-        };
-
         private static readonly string[] MENU_OPTIONS = [Const.STRING_JOIN_GAME, Const.STRING_GAME_SETTINGS, Const.STRING_HIGH_SCORES, Const.STRING_QUIT];
 
         private GraphicsDeviceManager _Graphics;
@@ -53,11 +36,8 @@ namespace EatMeClient
         private SpriteFont _MenuFont;
         private Texture2D _Background;
         private Texture2D _Logo;
-        private Effect _Brightness;
-        private Effect _Bloom;
+        private Effect _Screen;
         private RenderTarget2D _SceneTarget;
-        private RenderTarget2D _BloomTarget;
-        private RenderTarget2D _BloomBlurTarget;
         private eScreenState _CurrentScreen = eScreenState.TitleMenu;
         private int _SelectedMenuIndex;
         private TimeSpan? _ExitTimeRemaining;
@@ -107,10 +87,7 @@ namespace EatMeClient
             _MenuFont = AssetCache.GetFont(Const.FONT_JLSSPACEGOTHIC60);
             _Background = AssetCache.GetTexture(Const.IMAGE_TITLE_BACKGROUND);
             _Logo = AssetCache.GetTexture(Const.IMAGE_LOGO);
-            _Brightness = AssetCache.GetEffect(Const.EFFECT_BRIGHTNESS);
-            _Bloom = AssetCache.GetEffect(Const.EFFECT_BLOOM);
-            _Bloom.Parameters["Threshold"].SetValue(DisplayAdjust.BLOOM_THRESHOLD);
-            _Bloom.Parameters["Weights"].SetValue(DisplayAdjust.GetBlurWeights());
+            _Screen = AssetCache.GetEffect(Const.EFFECT_SCREEN);
 
             _GameSettingsScreen = new SettingsScreen(ReturnToTitleMenu);
             _AttractScreen = new AttractScreen(ReturnToTitleMenu);
@@ -153,10 +130,10 @@ namespace EatMeClient
                 Const.IMAGE_FLAG0, Const.IMAGE_FLAG_BASE, Const.IMAGE_PAC_SHEET, Const.IMAGE_PAC_DEATH_SHEET,
                 Const.IMAGE_GHOST, Const.IMAGE_PAC_BASE, Const.IMAGE_POWER_UP_SHEET, Const.IMAGE_WEAPON_EFFECTS,
                 Const.IMAGE_WALL, Const.IMAGE_WALL_FILL, Const.IMAGE_SPACE_FILL,Const.IMAGE_MINI_MAP_ICONS,
-                Const.IMAGE_CASTLE]);
+                Const.IMAGE_CASTLE, Const.IMAGE_EFFECT_RANGE]);
 
             // music
-            MusicManager.LevelTracks = MusicPlaylist.GetTrackNames(((PakContentManager)Content).GetFiles(MusicPlaylist.TRACK_FOLDER));
+            MusicManager.LevelTracks = MusicPlaylist.GetTrackNames(((PakContentManager)Content).GetFiles(MusicPlaylist.TRACK_FOLDER, MusicPlaylist.MUSIC_FILE_EXTENSION));
             // only the title theme stays in memory; each level track is read when its level starts
             AssetCache.LoadMusic([Const.SONG_TITLE_THEME]);
 
@@ -171,7 +148,9 @@ namespace EatMeClient
             AssetCache.LoadTexts([Const.TEXT_STORY]);
 
             // shaders
-            AssetCache.LoadEffects([Const.EFFECT_BRIGHTNESS, Const.EFFECT_PIXEL_ART, Const.EFFECT_BLOOM, Const.EFFECT_RAINBOW_WALL]);
+            AssetCache.LoadEffects([Const.EFFECT_SCREEN, Const.EFFECT_PIXEL_ART, Const.EFFECT_BLOOM, Const.EFFECT_RAINBOW_WALL,
+                Const.EFFECT_BOARD_DISTORT, Const.EFFECT_BOARD_GRADE, Const.EFFECT_DISSOLVE, Const.EFFECT_STAR_RAINBOW,
+                Const.EFFECT_SHOCK_RING]);
         }
 
         /// <summary>
@@ -533,7 +512,7 @@ namespace EatMeClient
 
             DrawFrame(gameTime);
 
-            // after the brightness pass, so neither brightness nor bloom touch it
+            // after the screen pass, so brightness doesn't touch it
             if (_Perf.IsVisible && _DisplayStableTime.TotalMilliseconds >= DISPLAY_SETTLE_MS)
             {
                 _SpriteBatch.Begin();
@@ -554,7 +533,7 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Draws the active screen into the scene target and copies it to the screen through bloom and brightness.
+        /// Draws the active screen into the scene target and copies it to the screen through the brightness.
         /// </summary>
         private void DrawFrame(GameTime gameTime)
         {
@@ -567,19 +546,20 @@ namespace EatMeClient
                 return;
             }
 
-            // Every screen is drawn into the scene target, the bloom glow is made from it, then both are copied to the
-            // screen through the Brightness shader
+            // In a game the board is drawn first into its own targets (bloom, light, distortion), since switching render
+            // targets loses what is in them; then every screen is drawn into the scene target (the game copying its
+            // finished board into the board's viewport), which is copied to the screen through the Screen shader
+            if (_CurrentScreen == eScreenState.Game)
+                _GameScreen.DrawBoardTargets(_SpriteBatch, GraphicsDevice.Viewport);
+
             var sceneTarget = GetSceneTarget();
             GraphicsDevice.SetRenderTarget(sceneTarget);
             GraphicsDevice.Clear(Color.Black);
             DrawScreens(GraphicsDevice.Viewport);
 
-            var bloomIntensity = DisplayAdjust.GetBloomIntensity(ConfigManager.Settings.Bloom);
-            var bloomTarget = bloomIntensity > 0f ? DrawBloom(sceneTarget) : null;
-
             GraphicsDevice.SetRenderTarget(null);
 
-            DrawWithBrightness(sceneTarget, bloomTarget, bloomIntensity);
+            DrawToScreen(sceneTarget);
 
             base.Draw(gameTime);
         }
@@ -602,67 +582,15 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Makes the bloom glow from the finished frame: the bright parts, at half size, blurred twice each way.
-        /// Returns the target holding it.
+        /// Copies the finished frame to the screen through the Screen shader, which applies the brightness.
         /// </summary>
-        private RenderTarget2D DrawBloom(RenderTarget2D sceneTarget)
+        private void DrawToScreen(RenderTarget2D sceneTarget)
         {
-            var width = Math.Max(1, sceneTarget.Width / 2);
-            var height = Math.Max(1, sceneTarget.Height / 2);
+            var viewport = GraphicsDevice.Viewport;
 
-            if (_BloomTarget == null || _BloomTarget.Width != width || _BloomTarget.Height != height)
-            {
-                _BloomTarget?.Dispose();
-                _BloomBlurTarget?.Dispose();
-                _BloomTarget = new RenderTarget2D(GraphicsDevice, width, height, false, SurfaceFormat.Color, DepthFormat.None);
-                _BloomBlurTarget = new RenderTarget2D(GraphicsDevice, width, height, false, SurfaceFormat.Color, DepthFormat.None);
-            }
-
-            _Bloom.CurrentTechnique = _Bloom.Techniques["BrightPass"];
-            DrawBloomPass(sceneTarget, _BloomTarget);
-
-            _Bloom.CurrentTechnique = _Bloom.Techniques["Blur"];
-            for (var i = 0; i < BLOOM_BLUR_PASSES; i++)
-            {
-                _Bloom.Parameters["TexelStep"].SetValue(new Vector2(1f / width, 0f));
-                DrawBloomPass(_BloomTarget, _BloomBlurTarget);
-
-                _Bloom.Parameters["TexelStep"].SetValue(new Vector2(0f, 1f / height));
-                DrawBloomPass(_BloomBlurTarget, _BloomTarget);
-            }
-
-            return _BloomTarget;
-        }
-
-        /// <summary>
-        /// Draws one texture over the whole of another target through the Bloom shader's current technique.
-        /// </summary>
-        private void DrawBloomPass(Texture2D source, RenderTarget2D destination)
-        {
-            GraphicsDevice.SetRenderTarget(destination);
-            _SpriteBatch.Begin(blendState: BlendState.Opaque, samplerState: SamplerState.LinearClamp, effect: _Bloom);
-            _SpriteBatch.Draw(source, destination.Bounds, Color.White);
-            _SpriteBatch.End();
-        }
-
-        /// <summary>
-        /// Copies the finished frame to the screen pixel for pixel, adds any bloom glow over it at bloomIntensity,
-        /// all at the player's brightness.
-        /// </summary>
-        private void DrawWithBrightness(RenderTarget2D sceneTarget, RenderTarget2D bloomTarget, float bloomIntensity)
-        {
-            _Brightness.Parameters["Brightness"].SetValue(DisplayAdjust.GetMultiplier(ConfigManager.Settings.Brightness));
-
-            _SpriteBatch.Begin(blendState: BlendState.Opaque, samplerState: SamplerState.PointClamp, effect: _Brightness);
-            _SpriteBatch.Draw(sceneTarget, GraphicsDevice.Viewport.Bounds, Color.White);
-            _SpriteBatch.End();
-
-            if (bloomTarget == null)
-                return;
-
-            // the glow is scaled up from half size, so sampled linearly; the tint carries its strength
-            _SpriteBatch.Begin(blendState: BLEND_ADD_GLOW, samplerState: SamplerState.LinearClamp, effect: _Brightness);
-            _SpriteBatch.Draw(bloomTarget, GraphicsDevice.Viewport.Bounds, Color.White * bloomIntensity);
+            _Screen.Parameters["Brightness"].SetValue(DisplayAdjust.GetMultiplier(ConfigManager.Settings.Brightness));
+            _SpriteBatch.Begin(blendState: BlendState.Opaque, samplerState: SamplerState.PointClamp, effect: _Screen);
+            _SpriteBatch.Draw(sceneTarget, viewport.Bounds, Color.White);
             _SpriteBatch.End();
         }
 

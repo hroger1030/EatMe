@@ -13,12 +13,13 @@ namespace EatMeClient
         public float SoundVolume { get; set; } = DEFAULT_VOLUME;
 
         /// <summary>
-        /// Whole screen brightness in percent, applied by the Brightness shader; 100 leaves the picture unchanged.
+        /// Whole screen brightness in percent, applied by the Screen shader; 100 leaves the picture unchanged.
         /// </summary>
         public float Brightness { get; set; } = DisplayAdjust.BRIGHTNESS_DEFAULT;
 
         /// <summary>
-        /// Whole screen colour bloom in percent, applied by the Bloom shader; 0 is off.
+        /// Colour bloom in percent: the glow round the game board's glowing things (GlowSources), blurred by the
+        /// Bloom shader into a neon halo; 0 is off.
         /// </summary>
         public float Bloom { get; set; } = DisplayAdjust.BLOOM_DEFAULT;
 

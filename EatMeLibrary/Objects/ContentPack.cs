@@ -71,18 +71,19 @@ namespace EatMeLibrary
         public bool Contains(string path) => _Entries.ContainsKey(NormalizePath(path));
 
         /// <summary>
-        /// Paths of the files in a folder of the pack (subfolders included), as the pack stores them.
+        /// Paths of the files with an extension (e.g. ".ogg") in a folder of the pack (subfolders included), as the pack stores them.
         /// </summary>
-        public List<string> GetFiles(string folder)
+        public List<string> GetFiles(string folder, string extension)
         {
             ArgumentNullException.ThrowIfNull(folder);
+            ArgumentNullException.ThrowIfNull(extension);
 
             var prefix = NormalizePath(folder).TrimEnd('/') + "/";
             var files = new List<string>();
 
             foreach (var path in _Entries.Keys)
             {
-                if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && path.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
                     files.Add(path);
             }
 

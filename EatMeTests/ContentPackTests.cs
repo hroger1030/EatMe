@@ -113,7 +113,7 @@ namespace EatMeTests
         {
             using var pack = BuildPack(("Music/Track1.ogg", "a"), ("Music/Track1.xnb", "b"), ("Images/title.xnb", "c"), ("MusicNotes.txt", "d"));
 
-            Assert.That(pack.GetFiles("Music"), Is.EquivalentTo(new[] { "Music/Track1.ogg", "Music/Track1.xnb" }));
+            Assert.That(pack.GetFiles("Music", ".ogg"), Is.EquivalentTo(new[] { "Music/Track1.ogg" }));
         }
 
         [Test]
@@ -121,7 +121,7 @@ namespace EatMeTests
         {
             using var pack = BuildPack(("Music/Track1.ogg", "a"));
 
-            Assert.That(pack.GetFiles(@"\music\"), Is.EquivalentTo(new[] { "Music/Track1.ogg" }));
+            Assert.That(pack.GetFiles(@"\music\", ".OGG"), Is.EquivalentTo(new[] { "Music/Track1.ogg" }));
         }
 
         [Test]
@@ -129,7 +129,7 @@ namespace EatMeTests
         {
             using var pack = BuildPack(("Images/title.xnb", "a"));
 
-            Assert.That(pack.GetFiles("Music"), Is.Empty);
+            Assert.That(pack.GetFiles("Music", ".ogg"), Is.Empty);
         }
     }
 }

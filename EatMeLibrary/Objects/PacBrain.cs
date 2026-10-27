@@ -546,7 +546,7 @@ namespace EatMeLibrary
         ///   teammate in the way holds its fire). It fires the BFG even when the burst will catch it too.
         /// - Gotcha: whenever any ghost is alive, since monster balls find ghosts by themselves.
         /// - POW: a ghost or an enemy pac that isn't invincible, neither stunned already, is within the standard effect
-        ///   radius (PowerUpEffects.EFFECT_RADIUS).
+        ///   radius (PowerUpEffects.IsInEffectRange).
         /// - Stun Bomb: its bomb isn't dropped yet and a ghost or enemy pac that isn't stunned is within the standard radius.
         /// - Banana Peel: a ghost or enemy pac that isn't stunned is within DANGER_DISTANCE cells.
         /// - Warp and Cherry Twin: something that can kill it (a ghost, or an enemy that IsThreat) is within
@@ -572,10 +572,10 @@ namespace EatMeLibrary
                     return HasTargetAhead(world, me);
 
                 case ePowerUp.PowBlock:
-                    return HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, true);
+                    return HasTargetInEffectRange(world, me, true);
 
                 case ePowerUp.StunBomb:
-                    return !me.BombDropped && HasTargetNear(world, me, PowerUpEffects.EFFECT_RADIUS, false);
+                    return !me.BombDropped && HasTargetInEffectRange(world, me, false);
 
                 case ePowerUp.Banana:
                     return HasTargetNear(world, me, DANGER_DISTANCE, false);
@@ -623,8 +623,8 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if a living ghost or enemy pac that isn't stunned is no more than cells away from me horizontally and
-        /// vertically. With skipInvincible, invincible enemies don't count.
+        /// True if a living ghost or enemy pac that isn't stunned is no more than cells away from me in a straight
+        /// line (IsWithin). With skipInvincible, invincible enemies don't count.
         /// </summary>
         private static bool HasTargetNear(BotWorld world, Player me, float cells, bool skipInvincible)
         {
@@ -640,8 +640,25 @@ namespace EatMeLibrary
         }
 
         /// <summary>
+        /// True if a living ghost or enemy pac that isn't stunned is inside the standard radius round me
+        /// (PowerUpEffects.IsInEffectRange). With skipInvincible, invincible enemies don't count.
+        /// </summary>
+        private static bool HasTargetInEffectRange(BotWorld world, Player me, bool skipInvincible)
+        {
+            foreach (var ghost in world.Ghosts)
+                if (ghost.Alive && !ghost.IsStunned && PowerUpEffects.IsInEffectRange(me.Location, ghost.Location))
+                    return true;
+
+            foreach (var pac in world.Pacs)
+                if (pac.Alive && pac.Team != me.Team && !pac.IsStunned && !(skipInvincible && pac.IsInvincible) && PowerUpEffects.IsInEffectRange(me.Location, pac.Location))
+                    return true;
+
+            return false;
+        }
+
+        /// <summary>
         /// True if something that can kill me (a ghost I can't kill or pass through, or an enemy that IsThreat) is no
-        /// more than cells away horizontally and vertically.
+        /// more than cells away in a straight line (IsWithin).
         /// </summary>
         private static bool HasThreatNear(BotWorld world, Player me, float cells)
         {
@@ -658,11 +675,13 @@ namespace EatMeLibrary
         }
 
         /// <summary>
-        /// True if to is no more than cells away from from, horizontally and vertically.
+        /// True if to is no more than cells away from from in a straight line (a circle round from).
         /// </summary>
         public static bool IsWithin(Point2 from, Point2 to, float cells)
         {
-            return MathF.Abs(to.X - from.X) <= cells && MathF.Abs(to.Y - from.Y) <= cells;
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            return dx * dx + dy * dy <= cells * cells;
         }
 
         /// <summary>

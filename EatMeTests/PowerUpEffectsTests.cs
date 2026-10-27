@@ -78,14 +78,16 @@ namespace EatMeTests
         }
 
         [Test]
-        public void IsInEffectRange_IsASquareOfEffectRadius()
+        public void IsInEffectRange_IsACircleOfEffectRadius()
         {
             var from = new FastG.Point2(10f, 10f);
             var radius = PowerUpEffects.EFFECT_RADIUS;
+            var diagonal = radius / MathF.Sqrt(2f);
 
             Assert.That(PowerUpEffects.IsInEffectRange(from, from), Is.True);
             Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f + radius, 10f)), Is.True);
-            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f - radius, 10f + radius)), Is.True, "the corners are inside");
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f - diagonal + 0.1f, 10f + diagonal - 0.1f)), Is.True, "just inside on the diagonal");
+            Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f - radius, 10f + radius)), Is.False, "the square's corners are outside");
             Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f + radius + 0.5f, 10f)), Is.False);
             Assert.That(PowerUpEffects.IsInEffectRange(from, new FastG.Point2(10f, 10f - radius - 0.5f)), Is.False);
         }
@@ -118,14 +120,11 @@ namespace EatMeTests
         }
 
         [Test]
-        public void Invincible_NameTrailAndBlink()
+        public void Invincible_NameTrailAndRainbow()
         {
             Assert.That(PowerUpEffects.GetName(ePowerUp.Starman), Is.EqualTo(Const.STRING_INVINCIBLE));
             Assert.That(PowerUpEffects.HasSpeedTrail(ePowerUp.Starman), Is.True);
-
-            Assert.That(PowerUpEffects.IsStarBlinkYellow(TimeSpan.Zero), Is.True);
-            Assert.That(PowerUpEffects.IsStarBlinkYellow(TimeSpan.FromMilliseconds(PowerUpEffects.STAR_BLINK_MS * 1.5)), Is.False);
-            Assert.That(PowerUpEffects.IsStarBlinkYellow(TimeSpan.FromMilliseconds(PowerUpEffects.STAR_BLINK_MS * 2.5)), Is.True);
+            Assert.That(StarRainbow.IsRainbow(ePowerUp.Starman), Is.True);
         }
 
         [Test]
@@ -162,6 +161,12 @@ namespace EatMeTests
         {
             Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.EnergyTank), Is.EqualTo(PacRules.ENERGY_TANK_SPEED_SCALE));
             Assert.That(PacRules.ENERGY_TANK_SPEED_SCALE, Is.EqualTo(1.3f));
+        }
+
+        [Test]
+        public void GetEffectSpeedScale_RollingThunderIsTwentyPercentFaster()
+        {
+            Assert.That(PacRules.GetEffectSpeedScale(ePowerUp.RollingThunder), Is.EqualTo(1.2f));
         }
 
         [Test]

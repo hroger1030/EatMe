@@ -138,8 +138,9 @@ namespace EatMeClient
 
         /// <summary>
         /// A pac's tint at animationTime, the same on the board and the mini map: its color (GetPacColor), pulsing
-        /// to white with a power pill, blinking yellow while invincible, flashing white with Sun Flower or Rolling Thunder,
-        /// and blinking purple while it charges on its spawn.
+        /// to white with a power pill, running round the rainbow while invincible (one color for the whole pac here: the
+        /// board draws it through the StarRainbow shader, IsRainbowPac), flashing white with Sun Flower or Rolling
+        /// Thunder, and blinking purple while it charges on its spawn.
         /// </summary>
         public static Color GetPacTint(PacState pac, bool isOwn, TimeSpan animationTime)
         {
@@ -151,8 +152,8 @@ namespace EatMeClient
                 tint = Color.Lerp(tint, Color.White, amount);
             }
 
-            if (pac.PowerUpEffect == ePowerUp.Starman && PowerUpEffects.IsStarBlinkYellow(animationTime))
-                tint = COLOR_PAC_YELLOW;
+            if (StarRainbow.IsRainbow(pac.PowerUpEffect))
+                tint = ToColor(StarRainbow.GetColor(animationTime));
 
             if (PowerUpEffects.FlashesWhite(pac.PowerUpEffect) && PowerUpEffects.IsFireFlashWhite(animationTime))
                 tint = Color.White;
@@ -162,6 +163,41 @@ namespace EatMeClient
 
             return tint;
         }
+
+        /// <summary>
+        /// True if the board draws a pac at animationTime through the StarRainbow shader: while invincible, except when
+        /// its spawn charge blink turns it purple.
+        /// </summary>
+        public static bool IsRainbowPac(PacState pac, TimeSpan animationTime)
+        {
+            return StarRainbow.IsRainbow(pac.PowerUpEffect) && !(pac.SpawnFeeding && PacRules.IsSpawnChargeBlinkPurple(animationTime));
+        }
+
+        /// <summary>
+        /// The whirlpool circle showing an area effect's reach (EffectRange): red for Doctor Away, light blue for Twister.
+        /// </summary>
+        public static readonly Color COLOR_DOCTOR_AWAY_RANGE = new(255, 40, 40);
+        public static readonly Color COLOR_TWISTER_RANGE = new(135, 206, 250);
+
+        /// <summary>
+        /// The color of the whirlpool circle drawn round a pac with this effect (EffectRange.IsShown).
+        /// </summary>
+        public static Color GetEffectRangeColor(ePowerUp effect)
+        {
+            return effect == ePowerUp.Apple ? COLOR_DOCTOR_AWAY_RANGE : COLOR_TWISTER_RANGE;
+        }
+
+        /// <summary>
+        /// A blast's shock ring (the POW block, a Stun Bomb): a white-hot core fading to yellow at its edges.
+        /// </summary>
+        public static readonly Color COLOR_BLAST_RING_CORE = new(255, 255, 235);
+        public static readonly Color COLOR_BLAST_RING_EDGE = new(255, 200, 40);
+
+        /// <summary>
+        /// A BFG burst's shock ring: a bright green core with a deeper green glow.
+        /// </summary>
+        public static readonly Color COLOR_BFG_RING_CORE = new(170, 255, 140);
+        public static readonly Color COLOR_BFG_RING_EDGE = new(40, 220, 60);
 
         /// <summary>
         /// A team's spawn floor color.

@@ -75,12 +75,20 @@ namespace EatMeClient
 
         public void Draw(SpriteBatch spriteBatch, Vector2 drawPosition)
         {
+            Draw(spriteBatch, drawPosition, Tint);
+        }
+
+        /// <summary>
+        /// Draws the current frame in the given tint instead of Tint.
+        /// </summary>
+        public void Draw(SpriteBatch spriteBatch, Vector2 drawPosition, Color tint)
+        {
             if (IsComplete)
                 return;
 
             var origin = new Vector2(SpriteSource.Width * 0.5f, SpriteSource.Height * 0.5f);
 
-            spriteBatch.Draw(Texture, drawPosition, SpriteSource, Tint, Facing, origin, Scale, SpriteEffects.None, 0f);
+            spriteBatch.Draw(Texture, drawPosition, SpriteSource, tint, Facing, origin, Scale, SpriteEffects.None, 0f);
         }
     }
 }

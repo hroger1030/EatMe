@@ -554,6 +554,18 @@
 /processorParam:TextureFormat=Color
 /build:Images/SpaceFill (256x256x1).png
 
+#begin Images/EffectRange (256x256x1).png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Images/EffectRange (256x256x1).png
+
 #begin Images/winblue.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -578,11 +590,11 @@
 /processorParam:TextureFormat=Color
 /build:Images/winred.png
 
-#begin Effects/Brightness.fx
+#begin Effects/Screen.fx
 /importer:EffectImporter
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
-/build:Effects/Brightness.fx
+/build:Effects/Screen.fx
 
 #begin Effects/PixelArt.fx
 /importer:EffectImporter
@@ -601,3 +613,33 @@
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
 /build:Effects/RainbowWall.fx
+
+#begin Effects/BoardDistort.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/BoardDistort.fx
+
+#begin Effects/BoardGrade.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/BoardGrade.fx
+
+#begin Effects/Dissolve.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/Dissolve.fx
+
+#begin Effects/StarRainbow.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/StarRainbow.fx
+
+#begin Effects/ShockRing.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/ShockRing.fx

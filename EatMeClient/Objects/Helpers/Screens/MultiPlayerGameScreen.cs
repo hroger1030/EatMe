@@ -136,6 +136,7 @@ namespace EatMeClient
         private const int POWER_UP_SHADOW_TEXTURE_WIDTH = 64;
         private const int POWER_UP_SHADOW_TEXTURE_HEIGHT = 24;
         private Texture2D _WeaponEffectSheet;
+        private Texture2D _EffectRangeTexture;
         private Texture2D _PacDeathSheet;
         private Texture2D[] _GhostSheets;
 
@@ -158,6 +159,17 @@ namespace EatMeClient
         private Texture2D _Background;
         private PixelArtEffect _PixelArt;
         private RainbowWallEffect _RainbowWall;
+        private DissolveEffect _Dissolve;
+        private StarRainbowEffect _StarRainbow;
+        private ShockRingEffect _ShockRing;
+
+        // the board's own render targets and full-board passes (bloom, light, distortion, grade), made on first use
+        private BoardPostProcess _Post;
+
+        // the texture DrawGradedBoard draws the board from this frame, and the grade it is drawn with
+        private Texture2D _BoardSource;
+        private BoardGrade _Grade = BoardGrade.None;
+
         private SoundEffectInstance _EatLoop;
         private SoundEffectInstance _SirenLoop;
         private SoundEffectInstance _PowerPillLoop;
@@ -183,6 +195,9 @@ namespace EatMeClient
         private SettingsScreen _SettingsScreen;
         private bool _SettingsOpen;
         private ePacShape _SentPacShape;
+
+        // true while the board's glowing things are drawn again for the bloom
+        private bool _DrawingGlow;
 
         /// <summary>
         /// No music starts while paused, so this remembers that the next level's track is owed when play resumes.
@@ -235,6 +250,21 @@ namespace EatMeClient
         /// The board's shake (ShakeScreen), added to the camera every frame.
         /// </summary>
         private readonly ScreenShake _Shake = new();
+
+        /// <summary>
+        /// The board's chromatic aberration kick (explosions), given to the board's grade every frame.
+        /// </summary>
+        private readonly ChromaticKick _Kick = new();
+
+        /// <summary>
+        /// The shockwave rings spreading out from blasts, BFG bursts and smashed walls.
+        /// </summary>
+        private readonly Shockwaves _Shockwaves = new();
+
+        /// <summary>
+        /// The bright rings racing out from blasts and BFG bursts to the standard radius.
+        /// </summary>
+        private readonly ShockRings _ShockRings = new();
         private eDirection _LastDirection;
         private uint _InputSequence;
 
@@ -273,6 +303,10 @@ namespace EatMeClient
             _Background = AssetCache.GetTexture(Const.IMAGE_TITLE_BACKGROUND);
             _PixelArt = new PixelArtEffect(AssetCache.GetEffect(Const.EFFECT_PIXEL_ART));
             _RainbowWall = new RainbowWallEffect(AssetCache.GetEffect(Const.EFFECT_RAINBOW_WALL), CELL_PIXELS);
+            _Dissolve = new DissolveEffect(AssetCache.GetEffect(Const.EFFECT_DISSOLVE));
+            _StarRainbow = new StarRainbowEffect(AssetCache.GetEffect(Const.EFFECT_STAR_RAINBOW));
+            _ShockRing = new ShockRingEffect(AssetCache.GetEffect(Const.EFFECT_SHOCK_RING));
+            _EffectRangeTexture = AssetCache.GetTexture(Const.IMAGE_EFFECT_RANGE);
 
             var whiteGhost = AssetCache.GetTexture(Const.IMAGE_GHOST);
 
@@ -341,6 +375,9 @@ namespace EatMeClient
             _Camera.Position = Vector2.Zero;
             _Camera.ShakeOffset = Vector2.Zero;
             _Shake.Stop();
+            _Kick.Stop();
+            _Shockwaves.Clear();
+            _ShockRings.Clear();
         }
 
         /// <summary>
@@ -494,6 +531,10 @@ namespace EatMeClient
             var (shakeX, shakeY) = _Shake.GetOffset();
             _Camera.ShakeOffset = new Vector2(shakeX, shakeY);
 
+            _Kick.Update(elapsed);
+            _Shockwaves.Update(_Clock.ElapsedMilliseconds);
+            _ShockRings.Update(_Clock.ElapsedMilliseconds);
+
             for (int i = DeathAnimations.Count - 1; i > -1; i--)
             {
                 DeathAnimations[i].Update(elapsed);
@@ -612,6 +653,8 @@ namespace EatMeClient
                 {
                     case LevelStartMessage:
                         _Debris.Clear();
+                        _Shockwaves.Clear();
+                        _ShockRings.Clear();
 
                         if (paused)
                             _LevelStartedWhilePaused = true;
@@ -624,13 +667,27 @@ namespace EatMeClient
                         {
                             PlayEventSound(gameEvent);
 
+                            var inRange = _State.IsOwnPacInEffectRange(gameEvent);
+
                             // an area effect's shockwave shakes the board for everyone inside its radius, the pac that set it off included
-                            if (PowerUpEffects.ShakesScreen(gameEvent.EventType) && _State.IsOwnPacInEffectRange(gameEvent))
+                            if (PowerUpEffects.ShakesScreen(gameEvent.EventType) && inRange)
                                 ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, TimeSpan.FromMilliseconds(ScreenShake.BLAST_DURATION_MS));
 
                             // smashed walls shake every board, wherever the player is
                             if (PowerUpEffects.ShakesEveryScreen(gameEvent.EventType))
                                 ShakeScreen(ScreenShake.BLAST_AMPLITUDE_PIXELS, TimeSpan.FromMilliseconds(ScreenShake.BLAST_DURATION_MS));
+
+                            // explosions split the board's colors for a moment: inside the radius, or everywhere for smashed walls
+                            if ((PowerUpEffects.KicksColors(gameEvent.EventType) && inRange) || PowerUpEffects.ShakesEveryScreen(gameEvent.EventType))
+                                _Kick.Start(ChromaticKick.BLAST_PIXELS, TimeSpan.FromMilliseconds(ChromaticKick.BLAST_DURATION_MS));
+
+                            // and send a ripple out from where they went off
+                            if (PowerUpEffects.MakesShockwave(gameEvent.EventType))
+                                _Shockwaves.Add(gameEvent.X, gameEvent.Y, _Clock.ElapsedMilliseconds);
+
+                            // blasts and BFG bursts also send a bright ring out to the standard radius
+                            if (ShockRings.IsSource(gameEvent.EventType))
+                                _ShockRings.Add(gameEvent.X, gameEvent.Y, gameEvent.EventType, _Clock.ElapsedMilliseconds);
                         }
 
                         StartDeathAnimation(gameEvent);
@@ -819,6 +876,377 @@ namespace EatMeClient
         }
 
         /// <summary>
+        /// True while the board is showing, so DrawBoardTargets has something to draw: not with the settings open,
+        /// during the results or once the game has stopped.
+        /// </summary>
+        public bool HasBoard => !_SettingsOpen && !_State.IsIntermission && _State.Map != null && !IsStopped;
+
+        /// <summary>
+        /// Draws the board into its own targets (BoardPostProcess), before the frame's scene target is set, since
+        /// switching targets loses what is in them. Only while HasBoard. In order: the glowing things on black, blurred
+        /// into the bloom (each tinted by its GlowSources strength, leaving out the background, floors, wall fills,
+        /// names and ghost eyes, so nothing else glows); then the board itself, with the bloom added many times over and the wall tubes drawn again on top so they stay crisp
+        /// inside their glow, like neon, then everything in front of the maze (FrontTarget) over that, so pacs, ghosts
+        /// and names are never behind the walls; and last the distortion (shockwaves, heat haze, stun wobble). DrawGradedBoard
+        /// then copies it into the board's viewport.
+        /// </summary>
+        public void DrawBoardTargets(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            _BoardSource = null;
+
+            if (!HasBoard)
+                return;
+
+            var device = spriteBatch.GraphicsDevice;
+            var boardViewport = GetBoardViewport(viewport);
+            var board = new Viewport(0, 0, boardViewport.Width, boardViewport.Height);
+
+            _Post ??= new BoardPostProcess(device, AssetCache.GetEffect(Const.EFFECT_BLOOM),
+                AssetCache.GetEffect(Const.EFFECT_BOARD_DISTORT), AssetCache.GetEffect(Const.EFFECT_BOARD_GRADE));
+            _Post.Resize(board.Width, board.Height);
+            _Pixel ??= TextureHelper.GetPixel(device);
+            _Grade = GetBoardGrade();
+
+            var tightGain = DisplayAdjust.GetBloomTightGain(ConfigManager.Settings.Bloom);
+            var wideGain = DisplayAdjust.GetBloomWideGain(ConfigManager.Settings.Bloom);
+            var hasBloom = tightGain > 0f || wideGain > 0f;
+
+            if (hasBloom)
+            {
+                device.SetRenderTarget(_Post.GlowTarget);
+                device.Clear(Color.Black);
+                DrawBoardLayers(spriteBatch, board, true, eDrawLayer.Background, eDrawLayer.Overhead);
+                _Post.BlurGlow(spriteBatch);
+            }
+
+            // everything in front of the maze (items, deaths, pacs, ghosts, names, effects) goes on a transparent target
+            // of its own, so the bloom and the neon core can go between the maze and it
+            device.SetRenderTarget(_Post.FrontTarget);
+            device.Clear(Color.Transparent);
+            DrawBoardLayers(spriteBatch, board, false, eDrawLayer.Items, eDrawLayer.Overhead);
+
+            device.SetRenderTarget(_Post.BoardTarget);
+            device.Clear(Color.Black);
+            DrawBoardLayers(spriteBatch, board, false, eDrawLayer.Background, eDrawLayer.Maze);
+
+            if (hasBloom)
+            {
+                _Post.AddBloom(spriteBatch, tightGain, wideGain);
+                DrawNeonCore(spriteBatch, board);
+            }
+
+            _Post.DrawFront(spriteBatch);
+
+            _BoardSource = DrawDistortion(spriteBatch, board);
+            device.SetRenderTarget(null);
+        }
+
+        /// <summary>
+        /// Draws the board layers first to last into the target being drawn: the board as it looks, its glowing things
+        /// for the bloom (glow).
+        /// </summary>
+        private void DrawBoardLayers(SpriteBatch spriteBatch, Viewport board, bool glow, eDrawLayer first, eDrawLayer last)
+        {
+            _DrawingGlow = glow;
+
+            try
+            {
+                foreach (var layer in DRAW_LAYERS)
+                    if (IsBoardLayer(layer) && layer >= first && layer <= last)
+                        DrawBoard(spriteBatch, board, layer);
+            }
+            finally
+            {
+                _DrawingGlow = false;
+            }
+        }
+
+        /// <summary>
+        /// The layers drawn on the board, in its own viewport (the ones up to Overhead).
+        /// </summary>
+        private static bool IsBoardLayer(eDrawLayer layer)
+        {
+            return layer is eDrawLayer.Background or eDrawLayer.Maze or eDrawLayer.Items or eDrawLayer.Deaths
+                or eDrawLayer.Actors or eDrawLayer.Effects or eDrawLayer.Overhead;
+        }
+
+        /// <summary>
+        /// A tint as drawn now: unchanged normally, scaled by the source's glow strength while drawing the glow.
+        /// </summary>
+        private Color GetGlowTint(Color tint, eGlowSource source)
+        {
+            return _DrawingGlow ? tint * GlowSources.GetStrength(source) : tint;
+        }
+
+        /// <summary>
+        /// Draws one of the board's layers into a board sized target.
+        /// </summary>
+        private void DrawBoard(SpriteBatch spriteBatch, Viewport board, eDrawLayer layer)
+        {
+            // sharp bilinear, so the pixel art stays crisp but scaled, turned and moving sprites get smooth edges
+            spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
+            DrawBoardLayer(spriteBatch, board, layer);
+            spriteBatch.End();
+        }
+
+        /// <summary>
+        /// Draws the wall tubes on screen again, in the level's wall color (rainbow on a rainbow level), over the bloom,
+        /// so each tube stays a crisp line inside its glow, like a neon tube.
+        /// </summary>
+        private void DrawNeonCore(SpriteBatch spriteBatch, Viewport board)
+        {
+            if (IsRainbowLevel)
+            {
+                _RainbowWall.SetView(board, -_Camera.ToScreenPosition(Vector2.Zero, board), _AnimationTime);
+                spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _RainbowWall);
+                DrawWallTubes(spriteBatch, board, Color.White);
+            }
+            else
+            {
+                spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
+                DrawWallTubes(spriteBatch, board, ClientColors.ToColor(_State.WallColor));
+            }
+
+            spriteBatch.End();
+        }
+
+        /// <summary>
+        /// Every wall tube on screen, in wallColor, with no fill.
+        /// </summary>
+        private void DrawWallTubes(SpriteBatch spriteBatch, Viewport board, Color wallColor)
+        {
+            var map = _State.Map;
+            GetVisibleCells(board, map, out var firstX, out var firstY, out var lastX, out var lastY);
+
+            for (var x = firstX; x <= lastX; x++)
+            {
+                for (var y = firstY; y <= lastY; y++)
+                {
+                    var cell = map[x, y];
+                    if (!cell.HasFlag(eGridDef.Wall) || cell.HasFlag(eGridDef.TetrisBlock))
+                        continue;
+
+                    var screen = _Camera.ToScreenPosition(CellToWorld(x, y), board);
+                    var bounds = new Rectangle((int)screen.X, (int)screen.Y, CELL_PIXELS, CELL_PIXELS);
+                    DrawWall(spriteBatch, map, x, y, bounds, wallColor, Color.Transparent, true);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves the board's pixels: the shockwave rings, the heat haze round Holy Fire flames and fireballs on screen
+        /// (up to HeatHaze.MAX_SOURCES), the warp round BFG shots on screen (up to BfgWarp.MAX_SOURCES) and the stun
+        /// wobble. Returns the texture to draw the board from.
+        /// </summary>
+        private Texture2D DrawDistortion(SpriteBatch spriteBatch, Viewport board)
+        {
+            var nowMs = _Clock.ElapsedMilliseconds;
+            var waves = _Post.ShockwaveValues;
+            var haze = _Post.HazeValues;
+            var warps = _Post.WarpValues;
+            var isMoving = _Grade.WobblePixels > 0f;
+
+            Array.Clear(waves);
+            Array.Clear(haze);
+            Array.Clear(warps);
+
+            for (var i = 0; i < _Shockwaves.Waves.Count && i < waves.Length; i++)
+            {
+                var wave = _Shockwaves.Waves[i];
+                var sinceStart = TimeSpan.FromMilliseconds(nowMs - wave.StartMs);
+                var centre = _Camera.ToScreenPosition(CellToWorld(wave.X, wave.Y), board);
+                var amplitude = Shockwaves.GetAmplitude(sinceStart);
+
+                waves[i] = new Vector4(centre.X, centre.Y, Shockwaves.GetRadiusCells(sinceStart) * CELL_PIXELS, amplitude);
+                isMoving |= amplitude > 0f;
+            }
+
+            if (_State.Snapshot != null)
+            {
+                var hazeRadius = HeatHaze.RADIUS_CELLS * CELL_PIXELS;
+                var warpRadius = BfgWarp.RADIUS_CELLS * CELL_PIXELS;
+                var pinch = BfgWarp.GetPinch(_AnimationTime);
+                var hazeCount = 0;
+                var warpCount = 0;
+
+                foreach (var effect in _State.Snapshot.WeaponEffects)
+                {
+                    var isHaze = HeatHaze.IsSource(effect.Kind) && hazeCount < haze.Length;
+                    var isWarp = BfgWarp.IsSource(effect.Kind) && warpCount < warps.Length;
+
+                    if (!isHaze && !isWarp)
+                        continue;
+
+                    var radius = isHaze ? hazeRadius : warpRadius;
+                    var centre = _Camera.ToScreenPosition(CellToWorld(effect.X, effect.Y), board);
+                    if (centre.X < -radius || centre.Y < -radius || centre.X > board.Width + radius || centre.Y > board.Height + radius)
+                        continue;
+
+                    if (isHaze)
+                        haze[hazeCount++] = new Vector4(centre.X, centre.Y, radius, HeatHaze.AMPLITUDE_PIXELS);
+                    else
+                        warps[warpCount++] = new Vector4(centre.X, centre.Y, radius, pinch);
+
+                    isMoving = true;
+                }
+            }
+
+            return _Post.Distort(spriteBatch, isMoving, Shockwaves.WIDTH_CELLS * CELL_PIXELS, HeatHaze.GetPhase(_AnimationTime),
+                _Grade.WobblePixels, StateGrade.GetWobblePhase(_AnimationTime));
+        }
+
+        /// <summary>
+        /// The board's grade from how the own pac is doing (StateGrade.GetGrade).
+        /// </summary>
+        private BoardGrade GetBoardGrade()
+        {
+            var sinceVictory = TimeSpan.FromMilliseconds(_Clock.ElapsedMilliseconds - _State.VictoryStartMs);
+            return StateGrade.GetGrade(_State.IsOwnPacPowered(), _State.IsOwnPacStunned(), _State.GetOwnHungerFill(),
+                _State.VictoryTeam, _State.Team, sinceVictory, _AnimationTime, ClientColors.POWER_PULSE_MS);
+        }
+
+        /// <summary>
+        /// Copies the board drawn by DrawBoardTargets into the board's viewport, below the score bar, through the
+        /// BoardGrade shader: the speed blur towards the own pac (SpeedBlur), the chromatic kick, the grade, the starving
+        /// red edges and the iris wipe round the own pac (IrisWipe).
+        /// </summary>
+        private void DrawGradedBoard(SpriteBatch spriteBatch, Viewport viewport)
+        {
+            if (_BoardSource == null)
+                return;
+
+            var boardViewport = GetBoardViewport(viewport);
+            var board = new Viewport(0, 0, boardViewport.Width, boardViewport.Height);
+            var ownPac = _State.GetOwnPac();
+            var centre = new Vector2(board.Width * 0.5f, board.Height * 0.5f);
+            var blurStrength = 0f;
+
+            if (ownPac.HasValue)
+            {
+                centre = _Camera.ToScreenPosition(CellToWorld(ownPac.Value.X, ownPac.Value.Y), board);
+
+                if (ownPac.Value.Alive)
+                    blurStrength = SpeedBlur.GetStrength(ownPac.Value.PowerUpEffect, ownPac.Value.Rolling);
+            }
+
+            var irisOpen = IrisWipe.GetOpenFraction(_Clock.ElapsedMilliseconds, _State.CountdownEndMs, _State.IsVictory, _State.VictoryStartMs);
+            var irisRadius = IrisWipe.GetRadius(irisOpen, centre.X, centre.Y, board.Width, board.Height);
+
+            _Post.DrawGraded(spriteBatch, _BoardSource, boardViewport.Bounds, _Grade, ClientColors.COLOR_PAC_RED,
+                centre, blurStrength, _Kick.GetPixels(), centre, irisRadius);
+        }
+
+        /// <summary>
+        /// Switches the board's batch to the Dissolve shader for something that spawned sinceSpawn ago, while it is
+        /// still materialising (SpawnDissolve.IsSpawning); returns false, changing nothing, once it has.
+        /// </summary>
+        private bool BeginDissolve(SpriteBatch spriteBatch, TimeSpan sinceSpawn)
+        {
+            if (!SpawnDissolve.IsSpawning(sinceSpawn))
+                return false;
+
+            spriteBatch.End();
+            _Dissolve.SetSinceSpawn(sinceSpawn);
+            spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _Dissolve);
+            return true;
+        }
+
+        /// <summary>
+        /// Draws the spinning whirlpool circle (EffectRange) round every living pac whose effect works within the
+        /// standard radius while it lasts, PowerUpEffects.EFFECT_RADIUS round it, tinted by ClientColors.GetEffectRangeColor
+        /// (red for Doctor Away, light blue for Twister) at EffectRange.ALPHA, so the maze shows through. Drawn sharp
+        /// bilinear like the rest of the board's pixel art, under everything else in front of the maze, and left out of
+        /// the bloom.
+        /// </summary>
+        private void DrawEffectRanges(SpriteBatch spriteBatch, Viewport board)
+        {
+            if (_DrawingGlow || _State.Snapshot == null)
+                return;
+
+            var radius = PowerUpEffects.EFFECT_RADIUS * CELL_PIXELS;
+            var origin = new Vector2(_EffectRangeTexture.Width * 0.5f, _EffectRangeTexture.Height * 0.5f);
+            var scale = radius * 2f / _EffectRangeTexture.Width;
+            var rotation = EffectRange.GetRotation(_AnimationTime);
+
+            foreach (var pac in _State.Snapshot.Pacs)
+            {
+                if (!pac.Alive || !EffectRange.IsShown(pac.PowerUpEffect))
+                    continue;
+
+                var centre = _Camera.ToScreenPosition(CellToWorld(pac.X, pac.Y), board);
+
+                if (centre.X + radius < 0f || centre.Y + radius < 0f || centre.X - radius > board.Width || centre.Y - radius > board.Height)
+                    continue;
+
+                var tint = ClientColors.GetEffectRangeColor(pac.PowerUpEffect) * EffectRange.ALPHA;
+                spriteBatch.Draw(_EffectRangeTexture, centre, null, tint, rotation, origin, scale, SpriteEffects.None, 0f);
+            }
+        }
+
+        /// <summary>
+        /// Draws every shock ring on the board through the ShockRing shader, each a square quad centred where it went
+        /// off and as wide as its glow reaches (ShockRings.GetReachPixels): white-hot to yellow for a blast, green for a
+        /// BFG burst. The shader's color has no alpha, so the ring adds its light; it glows under the bloom.
+        /// </summary>
+        private void DrawShockRings(SpriteBatch spriteBatch, Viewport board)
+        {
+            if (_ShockRings.Rings.Count == 0)
+                return;
+
+            var nowMs = _Clock.ElapsedMilliseconds;
+            spriteBatch.End();
+
+            foreach (var ring in _ShockRings.Rings)
+            {
+                var sinceStart = TimeSpan.FromMilliseconds(nowMs - ring.StartMs);
+                var alpha = ShockRings.GetAlpha(sinceStart);
+
+                if (alpha <= 0f)
+                    continue;
+
+                var radius = ShockRings.GetRadiusCells(sinceStart) * CELL_PIXELS;
+                var width = ShockRings.GetWidthPixels(sinceStart);
+                var reach = ShockRings.GetReachPixels(radius, width);
+                var centre = _Camera.ToScreenPosition(CellToWorld(ring.X, ring.Y), board);
+                var bounds = new Rectangle((int)(centre.X - reach), (int)(centre.Y - reach), (int)(reach * 2f), (int)(reach * 2f));
+
+                if (bounds.Right < 0 || bounds.Bottom < 0 || bounds.Left > board.Width || bounds.Top > board.Height)
+                    continue;
+
+                var isBfg = ring.EventType == eGameEvent.BfgBurst;
+                _ShockRing.SetRing(bounds.Width, radius, width,
+                    isBfg ? ClientColors.COLOR_BFG_RING_CORE : ClientColors.COLOR_BLAST_RING_CORE,
+                    isBfg ? ClientColors.COLOR_BFG_RING_EDGE : ClientColors.COLOR_BLAST_RING_EDGE);
+
+                spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _ShockRing);
+                spriteBatch.Draw(_Pixel, bounds, GetGlowTint(Color.White * alpha, eGlowSource.WeaponEffect));
+                spriteBatch.End();
+            }
+
+            spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
+        }
+
+        /// <summary>
+        /// Switches the board's batch to the StarRainbow shader, for an invincible pac and its trail, drawn white.
+        /// </summary>
+        private void BeginStarRainbow(SpriteBatch spriteBatch)
+        {
+            spriteBatch.End();
+            _StarRainbow.SetTime(_AnimationTime);
+            spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _StarRainbow);
+        }
+
+        /// <summary>
+        /// Switches the board's batch back from a sprite shader (BeginDissolve, BeginStarRainbow, the outline) to the
+        /// usual one.
+        /// </summary>
+        private void EndSpriteEffect(SpriteBatch spriteBatch)
+        {
+            spriteBatch.End();
+            spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
+        }
+
+        /// <summary>
         /// Draws one layer of the game screen (eDrawLayer). The layers up to Overhead are the board, drawn into its own
         /// viewport below the score bar, which also clips them; status is the connection text shown instead of the HUD,
         /// or null.
@@ -836,17 +1264,11 @@ namespace EatMeClient
                 case eDrawLayer.Actors:
                 case eDrawLayer.Effects:
                 case eDrawLayer.Overhead:
-                    if (!showBoard)
+                    // DrawBoardTargets has drawn every board layer into the board's targets, so it is copied once
+                    if (!showBoard || layer != eDrawLayer.Background)
                         return;
 
-                    var board = GetBoardViewport(viewport);
-                    spriteBatch.GraphicsDevice.Viewport = board;
-
-                    // sharp bilinear, so the pixel art stays crisp but scaled, turned and moving sprites get smooth edges
-                    spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _PixelArt);
-                    DrawBoardLayer(spriteBatch, board, layer);
-                    spriteBatch.End();
-                    spriteBatch.GraphicsDevice.Viewport = viewport;
+                    DrawGradedBoard(spriteBatch, viewport);
                     break;
 
                 case eDrawLayer.Hud:
@@ -896,6 +1318,9 @@ namespace EatMeClient
             switch (layer)
             {
                 case eDrawLayer.Background:
+                    if (_DrawingGlow)
+                        break;
+
                     spriteBatch.Draw(_Pixel, new Rectangle(0, 0, board.Width, board.Height), ClientColors.ToColor(_State.BackgroundColor));
                     DrawBackgroundImage(spriteBatch, board);
                     break;
@@ -916,6 +1341,7 @@ namespace EatMeClient
                     break;
 
                 case eDrawLayer.Items:
+                    DrawEffectRanges(spriteBatch, board);
                     DrawLooseFlags(spriteBatch, board);
                     DrawPowerUps(spriteBatch, board);
                     DrawWeaponEffects(spriteBatch, board);
@@ -928,7 +1354,7 @@ namespace EatMeClient
                             continue;
 
                         var screenPosition = _Camera.ToScreenPosition(death.Location.ToXnaVector(), board);
-                        death.Draw(spriteBatch, screenPosition);
+                        death.Draw(spriteBatch, screenPosition, GetGlowTint(death.Tint, eGlowSource.Death));
                     }
                     break;
 
@@ -939,10 +1365,12 @@ namespace EatMeClient
 
                 case eDrawLayer.Effects:
                     DrawDebris(spriteBatch, board);
+                    DrawShockRings(spriteBatch, board);
                     break;
 
                 case eDrawLayer.Overhead:
-                    DrawGhostEyes(spriteBatch, board);
+                    if (!_DrawingGlow)
+                        DrawGhostEyes(spriteBatch, board);
                     break;
             }
         }
@@ -1452,8 +1880,10 @@ namespace EatMeClient
         private void DrawMaze(SpriteBatch spriteBatch, Viewport viewport)
         {
             var map = _State.Map;
-            var wallColor = ClientColors.ToColor(_State.WallColor);
-            var wallFillColor = ClientColors.ToColor(_State.WallFillColor);
+            var wallColor = GetGlowTint(ClientColors.ToColor(_State.WallColor), eGlowSource.WallTube);
+
+            // the wall fills and floors don't glow
+            var wallFillColor = _DrawingGlow ? Color.Transparent : ClientColors.ToColor(_State.WallFillColor);
             var isRainbow = IsRainbowLevel;
             var dotColors = _State.DotColors;
 
@@ -1461,7 +1891,8 @@ namespace EatMeClient
             var showPowerPills = _AnimationTime.TotalMilliseconds % (POWER_PILL_BLINK_MS * 2) < POWER_PILL_BLINK_MS;
             var showBaseTeamColor = _AnimationTime.TotalMilliseconds % (FLAG_BASE_BLINK_MS * 2) < FLAG_BASE_BLINK_MS;
 
-            DrawFloors(spriteBatch, viewport, map);
+            if (!_DrawingGlow)
+                DrawFloors(spriteBatch, viewport, map);
 
             for (var x = firstX; x <= lastX; x++)
             {
@@ -1482,17 +1913,17 @@ namespace EatMeClient
                     }
 
                     if (cell.HasFlag(eGridDef.FlagBaseRed))
-                        spriteBatch.Draw(_FlagBaseTexture, bounds, showBaseTeamColor ? ClientColors.GetTeamColor(eTeam.Red) : ClientColors.COLOR_PAC_YELLOW);
+                        spriteBatch.Draw(_FlagBaseTexture, bounds, GetGlowTint(showBaseTeamColor ? ClientColors.GetTeamColor(eTeam.Red) : ClientColors.COLOR_PAC_YELLOW, eGlowSource.FlagBase));
                     else if (cell.HasFlag(eGridDef.FlagBaseBlue))
-                        spriteBatch.Draw(_FlagBaseTexture, bounds, showBaseTeamColor ? ClientColors.GetTeamColor(eTeam.Blue) : ClientColors.COLOR_PAC_YELLOW);
+                        spriteBatch.Draw(_FlagBaseTexture, bounds, GetGlowTint(showBaseTeamColor ? ClientColors.GetTeamColor(eTeam.Blue) : ClientColors.COLOR_PAC_YELLOW, eGlowSource.FlagBase));
 
                     if (isRainbow)
                         continue;
 
                     if (cell.HasFlag(eGridDef.Food))
-                        spriteBatch.Draw(_DotTexture, bounds, ClientColors.ToColor(dotColors[x, y]));
+                        spriteBatch.Draw(_DotTexture, bounds, GetGlowTint(ClientColors.ToColor(dotColors[x, y]), eGlowSource.Dot));
                     else if (cell.HasFlag(eGridDef.PowerPill) && showPowerPills)
-                        spriteBatch.Draw(_PowerUpSheet, bounds, POWER_PILL_SOURCE, ClientColors.ToColor(dotColors[x, y]));
+                        spriteBatch.Draw(_PowerUpSheet, bounds, POWER_PILL_SOURCE, GetGlowTint(ClientColors.ToColor(dotColors[x, y]), eGlowSource.PowerPill));
                 }
             }
         }
@@ -1522,11 +1953,11 @@ namespace EatMeClient
 
                     // the fill was drawn by DrawMaze, so only the tube here
                     if (cell.HasFlag(eGridDef.Wall))
-                        DrawWall(spriteBatch, map, x, y, bounds, Color.White, Color.Transparent, true);
+                        DrawWall(spriteBatch, map, x, y, bounds, GetGlowTint(Color.White, eGlowSource.WallTube), Color.Transparent, true);
                     else if (cell.HasFlag(eGridDef.Food))
-                        spriteBatch.Draw(_DotTexture, bounds, Color.White);
+                        spriteBatch.Draw(_DotTexture, bounds, GetGlowTint(Color.White, eGlowSource.Dot));
                     else if (cell.HasFlag(eGridDef.PowerPill) && showPowerPills)
-                        spriteBatch.Draw(_PowerUpSheet, bounds, POWER_PILL_SOURCE, Color.White);
+                        spriteBatch.Draw(_PowerUpSheet, bounds, POWER_PILL_SOURCE, GetGlowTint(Color.White, eGlowSource.PowerPill));
                 }
             }
         }
@@ -1635,7 +2066,9 @@ namespace EatMeClient
             var half = CELL_PIXELS / 2;
             var quarterOrigin = new Vector2(half * 0.5f, half * 0.5f);
             var wallColor = ClientColors.ToColor(_State.WallColor);
-            var wallFillColor = ClientColors.ToColor(_State.WallFillColor);
+
+            // only the tubes glow
+            var wallFillColor = _DrawingGlow ? Color.Transparent : ClientColors.ToColor(_State.WallFillColor);
             var isFilled = wallFillColor.A > 0;
             var isRainbow = IsRainbowLevel;
 
@@ -1666,7 +2099,7 @@ namespace EatMeClient
                     spriteBatch.Draw(_WallFillTexture, center, source, wallFillColor, rotation, quarterOrigin, 1f, SpriteEffects.None, 0f);
 
                 var tint = isRainbow ? ClientColors.ToColor(Rainbow.GetShade(WallDebris.GetX(piece), WallDebris.GetY(piece), _AnimationTime)) : wallColor;
-                spriteBatch.Draw(_WallTexture, center, source, tint, rotation, quarterOrigin, 1f, SpriteEffects.None, 0f);
+                spriteBatch.Draw(_WallTexture, center, source, GetGlowTint(tint, eGlowSource.Debris), rotation, quarterOrigin, 1f, SpriteEffects.None, 0f);
             }
         }
 
@@ -1675,7 +2108,7 @@ namespace EatMeClient
         /// </summary>
         private Color GetFlagColor(eTeam team)
         {
-            return ClientColors.GetFlagColor(team, _AnimationTime);
+            return GetGlowTint(ClientColors.GetFlagColor(team, _AnimationTime), eGlowSource.Flag);
         }
 
         /// <summary>
@@ -1700,7 +2133,7 @@ namespace EatMeClient
                 var bounds = new Rectangle((int)(center.X - CELL_PIXELS * 0.5f), (int)(center.Y - CELL_PIXELS * 0.5f), CELL_PIXELS, CELL_PIXELS);
                 spriteBatch.Draw(_FlagTexture, bounds, GetFlagColor(flag.Team));
 
-                if (flag.IsSealed)
+                if (flag.IsSealed && !_DrawingGlow)
                 {
                     var field = new Rectangle((int)(center.X - fieldPixels * 0.5f), (int)(center.Y - fieldPixels * 0.5f), fieldPixels, fieldPixels);
                     spriteBatch.Draw(_ForceFieldTexture, field, fieldColor);
@@ -1773,8 +2206,9 @@ namespace EatMeClient
         }
 
         /// <summary>
-        /// Draws every living pac in its team color, facing the way it's going, mouth chomping, with any flag it carries
-        /// and, while a power pill is working, a fading speed trail behind it.
+        /// Draws every living pac in its team color (in the running rainbow while invincible), facing the way it's going,
+        /// mouth chomping, with any flag it carries and a pulsing outline in that flag's color, and, with Warp Speed or
+        /// Invincible, a fading speed trail behind it.
         /// </summary>
         private void DrawPacs(SpriteBatch spriteBatch, Viewport viewport)
         {
@@ -1800,8 +2234,11 @@ namespace EatMeClient
                 var color = ClientColors.GetPacColor(pac.Team, isOwn);
                 var source = GetPacSource(_PacSheet, _State.GetPacShape(pac.PlayerId), frame);
 
-                // power pulse, star blink, white flash and spawn charge blink, trail included (the mini map uses the same)
-                var tint = ClientColors.GetPacTint(pac, isOwn, _AnimationTime);
+                // an invincible pac is drawn white through the StarRainbow shader, trail included
+                var isRainbow = ClientColors.IsRainbowPac(pac, _AnimationTime);
+
+                // power pulse, white flash and spawn charge blink, trail included (the mini map uses the same)
+                var tint = GetGlowTint(isRainbow ? Color.White : ClientColors.GetPacTint(pac, isOwn, _AnimationTime), eGlowSource.Pac);
 
                 var (rotation, effects) = GetFacingTransform(pac.Facing);
 
@@ -1817,6 +2254,9 @@ namespace EatMeClient
                 if (pac.Rolling)
                     rotation += MelonRoll.GetSpinAngle(_AnimationTime);
 
+                if (isRainbow)
+                    BeginStarRainbow(spriteBatch);
+
                 // speed trail behind a pac with Warp Speed or Invincible, oldest copy first so the newer ones sit on top
                 var trail = _Trails.GetTrail(pac.PlayerId);
                 for (var i = trail.Count - 1; i > -1; i--)
@@ -1825,7 +2265,12 @@ namespace EatMeClient
                     spriteBatch.Draw(_PacSheet, trailScreen, source, tint * PacTrails.GetAlpha(i), rotation, origin, scale, effects, 0f);
                 }
 
+                // a pac that has just spawned materialises
+                var dissolving = !isRainbow && BeginDissolve(spriteBatch, _State.GetPacSinceSpawn(pac.PlayerId, _Clock.ElapsedMilliseconds));
                 spriteBatch.Draw(_PacSheet, screen, source, tint, rotation, origin, scale, effects, 0f);
+
+                if (dissolving || isRainbow)
+                    EndSpriteEffect(spriteBatch);
 
                 if (pac.HasFlag)
                     DrawCarriedFlag(spriteBatch, pac, screen, pacWidth);
@@ -1850,7 +2295,7 @@ namespace EatMeClient
                 var source = GetPacSource(_PacSheet, _State.GetPacShape(owner.PlayerId), frame);
                 var (rotation, effects) = GetFacingTransform(effect.Facing);
 
-                spriteBatch.Draw(_PacSheet, screen, source, ClientColors.GetPacTint(owner, false, _AnimationTime), rotation, origin, pacWidth / frameWidth, effects, 0f);
+                spriteBatch.Draw(_PacSheet, screen, source, GetGlowTint(ClientColors.GetPacTint(owner, false, _AnimationTime), eGlowSource.Pac), rotation, origin, pacWidth / frameWidth, effects, 0f);
                 DrawPacName(spriteBatch, owner, screen, pacWidth, ClientColors.GetPacColor(owner.Team, false));
             }
         }
@@ -1880,7 +2325,8 @@ namespace EatMeClient
         /// </summary>
         private void DrawName(SpriteBatch spriteBatch, string name, Vector2 screen, float width, Color color)
         {
-            if (string.IsNullOrEmpty(name))
+            // names don't glow
+            if (string.IsNullOrEmpty(name) || _DrawingGlow)
                 return;
 
             var size = _NameFont.MeasureString(name);
@@ -1918,8 +2364,11 @@ namespace EatMeClient
                     shadowWidth, shadowHeight);
                 var bounds = new Rectangle((int)(center.X - halfSize), (int)(center.Y - halfSize + hover), CELL_PIXELS, CELL_PIXELS);
 
-                spriteBatch.Draw(_PowerUpShadowTexture, shadow, Color.White);
-                spriteBatch.Draw(_PowerUpSheet, bounds, source, Color.White);
+                // the shadow doesn't glow
+                if (!_DrawingGlow)
+                    spriteBatch.Draw(_PowerUpShadowTexture, shadow, Color.White);
+
+                spriteBatch.Draw(_PowerUpSheet, bounds, source, GetGlowTint(Color.White, eGlowSource.PowerUp));
             }
         }
 
@@ -1969,7 +2418,7 @@ namespace EatMeClient
                     var rotation = effect.Kind == eWeaponEffect.Sword ? WeaponEffectSprites.GetRotation(effect.Facing) : 0f;
                     var effects = effect.Kind == eWeaponEffect.Hammer && effect.Facing == eFacing.Left ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 
-                    spriteBatch.Draw(_WeaponEffectSheet, center, source, Color.White, rotation, origin, scale, effects, 0f);
+                    spriteBatch.Draw(_WeaponEffectSheet, center, source, GetGlowTint(Color.White, eGlowSource.WeaponEffect), rotation, origin, scale, effects, 0f);
                 }
             }
         }
@@ -1986,6 +2435,7 @@ namespace EatMeClient
 
             var size = (int)(PacRules.GHOST_RADIUS * 2f * CELL_PIXELS);
             var halfSize = size * 0.5f;
+            var tint = GetGlowTint(Color.White, eGlowSource.Ghost);
 
             foreach (var ghost in _State.Snapshot.Ghosts)
             {
@@ -1998,18 +2448,24 @@ namespace EatMeClient
                 var source = new Rectangle(GetGhostFrame(ghost.Facing) * frameWidth, 0, frameWidth, sheet.Height);
                 var center = _Camera.ToScreenPosition(CellToWorld(ghost.X, ghost.Y), viewport);
 
+                // a ghost that has just spawned materialises
+                var dissolving = BeginDissolve(spriteBatch, _State.GetGhostSinceSpawn(ghost.GhostId, _Clock.ElapsedMilliseconds));
+
                 if (ghost.Stunned)
                 {
                     // a stunned ghost spins in place
                     var origin = new Vector2(frameWidth * 0.5f, sheet.Height * 0.5f);
                     var scale = new Vector2((float)size / frameWidth, (float)size / sheet.Height);
-                    spriteBatch.Draw(sheet, center, source, Color.White, PowerUpEffects.GetStunSpinAngle(_AnimationTime), origin, scale, SpriteEffects.None, 0f);
+                    spriteBatch.Draw(sheet, center, source, tint, PowerUpEffects.GetStunSpinAngle(_AnimationTime), origin, scale, SpriteEffects.None, 0f);
                 }
                 else
                 {
                     var bounds = new Rectangle((int)(center.X - halfSize), (int)(center.Y - halfSize), size, size);
-                    spriteBatch.Draw(sheet, bounds, source, Color.White);
+                    spriteBatch.Draw(sheet, bounds, source, tint);
                 }
+
+                if (dissolving)
+                    EndSpriteEffect(spriteBatch);
 
                 DrawName(spriteBatch, personality.Name, center, size, ClientColors.ToColor(personality.Color));
             }
